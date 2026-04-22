@@ -246,14 +246,26 @@ function SkillTag({ label }) {
 /* ── Selected Projects ────────────────────────────────────── */
 const PROJECTS = [];
 
-function ProjectCard({ project }) {
+function ProjectCard({ project, allSourceKeys = [] }) {
   const navigate = useNavigate();
   const [hov, setHov] = useState(false);
+  const handleClick = () => {
+    if (project.sourceKey) {
+      navigate("/portfolio_project_preview", {
+        state: {
+          sourceKey: project.sourceKey,
+          sourceKeys: allSourceKeys.length > 0 ? allSourceKeys : [project.sourceKey],
+        },
+      });
+    } else {
+      navigate("/portfolio_project_preview");
+    }
+  };
   return (
     <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      onClick={() => navigate("/portfolio_project_preview")}
+      onClick={handleClick}
       style={{
         background: "white", borderRadius: 16,
         border: `1.5px solid ${hov ? "#BFDBFE" : "#F1F5F9"}`,
@@ -368,7 +380,13 @@ function SelectedProjects() {
         <div style={{ padding: "36px 0", textAlign: "center", color: "#94A3B8", fontFamily: F }}>아직 추가된 포트폴리오가 없습니다.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-          {visible.map(p => <ProjectCard key={p.id} project={p} />)}
+          {visible.map(p => (
+            <ProjectCard
+              key={p.id}
+              project={p}
+              allSourceKeys={projects.map((x) => x.sourceKey).filter(Boolean)}
+            />
+          ))}
         </div>
       )}
     </div>

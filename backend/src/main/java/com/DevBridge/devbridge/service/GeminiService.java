@@ -130,7 +130,7 @@ public class GeminiService {
 
         body.put("generationConfig", Map.of(
                 "temperature", 0.3,
-                "maxOutputTokens", 4000,
+                "maxOutputTokens", 8000,
                 "responseMimeType", "application/json"
         ));
 

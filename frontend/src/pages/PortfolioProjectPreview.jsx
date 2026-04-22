@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header_partner from "../components/Header_partner";
+import { portfolioApi } from "../api";
+import { toPortfolioPreviewProject } from "../lib/portfolio";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const PRIMARY_GRAD = "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)";
@@ -234,6 +237,30 @@ function toEmbedUrl(url) {
   return null;
 }
 
+/* ─ 썸네일 이미지 컴포넌트 ─ */
+function ThumbnailImage({ thumbnailUrl }) {
+  if (!thumbnailUrl) return null;
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{
+        borderRadius: 16, overflow: "hidden",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+      }}>
+        <img
+          src={thumbnailUrl}
+          alt="Project thumbnail"
+          style={{
+            width: "100%",
+            height: "auto",
+            display: "block",
+            objectFit: "cover",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function VideoThumbnail({ videoUrl, videoLabel }) {
   const embedUrl = toEmbedUrl(videoUrl);
   if (embedUrl) {
@@ -351,6 +378,11 @@ function StandardProjectSection({ project }) {
       <p style={{ fontSize: 14, color: "#94A3B8", fontFamily: F, fontStyle: "italic", margin: "0 0 20px" }}>
         {safeProject.subtitle}
       </p>
+
+      {/* 썸네일 */}
+      {sections.thumbnail !== false && safeProject.thumbnailUrl && (
+        <ThumbnailImage thumbnailUrl={safeProject.thumbnailUrl} />
+      )}
 
       {/* 비디오 */}
       {sections.video !== false && safeProject.videoUrl && safeProject.videoUrl !== "#" && (
@@ -543,15 +575,66 @@ function ModularProjectSection({ project }) {
 export default function PortfolioProjectPreview() {
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // 에디터에서 단일 프로젝트(project)로 올 수도 있고, 포트폴리오 뷰에서 여러 프로젝트(projects)로 올 수도 있음
+
   const fromEditor = location.state?.fromEditor || false;
   const singleProject = location.state?.project;
   const multiProjects = location.state?.projects;
-  
-  const projects = singleProject 
-    ? [singleProject]  // 에디터에서 온 단일 프로젝트를 배열로 변환
-    : (multiProjects || DEFAULT_PROJECTS);  // 포트폴리오에서 온 복수 프로젝트 또는 기본값
+  const sourceKey = location.state?.sourceKey;
+  const sourceKeys = Array.isArray(location.state?.sourceKeys) ? location.state.sourceKeys : null;
+
+  const [fetchedProject, setFetchedProject] = useState(null);
+  const [fetchedProjects, setFetchedProjects] = useState(null);
+  const [loading, setLoading] = useState(!!sourceKey || !!sourceKeys);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // 다중 프로젝트 fetch (Selected Projects에서 카드 클릭한 케이스)
+    if (sourceKeys && sourceKeys.length > 0) {
+      let alive = true;
+      setLoading(true);
+      setError(null);
+      Promise.all(
+        sourceKeys.map((k) => portfolioApi.getBySource(k).catch(() => null))
+      )
+        .then((items) => {
+          if (!alive) return;
+          const valid = items.filter(Boolean).map((it) => toPortfolioPreviewProject(it));
+          setFetchedProjects(valid);
+        })
+        .catch((e) => {
+          if (!alive) return;
+          setError(e?.response?.data?.message || e?.message || "포트폴리오를 불러오지 못했습니다.");
+        })
+        .finally(() => { if (alive) setLoading(false); });
+      return () => { alive = false; };
+    }
+
+    // 단일 프로젝트 fetch
+    if (!sourceKey) return;
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    portfolioApi
+      .getBySource(sourceKey)
+      .then((item) => {
+        if (!alive) return;
+        setFetchedProject(toPortfolioPreviewProject(item));
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setError(e?.response?.data?.message || e?.message || "포트폴리오를 불러오지 못했습니다.");
+      })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [sourceKey, sourceKeys?.join(",")]);
+
+  const projects = fetchedProjects && fetchedProjects.length > 0
+    ? fetchedProjects
+    : fetchedProject
+      ? [fetchedProject]
+      : singleProject
+        ? [singleProject]
+        : (multiProjects || DEFAULT_PROJECTS);
 
   const visibleProjects = projects.filter(p => p.visible !== false);
 

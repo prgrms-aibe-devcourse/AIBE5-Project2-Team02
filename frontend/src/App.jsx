@@ -24,6 +24,7 @@ import PortfolioProjectPreview from "./pages/PortfolioProjectPreview";
 import ProjectRegister from "./pages/ProjectRegister";
 import AIchatProject from "./pages/AIchatProject";
 import AIchatProfile from "./pages/AIchatProfile";
+import AIchatPortfolio from "./pages/AIchatPortfolio";
 import PartnerDashboard from "./pages/PartnerDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
 import SolutionDetail from "./pages/SolutionDetail";
@@ -77,6 +78,7 @@ function App() {
         <Route path="/project_register" element={<ProjectRegister />} />
         <Route path="/ai_chat_project" element={<AIchatProject />} />
         <Route path="/ai_chat_profile" element={<AIchatProfile />} />
+        <Route path="/aichat_portfolio" element={<AIchatPortfolio />} />
         <Route path="/partner_dashboard" element={<PartnerDashboard />} />
         <Route path="/client_dashboard" element={<ClientDashboard />} />
         <Route path="/find-password" element={<FindPassword />} />

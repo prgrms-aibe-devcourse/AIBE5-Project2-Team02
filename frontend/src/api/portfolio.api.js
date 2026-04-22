@@ -5,6 +5,9 @@ export const portfolioApi = {
 
   myAdded: () => api.get('/portfolios/me/added').then((r) => r.data),
 
+  getBySource: (sourceKey) =>
+    api.get(`/portfolios/me/by-source/${encodeURIComponent(sourceKey)}`).then((r) => r.data),
+
   byUsername: (username) => api.get(`/portfolios/${encodeURIComponent(username)}`).then((r) => r.data),
 
   upsertBySource: (sourceKey, payload) =>
