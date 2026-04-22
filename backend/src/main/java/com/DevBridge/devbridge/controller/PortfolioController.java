@@ -31,6 +31,17 @@ public class PortfolioController {
         return ResponseEntity.ok(portfolioService.findMyAddedItems(userId));
     }
 
+    @GetMapping("/me/by-source/{sourceKey}")
+    public ResponseEntity<?> myPortfolioBySource(@PathVariable String sourceKey) {
+        Long userId = AuthContext.currentUserId();
+        if (userId == null) return unauth();
+        try {
+            return ResponseEntity.ok(portfolioService.findMyItemBySource(userId, sourceKey));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/{username}")
     public ResponseEntity<?> portfoliosByUsername(@PathVariable String username) {
         return ResponseEntity.ok(portfolioService.findPublicItemsByUsername(username));

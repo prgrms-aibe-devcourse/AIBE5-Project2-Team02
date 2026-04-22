@@ -46,6 +46,14 @@ public class PortfolioService {
     }
 
     @Transactional(readOnly = true)
+    public PortfolioItemResponse findMyItemBySource(Long userId, String sourceKey) {
+        String resolvedSourceKey = normalizeSourceKey(sourceKey);
+        PartnerPortfolio item = partnerPortfolioRepository.findByUserIdAndSourceKey(userId, resolvedSourceKey)
+                .orElseThrow(() -> new RuntimeException("포트폴리오 항목을 찾을 수 없습니다. sourceKey=" + resolvedSourceKey));
+        return toResponse(item);
+    }
+
+    @Transactional(readOnly = true)
     public List<PortfolioItemResponse> findPublicItemsByUsername(String username) {
         return partnerPortfolioRepository.findByUserUsernameAndIsAddedTrueAndIsPublicTrueOrderByUpdatedAtDesc(username)
                 .stream()

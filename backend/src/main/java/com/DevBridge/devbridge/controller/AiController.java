@@ -6,6 +6,7 @@ import com.DevBridge.devbridge.service.GeminiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.Map;
 
@@ -22,6 +23,11 @@ public class AiController {
         try {
             String reply = geminiService.chat(request);
             return ResponseEntity.ok(AiChatResponse.builder().reply(reply).build());
+        } catch (HttpClientErrorException e) {
+            String detail = e.getStatusCode() + " | " + e.getResponseBodyAsString();
+            return ResponseEntity.internalServerError().body(
+                    AiChatResponse.builder().error(detail).build()
+            );
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(
                     AiChatResponse.builder().error(e.getMessage()).build()
@@ -29,11 +35,6 @@ public class AiController {
         }
     }
 
-    /**
-     * POST /api/ai/extract
-     * CV/PDF 텍스트를 JSON 구조화 프로필로 추출. oneShot + responseMimeType=json 사용.
-     * Body: { "systemInstruction": "...", "text": "cv 원문 텍스트" }
-     */
     @PostMapping("/extract")
     public ResponseEntity<AiChatResponse> extract(@RequestBody Map<String, String> body) {
         try {
@@ -41,6 +42,11 @@ public class AiController {
             String text = body.getOrDefault("text", "");
             String reply = geminiService.oneShot(systemInstruction, text);
             return ResponseEntity.ok(AiChatResponse.builder().reply(reply).build());
+        } catch (HttpClientErrorException e) {
+            String detail = e.getStatusCode() + " | " + e.getResponseBodyAsString();
+            return ResponseEntity.internalServerError().body(
+                    AiChatResponse.builder().error(detail).build()
+            );
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(
                     AiChatResponse.builder().error(e.getMessage()).build()

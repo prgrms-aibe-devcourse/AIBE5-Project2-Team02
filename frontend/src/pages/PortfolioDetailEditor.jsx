@@ -3,7 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header_partner from "../components/Header_partner";
 import PartnerBannerCard from "../components/PartnerBannerCard";
 import { portfolioApi } from "../api";
-import { toPortfolioEditorSeed, toPortfolioRequest } from "../lib/portfolio";
+import { toPortfolioEditorSeed, toPortfolioRequest, toPortfolioPreviewProject } from "../lib/portfolio";
+import { generateAutoThumbnail, generateThumbnailVariants } from "../lib/autoThumbnail";
+import mascotIcon from "../assets/hero_check.png";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const PRIMARY_GRAD = "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)";
@@ -87,7 +89,17 @@ function SectionCard({ icon, title, headerExtra, children }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {icon}
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1E293B", fontFamily: F, margin: 0 }}>{title}</h3>
+          <h3 style={{
+            fontSize: 19,
+            fontWeight: 800,
+            fontFamily: F,
+            margin: 0,
+            background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            letterSpacing: "-0.01em",
+          }}>{title}</h3>
         </div>
         {headerExtra}
       </div>
@@ -309,9 +321,21 @@ export default function PortfolioDetailEditor() {
   const handleFile = (file) => {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = e => upd("thumbnailPreview", e.target.result);
+    reader.onload = e => {
+      upd("thumbnailPreview", e.target.result);
+      upd("thumbnailCleared", false); // 파일 업로드 시 cleared 플래그 해제
+      updS("thumbnail", true); // 썸네일 섹션 활성화
+    };
     reader.readAsDataURL(file);
     upd("thumbnailFile", file.name);
+  };
+
+  const clearThumbnail = () => {
+    upd("thumbnailPreview", "");
+    upd("thumbnailFile", "");
+    upd("thumbnailUrl", "");
+    upd("thumbnailCleared", true); // 사용자가 명시적으로 제거했음을 표시
+    updS("thumbnail", false); // 섹션에서 썸네일 표시 안 함
   };
 
   const addFeature = () => upd("coreFeatures", [...proj.coreFeatures, { id: Date.now(), title: "", desc: "" }]);
@@ -324,16 +348,43 @@ export default function PortfolioDetailEditor() {
   };
   const removeTag = (i) => upd("techTags", proj.techTags.filter((_, idx) => idx !== i));
 
-  const handlePreview = () => navigate("/portfolio_project_preview", { state: { fromEditor: true, project: proj } });
+  const handlePreview = () => {
+    const dbLike = {
+      sourceKey: selectedProjId,
+      title: proj.title,
+      role: proj.role,
+      period: proj.period,
+      videoUrl: proj.videoUrl,
+      workContent: proj.workContent,
+      vision: proj.vision,
+      coreFeatures: proj.coreFeatures,
+      technicalChallenge: proj.technicalChallenge,
+      solution: proj.solution,
+      techTags: proj.techTags,
+      githubUrl: proj.githubUrl,
+      liveUrl: proj.liveUrl,
+      thumbnailUrl: proj.thumbnailUrl || proj.thumbnailPreview || "",
+      sections: proj.sections,
+    };
+    const previewProject = toPortfolioPreviewProject(dbLike);
+    navigate("/portfolio_project_preview", { state: { fromEditor: true, project: previewProject } });
+  };
   const handleSave = async () => {
     if (!selectedProjId) return;
     try {
       setSaving(true);
       const current = projDataMap[selectedProjId] || {};
+      // 저장 규칙:
+      // - data: URL은 저장 불가 (이전 버그 호환) → "" 대체
+      // - auto:xxx 마커는 그대로 저장 (표시 시 재생성)
+      // - http(s) URL은 그대로 저장
+      const rawThumb = current.thumbnailUrl || "";
+      const thumbnailUrl = rawThumb.startsWith("data:") ? "" : rawThumb;
       await portfolioApi.upsertBySource(selectedProjId, toPortfolioRequest({
         ...current,
         sourceKey: selectedProjId,
         sourceProjectId: current.sourceProjectId ?? portfolioProjects.find((item) => item.id === selectedProjId)?.sourceProjectId ?? null,
+        thumbnailUrl,
       }));
       alert("포트폴리오가 저장되었습니다.");
       navigate(returnTo, { state: { activeTab: "portfolio_add" } });
@@ -513,46 +564,109 @@ export default function PortfolioDetailEditor() {
             <div style={{
               background: "white", borderRadius: 14, border: "1.5px solid #E8EDF2",
               padding: "20px 26px", marginBottom: 14,
-              display: "flex", alignItems: "center", justifyContent: "space-between",
               boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
             }}>
-              <div>
-                <h2 style={{ fontSize: 22, fontWeight: 900, color: "#1E293B", fontFamily: F, margin: "0 0 5px" }}>
-                  포트폴리오 상세 내용 작성
-                </h2>
-                <p style={{ fontSize: 13, color: "#94A3B8", fontFamily: F, margin: 0 }}>
-                  {portfolioProjects.find(p => p.id === selectedProjId)?.title || "Curate your project narrative and showcase your technical expertise."}
-                </p>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+              }}>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 900, color: "#1E293B", fontFamily: F, margin: "0 0 5px" }}>
+                    포트폴리오 상세 내용 작성
+                  </h2>
+                  <p style={{ fontSize: 13, color: "#94A3B8", fontFamily: F, margin: 0 }}>
+                    {portfolioProjects.find(p => p.id === selectedProjId)?.title || "Curate your project narrative and showcase your technical expertise."}
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+                  <button
+                    onClick={handlePreview}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 7,
+                      padding: "10px 18px", borderRadius: 9,
+                      border: "1.5px solid #E2E8F0", background: "white",
+                      color: "#374151", fontSize: 13, fontWeight: 600, fontFamily: F,
+                      cursor: "pointer", transition: "all 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#93C5FD"; e.currentTarget.style.color = "#3B82F6"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.color = "#374151"; }}
+                  >
+                    {IC.eye} 미리보기
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 7,
+                      padding: "10px 20px", borderRadius: 9,
+                      border: "none", background: PRIMARY_GRAD,
+                      color: "white", fontSize: 13, fontWeight: 700, fontFamily: F,
+                      cursor: "pointer", boxShadow: "0 4px 14px rgba(59,130,246,0.3)",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.45)"}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.3)"}
+                  >
+                    {IC.save} {saving ? "저장 중..." : "변경 저장하기"}
+                  </button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-                <button
-                  onClick={handlePreview}
+
+              {/* AI 작성 도움 배너 */}
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: "14px 20px",
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 50%, #E0E7FF 100%)",
+                  border: "1.5px solid #BFDBFE",
+                  display: "flex", alignItems: "center", gap: 14,
+                }}
+              >
+                <div
                   style={{
-                    display: "flex", alignItems: "center", gap: 7,
-                    padding: "10px 18px", borderRadius: 9,
-                    border: "1.5px solid #E2E8F0", background: "white",
-                    color: "#374151", fontSize: 13, fontWeight: 600, fontFamily: F,
-                    cursor: "pointer", transition: "all 0.15s",
+                    width: 56, height: 56, borderRadius: "50%",
+                    background: "white",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                    boxShadow: "0 3px 10px rgba(59,130,246,0.15)",
+                    overflow: "hidden",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#93C5FD"; e.currentTarget.style.color = "#3B82F6"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.color = "#374151"; }}
                 >
-                  {IC.eye} 미리보기
-                </button>
+                  <img src={mascotIcon} alt="AI" style={{ width: 48, height: 48, objectFit: "contain" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#1E293B", marginBottom: 2, fontFamily: F }}>
+                    AI가 포트폴리오 내용 작성을 도와드릴게요.
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "#64748B", lineHeight: 1.5, fontFamily: F }}>
+                    GitHub 저장소나 진행 프로젝트를 알려주시면 비전·핵심기능·기술스택까지 자동으로 채워드립니다.
+                  </div>
+                </div>
                 <button
-                  onClick={handleSave}
+                  onClick={() => navigate("/aichat_portfolio")}
                   style={{
-                    display: "flex", alignItems: "center", gap: 7,
-                    padding: "10px 20px", borderRadius: 9,
-                    border: "none", background: PRIMARY_GRAD,
-                    color: "white", fontSize: 13, fontWeight: 700, fontFamily: F,
-                    cursor: "pointer", boxShadow: "0 4px 14px rgba(59,130,246,0.3)",
-                    transition: "all 0.2s",
+                    flexShrink: 0,
+                    padding: "10px 18px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: PRIMARY_GRAD,
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    fontFamily: F,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(59,130,246,0.30)",
+                    transition: "transform 0.15s, box-shadow 0.15s",
                   }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.45)"}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.3)"}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(59,130,246,0.40)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(59,130,246,0.30)";
+                  }}
                 >
-                  {IC.save} {saving ? "저장 중..." : "변경 저장하기"}
+                  내용 작성 도움받기
                 </button>
               </div>
             </div>
@@ -569,10 +683,9 @@ export default function PortfolioDetailEditor() {
             )}
 
             {/* ─ 2. Thumbnail / Video Upload ─ */}
-            {s.thumbnail && (
-              <SectionCard title="Thumbnail/Video Upload" icon={<SectionIcon>{IC.upload}</SectionIcon>}>
-                {/* 영상 URL 입력란 (YouTube, Google Drive 등) */}
-                <div style={{ marginBottom: 14 }}>
+            <SectionCard title="Thumbnail/Video Upload" icon={<SectionIcon>{IC.upload}</SectionIcon>}>
+              {/* 영상 URL 입력란 (YouTube, Google Drive 등) */}
+              <div style={{ marginBottom: 14 }}>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", fontFamily: F, marginBottom: 6, letterSpacing: "0.02em" }}>
                     Video URL <span style={{ color: "#94A3B8", fontWeight: 500 }}>(YouTube · Google Drive · Vimeo 링크)</span>
                   </label>
@@ -601,6 +714,43 @@ export default function PortfolioDetailEditor() {
                   </div>
                 </div>
 
+                {/* 썸네일 URL 입력란 */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", fontFamily: F, marginBottom: 6, letterSpacing: "0.02em" }}>
+                    Thumbnail Image URL <span style={{ color: "#94A3B8", fontWeight: 500 }}>(직접 이미지 링크 입력)</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", display: "flex", alignItems: "center" }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                    </span>
+                    <input
+                      type="url"
+                      value={proj.thumbnailUrl || ""}
+                      onChange={e => {
+                        upd("thumbnailUrl", e.target.value);
+                        if (e.target.value) {
+                          upd("thumbnailCleared", false); // URL 입력 시 cleared 플래그 해제
+                          updS("thumbnail", true); // 썸네일 섹션 활성화
+                        }
+                      }}
+                      placeholder="https://example.com/image.jpg"
+                      style={{
+                        width: "100%", padding: "10px 14px 10px 38px",
+                        border: "1.5px solid #E2E8F0", borderRadius: 10,
+                        fontSize: 14, color: "#1E293B", fontFamily: F,
+                        background: "#FFFFFF", outline: "none",
+                        transition: "border-color 0.15s", boxSizing: "border-box",
+                      }}
+                      onFocus={e => e.currentTarget.style.borderColor = "#3B82F6"}
+                      onBlur={e => e.currentTarget.style.borderColor = "#E2E8F0"}
+                    />
+                  </div>
+                </div>
+
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -612,27 +762,113 @@ export default function PortfolioDetailEditor() {
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
                     cursor: "pointer", background: dragOver ? "#EFF6FF" : "#F8FAFC",
                     transition: "all 0.15s", textAlign: "center",
+                    position: "relative",
+                    minHeight: 180,
                   }}
                 >
-                  {proj.thumbnailPreview ? (
-                    <img src={proj.thumbnailPreview} alt="preview" style={{ maxHeight: 120, borderRadius: 8, objectFit: "cover" }} />
-                  ) : (
-                    <div style={{ width: 52, height: 52, borderRadius: 12, background: "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
-                      </svg>
-                    </div>
-                  )}
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: proj.thumbnailFile ? "#22C55E" : "#374151", fontFamily: F, margin: "0 0 4px" }}>
-                      {proj.thumbnailFile ? proj.thumbnailFile : "Drag and drop your thumbnail or video here, or click to upload"}
-                    </p>
-                    <p style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, margin: 0 }}>MP4, MOV, JPG, PNG (Max 50MB)</p>
-                  </div>
+                  {(() => {
+                    const hasUserUpload = !!(proj.thumbnailPreview || (proj.thumbnailUrl && /^https?:\/\/.+/.test(proj.thumbnailUrl)));
+                    const wasCleared = proj.thumbnailCleared === true;
+                    
+                    // 사용자가 명시적으로 제거한 경우 → 업로드 안내만 표시
+                    if (wasCleared && !hasUserUpload) {
+                      return (
+                        <>
+                          <div style={{
+                            width: 72,
+                            height: 72,
+                            borderRadius: "50%",
+                            background: "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginBottom: 8,
+                          }}>
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: 15, fontWeight: 700, color: "#3B82F6", fontFamily: F, margin: "0 0 4px" }}>
+                              썸네일 이미지를 업로드하세요
+                            </p>
+                            <p style={{ fontSize: 13, color: "#64748B", fontFamily: F, margin: "0 0 4px" }}>
+                              드래그 & 드롭 또는 클릭하여 파일 선택
+                            </p>
+                            <p style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, margin: 0 }}>JPG, PNG, GIF (Max 50MB)</p>
+                          </div>
+                        </>
+                      );
+                    }
+                    
+                    // 썸네일이 있는 경우 (사용자 업로드 또는 자동 생성)
+                    const previewSrc = proj.thumbnailPreview
+                      || proj.thumbnailUrl
+                      || generateAutoThumbnail(proj.title || "Project", (proj.techTags || []).map((t) => String(t).replace(/^#/, "")));
+                    
+                    return (
+                      <>
+                        <img
+                          src={previewSrc}
+                          alt="thumbnail preview"
+                          style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 10, objectFit: "cover", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}
+                          onError={(e) => {
+                            e.currentTarget.src = generateAutoThumbnail(proj.title || "Project", (proj.techTags || []).map((t) => String(t).replace(/^#/, "")));
+                          }}
+                        />
+                        {/* X 버튼 - 우측 상단 */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearThumbnail();
+                          }}
+                          style={{
+                            position: "absolute",
+                            top: 12,
+                            right: 12,
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            border: "1.5px solid #E2E8F0",
+                            background: "white",
+                            color: "#94A3B8",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                            transition: "all 0.15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#FEE2E2";
+                            e.currentTarget.style.color = "#EF4444";
+                            e.currentTarget.style.borderColor = "#EF4444";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "white";
+                            e.currentTarget.style.color = "#94A3B8";
+                            e.currentTarget.style.borderColor = "#E2E8F0";
+                          }}
+                          title={hasUserUpload ? "썸네일 제거" : "자동 생성 썸네일 제거"}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                        <div style={{ marginTop: 8 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: hasUserUpload ? "#22C55E" : "#64748B", fontFamily: F, margin: 0 }}>
+                            {hasUserUpload ? "✓ 사용자 업로드 이미지" : "자동 생성된 썸네일 (변경하려면 클릭 또는 X로 제거)"}
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
                 <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
-              </SectionCard>
-            )}
+            </SectionCard>
 
             {/* ─ 3. Narrative & Vision ─ */}
             {showNarrative && (

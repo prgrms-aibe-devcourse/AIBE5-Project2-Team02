@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { applicationsApi, portfolioApi, projectsApi } from "../../api";
 import { toPortfolioEditorSeed, toPortfolioRequest } from "../../lib/portfolio";
+import mascotIcon from "../../assets/hero_check.png";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -99,6 +100,7 @@ async function loadClientItems() {
 export default function PortfolioAddManagementTab({ viewer = "partner", dashboardPath = "/partner_dashboard" }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
+  const [githubItems, setGithubItems] = useState([]);
   const [addedMap, setAddedMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -128,7 +130,29 @@ export default function PortfolioAddManagementTab({ viewer = "partner", dashboar
           };
         });
         setItems(merged);
-        setAddedMap(Object.fromEntries(merged.map((item) => [item.sourceKey, savedMap.get(item.sourceKey)?.isAdded ?? false])));
+
+        const baseKeys = new Set(merged.map((m) => m.sourceKey));
+        const github = (savedItems || [])
+          .filter((s) => !baseKeys.has(s.sourceKey) && String(s.sourceKey || "").startsWith("github-"))
+          .map((s) => ({
+            id: s.sourceKey,
+            sourceKey: s.sourceKey,
+            sourceProjectId: null,
+            group: "GitHub",
+            badge: "GitHub",
+            badgeBg: "#F3F4F6",
+            badgeColor: "#111827",
+            title: s.title || "GitHub 프로젝트",
+            desc: s.workContent || s.vision || "",
+            tags: (s.techTags || []).map((tag) => (String(tag).startsWith("#") ? String(tag) : `#${tag}`)),
+            period: s.period || "",
+            role: s.role || "",
+            githubUrl: s.githubUrl || "",
+          }));
+        setGithubItems(github);
+
+        const allItems = [...merged, ...github];
+        setAddedMap(Object.fromEntries(allItems.map((item) => [item.sourceKey, savedMap.get(item.sourceKey)?.isAdded ?? false])));
       })
       .catch((e) => {
         if (!alive) return;
@@ -147,7 +171,8 @@ export default function PortfolioAddManagementTab({ viewer = "partner", dashboar
   }), [items]);
 
   const openEditor = (currentItem) => {
-    const editorItems = items
+    const allItems = [...items, ...githubItems];
+    const editorItems = allItems
       .filter((item) => addedMap[item.sourceKey] || item.sourceKey === currentItem.sourceKey)
       .map((item) => toPortfolioEditorSeed(item, { added: addedMap[item.sourceKey] || item.sourceKey === currentItem.sourceKey }));
     navigate("/portfolio_detail_editor", {
@@ -189,10 +214,23 @@ export default function PortfolioAddManagementTab({ viewer = "partner", dashboar
         </p>
       </div>
 
+      <AIPortfolioBanner onClick={() => navigate("/aichat_portfolio")} />
+
       {loading && <EmptyState label="불러오는 중..." />}
       {!loading && error && <EmptyState label={error} tone="error" />}
       {!loading && !error && (
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+          {githubItems.length > 0 && (
+            <SectionBlock
+              title="GitHub 프로젝트"
+              desc="GitHub 저장소 URL을 통해 AI가 자동 작성한 포트폴리오입니다. 상세 편집으로 내용을 다듬어주세요."
+              items={githubItems}
+              addedMap={addedMap}
+              busyKey={busyKey}
+              onToggle={handleToggle}
+              onOpenEditor={openEditor}
+            />
+          )}
           <SectionBlock
             title="진행 중인 프로젝트 대시보드"
             desc="현재 연결 가능한 프로젝트입니다. 상세 작성으로 포트폴리오 내용을 저장할 수 있습니다."
@@ -213,6 +251,72 @@ export default function PortfolioAddManagementTab({ viewer = "partner", dashboar
           />
         </div>
       )}
+    </div>
+  );
+}
+
+function AIPortfolioBanner({ onClick }) {
+  return (
+    <div
+      style={{
+        marginBottom: 28,
+        padding: "20px 28px",
+        borderRadius: 20,
+        background: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 50%, #E0E7FF 100%)",
+        border: "1.5px solid #BFDBFE",
+        display: "flex",
+        alignItems: "center",
+        gap: 18,
+        fontFamily: F,
+      }}
+    >
+      <div
+        style={{
+          width: 64, height: 64, borderRadius: "50%",
+          background: "white",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+          boxShadow: "0 4px 12px rgba(59,130,246,0.15)",
+          overflow: "hidden",
+        }}
+      >
+        <img src={mascotIcon} alt="AI" style={{ width: 56, height: 56, objectFit: "contain" }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", marginBottom: 4 }}>
+          AI가 포트폴리오 내용 작성을 도와드릴게요.
+        </div>
+        <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
+          진행한 프로젝트나 GitHub 저장소를 알려주시면 더 매력적인 포트폴리오 문구를 생성합니다.
+        </div>
+      </div>
+      <button
+        onClick={onClick}
+        style={{
+          flexShrink: 0,
+          padding: "12px 22px",
+          borderRadius: 12,
+          border: "none",
+          background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)",
+          color: "white",
+          fontWeight: 700,
+          fontSize: 14,
+          fontFamily: F,
+          cursor: "pointer",
+          boxShadow: "0 4px 12px rgba(59,130,246,0.30)",
+          transition: "transform 0.15s, box-shadow 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = "0 6px 16px rgba(59,130,246,0.40)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 4px 12px rgba(59,130,246,0.30)";
+        }}
+      >
+        내용 작성 도움받기
+      </button>
     </div>
   );
 }
