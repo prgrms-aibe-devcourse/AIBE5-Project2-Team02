@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Header_partner from "../components/Header_partner";
+import Header_client from "../components/Header_client";
 import mascotIcon from "../assets/hero_check.png";
 import heroMeeting from "../assets/hero_meeting.png";
 import heroStudent from "../assets/hero_student.png";
@@ -627,13 +628,13 @@ export default function AIchatPortfolio() {
               variant="primary"
               onClick={() => navigate("/portfolio_detail_editor", {
                 state: createdSourceKey
-                  ? { projectId: createdSourceKey, returnTo: "/partner_dashboard?tab=portfolio_add" }
-                  : { returnTo: "/partner_dashboard?tab=portfolio_add" },
+                  ? { projectId: createdSourceKey, returnTo: dashboardPath }
+                  : { returnTo: dashboardPath },
               })}
             >
               포트폴리오 편집으로 이동
             </ChipBtn>
-            <ChipBtn onClick={() => navigate("/partner_dashboard?tab=portfolio_add")}>대시보드로 돌아가기</ChipBtn>
+            <ChipBtn onClick={() => navigate(dashboardPath)}>대시보드로 돌아가기</ChipBtn>
           </div>
 
           <div style={{
@@ -679,9 +680,12 @@ export default function AIchatPortfolio() {
     return null;
   };
 
+  const isPartner = (userRole || "partner") === "partner";
+  const dashboardPath = isPartner ? "/partner_dashboard?tab=portfolio_add" : "/client_portfolio";
+
   return (
     <div style={{ minHeight: "100vh", background: "#F1F5F9", fontFamily: F }}>
-      <Header_partner />
+      {isPartner ? <Header_partner /> : <Header_client />}
 
       <div style={{ maxWidth: 1480, margin: "0 auto", padding: "28px 20px 32px" }}>
         {/* 상단 배너 */}
