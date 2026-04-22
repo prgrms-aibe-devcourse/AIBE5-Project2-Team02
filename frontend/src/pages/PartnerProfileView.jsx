@@ -578,16 +578,33 @@ const MOCK_PORTFOLIO = [
 ];
 
 function PortfolioSection({ partner }) {
+  const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
+  
   const sourceItems = Array.isArray(partner?.portfolioItems) && partner.portfolioItems.length > 0
     ? partner.portfolioItems.map((item) => ({
+        sourceKey: item.sourceKey || item.id,
         title: item.title,
         category: item.role || item.period || "포트폴리오",
         tags: Array.isArray(item.techTags) ? item.techTags : [],
+        thumbnailUrl: item.thumbnailUrl || null,
         rep: false,
       }))
-    : MOCK_PORTFOLIO;
+    : MOCK_PORTFOLIO.map((p, i) => ({ ...p, sourceKey: `mock-${i}`, thumbnailUrl: null }));
+    
   const items = showAll ? sourceItems : sourceItems.slice(0, 3);
+  
+  const handleCardClick = (item) => {
+    if (item.sourceKey && !item.sourceKey.startsWith('mock-')) {
+      navigate("/portfolio_project_preview", {
+        state: {
+          sourceKey: item.sourceKey,
+          sourceKeys: sourceItems.filter(s => !s.sourceKey.startsWith('mock-')).map(s => s.sourceKey),
+        },
+      });
+    }
+  };
+  
   return (
     <div>
       {/* 헤더 행: 제목 + 전체보기 버튼 */}
@@ -612,10 +629,62 @@ function PortfolioSection({ partner }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         {items.map((p, i) => (
-          <div key={i} style={{ borderRadius: 16, overflow: "hidden", border: "1.5px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-            {/* 썬네일 */}
-            <div style={{ height: 120, background: PORTFOLIO_BG[i % PORTFOLIO_BG.length], position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src={PORTFOLIO_IMGS[i % PORTFOLIO_IMGS.length]} alt="thumbnail" style={{ height: 90, objectFit: "contain", opacity: 0.92 }} />
+          <div 
+            key={i} 
+            onClick={() => handleCardClick(p)}
+            style={{ 
+              borderRadius: 16, 
+              overflow: "hidden", 
+              border: "1.5px solid #E2E8F0", 
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              cursor: p.sourceKey && !p.sourceKey.startsWith('mock-') ? "pointer" : "default",
+              transition: "transform 0.15s, box-shadow 0.15s",
+            }}
+            onMouseEnter={e => {
+              if (p.sourceKey && !p.sourceKey.startsWith('mock-')) {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 24px rgba(59,130,246,0.12)";
+              }
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+            }}
+          >
+            {/* 썸네일 */}
+            <div style={{ 
+              height: 120, 
+              background: p.thumbnailUrl ? "#F8FAFC" : PORTFOLIO_BG[i % PORTFOLIO_BG.length], 
+              position: "relative", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center",
+              overflow: "hidden",
+            }}>
+              {p.thumbnailUrl ? (
+                <img 
+                  src={p.thumbnailUrl} 
+                  alt="thumbnail" 
+                  style={{ 
+                    width: "100%", 
+                    height: "100%", 
+                    objectFit: "cover",
+                  }} 
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.parentElement.style.background = PORTFOLIO_BG[i % PORTFOLIO_BG.length];
+                    const fallbackImg = document.createElement('img');
+                    fallbackImg.src = PORTFOLIO_IMGS[i % PORTFOLIO_IMGS.length];
+                    fallbackImg.alt = "thumbnail";
+                    fallbackImg.style.height = "90px";
+                    fallbackImg.style.objectFit = "contain";
+                    fallbackImg.style.opacity = "0.92";
+                    e.currentTarget.parentElement.appendChild(fallbackImg);
+                  }}
+                />
+              ) : (
+                <img src={PORTFOLIO_IMGS[i % PORTFOLIO_IMGS.length]} alt="thumbnail" style={{ height: 90, objectFit: "contain", opacity: 0.92 }} />
+              )}
               {p.rep && (
                 <span style={{ position: "absolute", top: 10, left: 10, fontSize: 11, fontWeight: 800, color: "#1D4ED8", background: "white", borderRadius: 6, padding: "2px 8px", fontFamily: F }}>대표</span>
               )}
