@@ -29,7 +29,7 @@ const SIDEBAR_SECTIONS = [
     title: "미팅",
     items: [
       { key: "free_meeting",     label: "자유 미팅" },
-      { key: "contract_meeting", label: "계약 여부 논의 미팅" },
+      { key: "contract_meeting", label: "계약 세부 협의 미팅" },
     ],
   },
   {

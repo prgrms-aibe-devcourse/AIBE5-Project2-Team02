@@ -224,7 +224,7 @@ function ProjectCard({ project, apps, busyId, onAction, onCloseRecruiting, onSta
       shadow: "0 4px 14px rgba(59,130,246,0.35)",
       onClick: () => onStartContractMeeting?.(project, acceptedApp),
       busy: busyId === acceptedApp.id,
-      hint: "계약 여부 논의 미팅으로 이동",
+      hint: "계약 세부 협의 미팅으로 이동",
     };
   } else if (contractedApp) {
     phaseAction = {

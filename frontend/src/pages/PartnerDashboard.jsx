@@ -104,7 +104,7 @@ const SECTIONS = [
     title: "미팅",
     items: [
       { key: "free_meeting",     label: "자유 미팅" },
-      { key: "contract_meeting", label: "세부 계약 협의 미팅" },
+      { key: "contract_meeting", label: "계약 세부 협의 미팅" },
       { key: "project_meeting",  label: "진행 프로젝트 미팅" },
     ],
   },
@@ -4982,7 +4982,9 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
     if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
   };
 
-  const activeContact = contacts.find(c => c.id === activeId);
+  const activeContact = useMemo(() => {
+    return contacts.find(c => c.id === activeId) || contacts[0];
+  }, [contacts, activeId]);
   const filtered      = contacts
     .filter(c =>
       c.name.toLowerCase().includes(searchVal.toLowerCase()) ||
@@ -5100,6 +5102,10 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
                 url: att.asset_url,
                 date: dateStr 
               });
+            } else if (att.type === "url" && att.og_scrape_url) {
+              let url = att.og_scrape_url;
+              if (!url.startsWith("http")) url = "https://" + url;
+              if (!extractedLinks.includes(url)) extractedLinks.push(url);
             }
           });
         }

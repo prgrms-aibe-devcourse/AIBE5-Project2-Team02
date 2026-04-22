@@ -118,7 +118,7 @@ const SECTIONS = [
     title: "미팅",
     items: [
       { key: "free_meeting",     label: "자유 미팅" },
-      { key: "contract_meeting", label: "계약 여부 논의 미팅" },
+      { key: "contract_meeting", label: "계약 세부 협의 미팅" },
       { key: "project_meeting",  label: "진행 프로젝트 미팅" },
     ],
   },
@@ -4925,7 +4925,9 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
   const showActionMenu = true;
   const viewerName = user?.name || user?.nickname || "Eden (본인)";
 
-  const activeContact = contacts.find(c => c.id === activeId);
+  const activeContact = useMemo(() => {
+    return contacts.find(c => c.id === activeId) || contacts[0];
+  }, [contacts, activeId]);
   const fallbackStatuses = itemStatusesByContact[activeId] || {
     scope: "논의 중",
     deliverable: "미확정",
@@ -5057,6 +5059,10 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
                 url: att.asset_url,
                 date: dateStr 
               });
+            } else if (att.type === "url" && att.og_scrape_url) {
+              let url = att.og_scrape_url;
+              if (!url.startsWith("http")) url = "https://" + url;
+              if (!extractedLinks.includes(url)) extractedLinks.push(url);
             }
           });
         }
