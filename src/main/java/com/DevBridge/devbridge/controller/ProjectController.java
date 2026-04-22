@@ -64,6 +64,18 @@ public class ProjectController {
         }
     }
 
+    /** 특정 username 사용자가 등록한 프로젝트 목록 (채팅에서 상대 프로젝트 카드 보여주기용). */
+    @GetMapping("/by-username/{username}")
+    public ResponseEntity<?> byUsername(@PathVariable String username) {
+        try {
+            List<ProjectSummaryResponse> list = projectService.findAllByUsername(username);
+            return ResponseEntity.ok(list);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
     /** 프로젝트 등록 (JWT 필수). */
     @PostMapping
     public ResponseEntity<?> create(@RequestBody ProjectCreateRequest request) {

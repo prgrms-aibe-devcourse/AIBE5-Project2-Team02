@@ -147,9 +147,16 @@ public class GeminiService {
             if (fallbackModel == null || fallbackModel.isBlank() || fallbackModel.equals(model)) {
                 throw primary429;
             }
-
             log.warn("Gemini 429 on primary model {}. Falling back to {}.", model, fallbackModel);
             return postGenerateContent(fallbackModel, body, false);
+        } catch (HttpClientErrorException e) {
+            // 403(Forbidden) - 모델 접근 불가 시 fallback으로 재시도
+            if (e.getStatusCode().value() == 403
+                    && fallbackModel != null && !fallbackModel.isBlank() && !fallbackModel.equals(model)) {
+                log.warn("Gemini 403 on primary model {}. Falling back to {}.", model, fallbackModel);
+                return postGenerateContent(fallbackModel, body, false);
+            }
+            throw e;
         }
     }
 

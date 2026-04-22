@@ -10,7 +10,7 @@ const BASE_FONT = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 
 
 function Login() {
   const navigate = useNavigate();
-  const { setLogin, setGoogleAccessToken, setUserRole, setUser, setUserId, userRole, loginUser, user } = useStore();
+  const { setLogin, setGoogleAccessToken, setUserRole, setUser, setUsername, setDbId, userRole, loginUser, user } = useStore();
 
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -70,8 +70,9 @@ function Login() {
       const roleLc = data.userType.toLowerCase(); // PARTNER/CLIENT -> partner/client
       setUserRole(roleLc);
       // username 저장 (회원가입 시 입력한 고정 핸들)
-      setUser({ username: data.username, email: data.email });
-      setUserId(data.username); // 단일 진실 소스: 회원가입 핸들
+      setUser({ username: data.username, email: data.email, dbId: data.userId });
+      setUsername(data.username); // top-level username (단일 진실 소스 — 모든 페이지/Stream Chat 공통)
+      setDbId(data.userId);       // top-level dbId (백엔드 API 용 PK)
       // 서버에서 프로필 상세 + 관심목록 로드 (실패해도 로그인 흐름은 진행)
       try {
         const s = useStore.getState();
@@ -125,8 +126,9 @@ function Login() {
           setLogin(data.email, "google");
           if (role) setUserRole(role);
           // username 저장 (회원가입 시 입력한 고정 핸들)
-          setUser({ username: data.username, email: data.email });
-          setUserId(data.username); // 단일 진실 소스: 회원가입 핸들
+          setUser({ username: data.username, email: data.email, dbId: data.userId });
+          setUsername(data.username); // top-level username (단일 진실 소스)
+          setDbId(data.userId);       // top-level dbId (백엔드 API 용 PK)
           // 서버에서 프로필 상세 + 관심목록 로드
           try {
             const s = useStore.getState();

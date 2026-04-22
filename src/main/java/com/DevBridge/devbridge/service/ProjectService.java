@@ -70,6 +70,14 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
+    /** username으로 사용자가 등록한 프로젝트 목록 조회 (채팅 - 상대 프로젝트 카드 보여주기용). */
+    @Transactional(readOnly = true)
+    public List<ProjectSummaryResponse> findAllByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다. username=" + username));
+        return findAllByUserId(user.getId());
+    }
+
     @Transactional(readOnly = true)
     public ProjectSummaryResponse findById(Long id) {
         Project p = projectRepository.findById(id)

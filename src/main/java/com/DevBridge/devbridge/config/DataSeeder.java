@@ -42,6 +42,7 @@ public class DataSeeder implements CommandLineRunner {
     private final ProjectRepository projectRepository;
     private final ProjectTagRepository projectTagRepository;
     private final ProjectSkillMappingRepository projectSkillMappingRepository;
+    private final ChatRoomRepository chatRoomRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -68,7 +69,48 @@ public class DataSeeder implements CommandLineRunner {
         seedProjects();
         seedProjectTags();
         seedProjectSkillMapping();
+        seedChatRooms();
         log.info("===== DataSeeder 완료 =====");
+    }
+
+    // ----------------------------------------------------
+    // Chat Rooms
+    // ----------------------------------------------------
+    private void seedChatRooms() throws Exception {
+        if (chatRoomRepository.count() > 0) {
+            log.info("[chat_room] 스킵");
+            return;
+        }
+        try {
+            JsonNode arr = readJson("seed/erd/chat_rooms.json");
+            int count = 0;
+            for (JsonNode n : arr) {
+                Long u1JsonId = n.get("user1_id").asLong();
+                Long u2JsonId = n.get("user2_id").asLong();
+                
+                Long realU1Id = userIdMap.get(u1JsonId);
+                Long realU2Id = userIdMap.get(u2JsonId);
+                
+                if (realU1Id == null || realU2Id == null) continue;
+                
+                User u1 = userRepository.findById(realU1Id).orElse(null);
+                User u2 = userRepository.findById(realU2Id).orElse(null);
+                
+                if (u1 == null || u2 == null) continue;
+
+                chatRoomRepository.save(ChatRoom.builder()
+                        .user1(u1)
+                        .user2(u2)
+                        .roomType(ChatRoom.RoomType.valueOf(text(n, "room_type")))
+                        .streamChannelId(text(n, "stream_channel_id"))
+                        .streamChannelType(textOr(n, "stream_channel_type", "messaging"))
+                        .build());
+                count++;
+            }
+            log.info("[chat_room] {} rows 시드 완료", count);
+        } catch (Exception e) {
+            log.warn("[chat_room] 시드 파일 처리 중 오류(파일이 없을 수 있음): {}", e.getMessage());
+        }
     }
 
     // ----------------------------------------------------

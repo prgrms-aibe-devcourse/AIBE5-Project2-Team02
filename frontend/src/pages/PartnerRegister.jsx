@@ -550,7 +550,7 @@ function PartnerRegister() {
       const payload = {
         email: signupFormData.idEmail,
         phone: signupFormData.phone,
-        username: signupFormData.userId,
+        username: signupFormData.username,
         password: signupFormData.pw,
         userType: "PARTNER",
         interests: signupFormData.skills,

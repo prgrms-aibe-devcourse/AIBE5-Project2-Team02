@@ -17,10 +17,12 @@ const useStore = create(
       // 로그인 상태
       loginUser: null,
       loginType: null, // 'local' | 'google' | 'kakao' | 'naver'
-      username: null,  // display username (used by Stream Chat)
+      username: null,  // display username (회원가입 시 입력한 핸들 — 표시/Stream Chat 용)
+      dbId: null,      // DB PK (백엔드 API 용 — /api/chat/token?userId=, /api/chat/rooms?userId= 등)
       setLogin: (loginUser, loginType) => set({ loginUser, loginType }),
       setUsername: (name) => set({ username: name }),
-      clearLogin: () => set({ loginUser: null, loginType: null, username: null }),
+      setDbId: (id) => set({ dbId: id == null ? null : Number(id) }),
+      clearLogin: () => set({ loginUser: null, loginType: null, username: null, dbId: null }),
 
       // 회원 역할 ('client' | 'partner' | null)
       userRole: null,
@@ -37,10 +39,8 @@ const useStore = create(
       setKakaoAuthCode: (code) => set({ kakaoAuthCode: code }),
       clearKakaoAuthCode: () => set({ kakaoAuthCode: null }),
 
-      // 회원 아이디 (회원가입 시 입력한 로그인 핸들 = backend User.username, 변경 불가)
-      // 주의: DB PK(숫자)는 user.dbId 에 저장합니다. 이 필드와 절대 혼동 금지.
-      userId: null,
-      setUserId: (id) => set({ userId: id }),
+      // 회원 아이디(핸들)는 위의 `username` 필드 하나로 통일 (단일 진실 소스).
+      // 주의: DB PK(숫자)는 user.dbId 에 저장합니다. username 과 혼동 금지.
 
       // 회원가입 폼 임시 저장 (이전 단계 복원용)
       signupFormData: null,
@@ -332,10 +332,10 @@ const useStore = create(
         loginUser: null,
         loginType: null,
         username: null,
+        dbId: null,
         googleAccessToken: null,
         kakaoAuthCode: null,
         userRole: null,
-        userId: null,
         signupFormData: null,
         partnerProfile: null,
         partnerSubTitle: "풀스택 개발과 AI/ML 기술에 실력이 있는 편이죠 🤩",
@@ -363,9 +363,10 @@ const useStore = create(
         userRole: state.userRole,
         loginUser: state.loginUser,
         loginType: state.loginType,
+        username: state.username,
+        dbId: state.dbId,
         googleAccessToken: state.googleAccessToken,
         kakaoAuthCode: state.kakaoAuthCode,
-        userId: state.userId,
         partnerProfile: state.partnerProfile,
         partnerSubTitle: state.partnerSubTitle,
         partnerDropdowns: state.partnerDropdowns,

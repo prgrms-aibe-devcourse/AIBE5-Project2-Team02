@@ -55,14 +55,14 @@ function MemberCard({ icon: Icon, label, selected, onClick }) {
 
 function Signup() {
   const navigate = useNavigate();
-  const { setUserRole, loginUser, loginType, setLogin, setGoogleAccessToken, setUserId, signupFormData, setSignupFormData, clearSignupFormData } = useStore();
+  const { setUserRole, loginUser, loginType, setLogin, setGoogleAccessToken, setUsername, signupFormData, setSignupFormData, clearSignupFormData } = useStore();
   const googleEmail = loginType === "google" ? loginUser : "";
 
   const [form, setFormRaw] = useState(() => signupFormData || {
     idEmail: googleEmail || "",
     phone: "",
     extraEmail: "",
-    userId: "",
+    username: "",
     pw: "",
     pwConfirm: "",
     memberType: "",   // "클라이언트" | "파트너"
@@ -111,7 +111,7 @@ function Signup() {
 
   const isValid = !!(    form.idEmail.trim() &&
     form.phone.trim().length >= 9 &&
-    form.userId.trim() &&
+    form.username.trim() &&
     form.pw.length >= 8 &&
     form.pw === form.pwConfirm &&
     form.memberType &&
@@ -120,7 +120,7 @@ function Signup() {
 
   const handleNext = () => {
     if (!isValid) return;
-    setUserId(form.userId);
+    setUsername(form.username);
     setSignupFormData(form);
     if (form.memberType === "클라이언트") {
       navigate("/client_register");
@@ -256,8 +256,8 @@ function Signup() {
             {/* 아이디 */}
             <div>
               <LBL>아이디 *</LBL>
-              <InputIcon icon={AtSign} placeholder="아이디" value={form.userId}
-                onChange={v => set("userId", v)} />
+              <InputIcon icon={AtSign} placeholder="아이디" value={form.username}
+                onChange={v => set("username", v)} />
             </div>
 
             {/* 비밀번호 + 확인 */}

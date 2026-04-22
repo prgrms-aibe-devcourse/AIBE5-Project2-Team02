@@ -14,4 +14,5 @@ export * from './profile.api';
 export * from './applications.api';
 export * from './reviews.api';
 export * from './portfolio.api';
+export * from './projectModules.api';
 

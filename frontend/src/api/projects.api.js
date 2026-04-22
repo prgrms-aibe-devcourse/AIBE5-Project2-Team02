@@ -14,6 +14,9 @@ export const projectsApi = {
   /** 프로젝트 상세 */
   detail: (id) => api.get(`/projects/${id}`).then((r) => r.data),
 
+  /** 특정 username 사용자가 등록한 프로젝트 목록 (채팅 - 상대 프로젝트 카드 보여주기용) */
+  byUsername: (username) => api.get(`/projects/by-username/${encodeURIComponent(username)}`).then((r) => r.data),
+
   /** 프로젝트 등록 (JWT 필수) */
   create: (payload) => api.post('/projects', payload).then((r) => r.data),
 

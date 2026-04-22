@@ -138,7 +138,7 @@ function ClientRegister() {
     const payload = {
       email: signupFormData.idEmail,
       phone: signupFormData.phone,
-      username: signupFormData.userId,
+      username: signupFormData.username,
       password: signupFormData.pw,
       userType: "CLIENT",
       interests: signupFormData.skills,

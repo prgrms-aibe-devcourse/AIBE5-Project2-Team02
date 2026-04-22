@@ -26,41 +26,78 @@ function Badge({ children, color = "#F1F5F9", text = "#374151", icon }) {
   );
 }
 
-function InlineToggleButton({ isEditing, onEdit, onSave }) {
+function InlineToggleButton({ isEditing, onEdit, onSave, onSubmit }) {
   const [hovered, setHovered] = useState(false);
+  const [acceptHovered, setAcceptHovered] = useState(false);
   const isSave = isEditing;
   return (
-    <button
-      onClick={isSave ? onSave : onEdit}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: "9px 16px",
-        borderRadius: 999,
-        border: "none",
-        background: isSave
-          ? "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)"
-          : hovered ? "#BFDBFE" : "#DBEAFE",
-        color: isSave ? "#FFFFFF" : "#1e3a5f",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-        fontFamily: F,
-        boxShadow: isSave && hovered ? "0 8px 18px rgba(59,130,246,0.22)" : "none",
-        transition: "background 0.15s, box-shadow 0.15s",
-        flexShrink: 0,
-      }}
-    >
-      {isSave ? "저장하기" : "수정하기"}
-    </button>
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+      <button
+        onClick={isSave ? onSave : onEdit}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          padding: "9px 18px",
+          borderRadius: 999,
+          border: "none",
+          background: isSave
+            ? "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)"
+            : hovered ? "#BFDBFE" : "#DBEAFE",
+          color: isSave ? "#FFFFFF" : "#1e3a5f",
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: "pointer",
+          fontFamily: F,
+          boxShadow: isSave && hovered ? "0 8px 18px rgba(59,130,246,0.22)" : "none",
+          transition: "background 0.15s, box-shadow 0.15s",
+          display: "inline-flex", alignItems: "center", gap: 6,
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        {isSave ? "저장하기" : "수정하기"}
+      </button>
+      {onSubmit && (
+        <button
+          onClick={onSubmit}
+          onMouseEnter={() => setAcceptHovered(true)}
+          onMouseLeave={() => setAcceptHovered(false)}
+          style={{
+            padding: "9px 18px",
+            borderRadius: 999,
+            border: "none",
+            background: acceptHovered
+              ? "linear-gradient(135deg, #10B981 0%, #059669 100%)"
+              : "linear-gradient(135deg, #34D399 0%, #10B981 100%)",
+            color: "#FFFFFF",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            fontFamily: F,
+            boxShadow: acceptHovered ? "0 8px 18px rgba(16,185,129,0.30)" : "0 2px 6px rgba(16,185,129,0.18)",
+            transition: "background 0.15s, box-shadow 0.15s",
+          }}
+        >
+          ✓ 수락하기
+        </button>
+      )}
+    </div>
   );
 }
 
-function ModuleTitle({ index, title, inline = false, required = false }) {
+function ModuleTitle({ index, title, inline = false, required = false, description = null }) {
+  // inline 모드(오버레이): 제목 대신 설명 카드 표시
+  if (inline) {
+    if (!description) return null;
+    return (
+      <div style={{ background: "linear-gradient(135deg, #FEFCE8 0%, #ECFCCB 100%)", border: "1px solid #D9F99D", borderRadius: 10, padding: "8px 14px", display: "flex", gap: 8, alignItems: "flex-start", maxWidth: 420, marginRight: 24 }}>
+        <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.5 }}>💡</span>
+        <p style={{ margin: 0, fontSize: 12, color: "#3F6212", lineHeight: 1.55, fontFamily: F }}>{description}</p>
+      </div>
+    );
+  }
   return (
-    <h2 style={{ margin: 0, fontSize: inline ? 15 : 17, fontWeight: inline ? 800 : 800, color: "#111827", lineHeight: 1.3 }}>
+    <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#111827", lineHeight: 1.3 }}>
       {index}. {title}
-      {inline && required && <span style={{ color: "#EF4444", marginLeft: 3 }}>*</span>}
     </h2>
   );
 }
@@ -101,7 +138,7 @@ function InfoBox({ children }) {
 
 /* ─── 수정 모드 헬퍼 ─────────────────────────────────── */
 function ELabel({ children }) {
-  return <div style={{ fontSize: 12, fontWeight: 700, color: "#6B7280", marginBottom: 7 }}>{children}</div>;
+  return <div style={{ fontSize: 14, fontWeight: 800, color: "#111827", marginBottom: 9 }}>{children}</div>;
 }
 function EditList({ label, items, onChange, placeholder = "내용 입력" }) {
   return (
@@ -238,11 +275,11 @@ export function ScopeModal({ onClose, onSubmit, showHeaderStatusBadge = true, mo
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={1} title="작업 범위" inline={inline} required />
+              <ModuleTitle index={1} title="작업 범위" inline={inline} required description="프로젝트에서 어떤 작업이 포함되고 어떤 작업이 제외되는지를 명확히 정의합니다. 추후 분쟁을 막기 위한 핵심 항목입니다." />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -337,11 +374,11 @@ export function DeliverablesModal({ onClose, onSubmit, showHeaderStatusBadge = t
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={2} title="최종 전달 결과물 정의" inline={inline} required />
+              <ModuleTitle index={2} title="최종 전달 결과물 정의" inline={inline} required description="작업이 완료되었을 때 클라이언트에게 인도되는 산출물의 종류·형식·전달 방법을 구체적으로 정합니다." />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -452,11 +489,11 @@ export function ScheduleModal({ onClose, onSubmit, showHeaderStatusBadge = true,
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={3} title="마감 일정 및 마일스톤" inline={inline} required />
+              <ModuleTitle index={3} title="마감 일정 및 마일스톤" inline={inline} required description="전체 일정과 단계별 마일스톤, 각 단계의 시작·종료일을 정합니다. 일정 지연 시 책임 기준이 됩니다." />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -575,11 +612,11 @@ export function PaymentModal({ onClose, onSubmit, showHeaderStatusBadge = true, 
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={4} title="총 금액 및 정산 방식" inline={inline} required />
+              <ModuleTitle index={4} title="총 금액 및 정산 방식" inline={inline} required description="계약 총액과 지급 방식(계약금·중도금·잔금 등)을 명확히 합니다. 단위와 부가세 포함 여부도 확인하세요." />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -704,11 +741,11 @@ export function RevisionModal({ onClose, onSubmit, showHeaderStatusBadge = true,
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={5} title="수정 가능 범위" inline={inline} required />
+              <ModuleTitle index={5} title="수정 가능 범위" inline={inline} required description="작업 완료 후 가능한 수정 횟수와 추가 수정에 대한 비용·범위를 명시합니다." />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8 }}>
@@ -800,11 +837,11 @@ export function CompletionModal({ onClose, onSubmit, showHeaderStatusBadge = tru
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={6} title="완료 기준" inline={inline} required />
+              <ModuleTitle index={6} title="완료 기준" inline={inline} required description="어떤 조건이 충족되어야 '완료'로 인정할지 객관적인 기준을 정합니다." />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8 }}>
@@ -955,11 +992,11 @@ export function SpecialTermsModal({ onClose, onSubmit, showHeaderStatusBadge = t
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={7} title="추가 특약 (선택)" inline={inline} />
+              <ModuleTitle index={7} title="추가 특약 (선택)" inline={inline} description="위 항목 외에 추가로 합의할 특약 사항을 자유롭게 적습니다. (선택 사항)" />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8 }}>

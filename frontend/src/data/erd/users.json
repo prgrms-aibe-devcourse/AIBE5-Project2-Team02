@@ -1138,5 +1138,43 @@
     "bank_account_number": "423-225362-78",
     "bank_account_holder_name": "서예준",
     "profile_image_url": "https://cdn.devbridge.com/avatar/60.png"
+  },
+  {
+    "id": 61,
+    "email": "chat01@email.com",
+    "phone": "010-6419-6764",
+    "username": "client_00061",
+    "password": "password",
+    "user_type": "client",
+    "interests": "모바일, 디자인",
+    "contact_email": "partner_00060@devbridge.com",
+    "gender": "female",
+    "birth_date": "1989-05-08",
+    "region": "서울시 강남구",
+    "tax_email": null,
+    "fax_number": null,
+    "bank_name": "신한은행",
+    "bank_account_number": "423-225362-78",
+    "bank_account_holder_name": "서예준",
+    "profile_image_url": "https://cdn.devbridge.com/avatar/60.png"
+  },
+  {
+    "id": 62,
+    "email": "chat02@email.com",
+    "phone": "010-6419-6764",
+    "username": "partner_00062",
+    "password": "password",
+    "user_type": "partner",
+    "interests": "모바일, 디자인",
+    "contact_email": "partner_00060@devbridge.com",
+    "gender": "female",
+    "birth_date": "1989-05-08",
+    "region": "서울시 강남구",
+    "tax_email": null,
+    "fax_number": null,
+    "bank_name": "신한은행",
+    "bank_account_number": "423-225362-78",
+    "bank_account_holder_name": "서예준",
+    "profile_image_url": "https://cdn.devbridge.com/avatar/60.png"
   }
 ]

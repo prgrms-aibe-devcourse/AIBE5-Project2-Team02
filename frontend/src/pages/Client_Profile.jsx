@@ -30,8 +30,8 @@ const MENU_ITEMS = [
   { key: "skills",        icon: "</>", iconBg: "#ECFDF5", iconColor: "#10B981", title: "보유 기술",            desc: "숙련된 기술 스택 및 툴 목록",                  initOn: true  },
   { key: "career",        icon: "💼",  iconBg: "#FFF7ED", iconColor: "#F97316", title: "경력",                 desc: "이전 직장 및 프로젝트 수행 이력",              initOn: true  },
   { key: "education",     icon: "🎓",  iconBg: "#EFF6FF", iconColor: "#3B82F6", title: "학력",                 desc: "최종 학력 및 전공 정보",                       initOn: true  },
-  { key: "certificates",  icon: "🏅",  iconBg: "#FFFBEB", iconColor: "#D97706", title: "자격증",               desc: "보유하고 있는 국가 공인 및 민간 자격증",       initOn: false },
-  { key: "awards",        icon: "🏆",  iconBg: "#FFF7ED", iconColor: "#F97316", title: "수상 이력",            desc: "대회 수상 기록 및 대외 활동 성과",             initOn: false },
+  { key: "certificates",  icon: "🏅",  iconBg: "#FFFBEB", iconColor: "#D97706", title: "자격증",               desc: "보유하고 있는 국가 공인 및 민간 자격증",       initOn: true  },
+  { key: "awards",        icon: "🏆",  iconBg: "#FFF7ED", iconColor: "#F97316", title: "수상 이력",            desc: "대회 수상 기록 및 대외 활동 성과",             initOn: true  },
   { key: "portfolio",     icon: "📋",  iconBg: "#EFF6FF", iconColor: "#3B82F6", title: "포트폴리오",           desc: "완료한 주요 프로젝트 상세 내용",               initOn: true  },
   { key: "reviews",       icon: "⭐",  iconBg: "#FFF0F3", iconColor: "#F43F5E", title: "파트너 평가",             desc: "프로젝트 종료 후 받은 평점 및 후기",           initOn: true  },
   { key: "projects",      icon: "🔄",  iconBg: "#ECFDF5", iconColor: "#10B981", title: "진행하는 프로젝트",    desc: "현재 참여 중인 프로젝트 현황",                 initOn: true  },
@@ -125,9 +125,9 @@ function DropdownChip({ options, value, onChange }) {
 /* ── 프로필 메뉴 관리 탭 콘텐츠 ─────────────────────────── */
 function ProfileMenuTab() {
   const { clientProfileDetail, updateClientProfileDetail } = useStore();
-  const initState = Object.fromEntries(MENU_ITEMS.map(m => [m.key, m.initOn]));
+  const initState = Object.fromEntries(MENU_ITEMS.map(m => [m.key, true]));
   const [toggles, setToggles] = useState(
-    clientProfileDetail?.profileMenuToggles || initState
+    { ...initState, ...(clientProfileDetail?.profileMenuToggles || {}) }
   );
   const [saved, setSaved] = useState(false);
 

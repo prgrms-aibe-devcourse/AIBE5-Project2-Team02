@@ -920,7 +920,7 @@ function EducationSection({ onToast }) {
 /* ── 메인 컴포넌트 ── */
 function Mypage() {
   const { 
-    user, loginUser, setUser, userRole, userId: storeUserId, 
+    user, loginUser, setUser, userRole, username: storeUsername, 
     partnerProfile, setPartnerProfile, 
     clientProfileDetail, setClientProfileDetail,
     bumpProfileRefresh,
@@ -1224,7 +1224,7 @@ function Mypage() {
                 <div>
                   <label style={LABEL_STYLE}>아이디<span style={{ color:"#EF4444" }}>*</span></label>
                   <div style={{ ...READONLY_STYLE, display:"flex", alignItems:"center", justifyContent:"space-between", background:"#F8FAFC", color:"#64748B" }}>
-                    <span>@{user?.username || storeUserId || (typeof window !== 'undefined' ? localStorage.getItem('username') : null) || "—"}</span>
+                    <span>@{user?.username || storeUsername || (typeof window !== 'undefined' ? localStorage.getItem('username') : null) || "—"}</span>
                     <span style={{ fontSize:10, color:"#94A3B8", fontWeight:600, letterSpacing:"0.05em" }}>고정</span>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { StreamChat } from "stream-chat";
 import heroDefault from "../assets/hero_default.png";
 import heroStudent from "../assets/hero_student.png";
 import heroMoney from "../assets/hero_money.png";
@@ -17,7 +18,7 @@ import {
 } from "../components/ContractModals";
 import MOCK_INTEREST_PROJECTS from "../data/mockInterestProjects.json";
 import MOCK_INTEREST_PARTNERS from "../data/mockInterestPartners.json";
-import { projectsApi, partnersApi } from "../api";
+import { projectsApi, partnersApi, applicationsApi, profileApi, projectModulesApi } from "../api";
 
 /* ── 찜 목록 상세 API 응답을 카드 표시용으로 매핑 ───────────── */
 function toCardProject(p) {
@@ -54,6 +55,31 @@ import PartnerProfileModal from "../components/PartnerProfileModal";
 import PortfolioAddManagementTab from "../components/dashboard/PortfolioAddManagementTab";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+const COMMON_EMOJIS = [
+  "👍", "👎", "👏", "🤝", "🙏", "❤️", "🔥", "✨", "🎉", "✅",
+  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
+  "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚",
+  "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩",
+  "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣",
+  "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬",
+  "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗",
+  "🤔", "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯"
+];
+
+// 텍스트가 이모지(또는 이모지 조합/공백)만으로 이루어졌는지 체크
+const isOnlyEmoji = (s) => {
+  if (!s) return false;
+  const trimmed = String(s).trim();
+  if (!trimmed) return false;
+  try {
+    return /^(\p{Extended_Pictographic}|\p{Emoji_Component}|[\u200D\uFE0F\u20E3\s])+$/u.test(trimmed);
+  } catch {
+    return false;
+  }
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 const HERO_MAP = {
   hero_student: heroStudent,
@@ -3043,10 +3069,17 @@ function FileBubble({ file }) {
   );
 }
 
-function AvatarCircle({ initials, size = 40 }) {
+function AvatarCircle({ initials, size = 40, avatar = null }) {
   const colors = { A: "#3B82F6", S: "#8B5CF6", M: "#10B981", default: "#64748B" };
   const safeInitials = (typeof initials === "string" && initials.trim()) ? initials.trim() : "?";
   const c = colors[safeInitials[0]] || colors.default;
+  if (avatar) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", border: `2px solid ${c}40`, flexShrink: 0, background: `${c}20` }}>
+        <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      </div>
+    );
+  }
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", background: `${c}20`, border: `2px solid ${c}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
       <span style={{ fontSize: size * 0.35, fontWeight: 700, color: c, fontFamily: F }}>{safeInitials}</span>
@@ -3054,7 +3087,7 @@ function AvatarCircle({ initials, size = 40 }) {
   );
 }
 
-const MEETING_COLLAB_ROLES = ["백엔드/AI", "프론트엔드", "디자인", "PM"];
+const MEETING_COLLAB_ROLES = ["기획", "디자인/퍼블리싱", "FE 개발", "BE 개발"];
 
 const CLIENT_MEETING_PROJECT_OPTIONS = [
   ...MOCK_INTEREST_PROJECTS,
@@ -3138,6 +3171,7 @@ const CLIENT_MEETING_PROFILE_MAP = {
 function MeetingProjectSelectModal({ title, subtitle, projects, requireRole = false, roleOptions = [], confirmLabel, onClose, onConfirm }) {
   const [selectedId, setSelectedId] = useState(projects[0]?.id ?? null);
   const [selectedRole, setSelectedRole] = useState(roleOptions[0] ?? "");
+  const [note, setNote] = useState("");
   const selectedProject = projects.find(project => project.id === selectedId) || null;
 
   return (
@@ -3227,12 +3261,29 @@ function MeetingProjectSelectModal({ title, subtitle, projects, requireRole = fa
               </div>
             </div>
           )}
+          {requireRole && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", fontFamily: F, marginBottom: 10 }}>제안하며 건네고 싶은 말 (선택)</div>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="예) 함께하면 정말 좋을 것 같아 제안드립니다. 잘 부탁드려요!"
+                rows={3}
+                style={{
+                  width: "100%", boxSizing: "border-box", padding: "12px 14px",
+                  borderRadius: 12, border: "1.5px solid #E2E8F0", background: "#F8FAFC",
+                  fontSize: 13, color: "#1E293B", fontFamily: F, lineHeight: 1.6, resize: "vertical",
+                  outline: "none",
+                }}
+              />
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "18px 24px 24px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
           <button onClick={onClose} style={{ padding: "11px 18px", borderRadius: 12, border: "1px solid #E2E8F0", background: "white", color: "#374151", fontSize: 14, fontWeight: 600, fontFamily: F, cursor: "pointer" }}>취소</button>
           <button
-            onClick={() => selectedProject && onConfirm(selectedProject, selectedRole)}
+            onClick={() => selectedProject && onConfirm(selectedProject, selectedRole, note.trim())}
             disabled={!selectedProject || (requireRole && !selectedRole)}
             style={{
               padding: "11px 20px", borderRadius: 12, border: "none",
@@ -3414,7 +3465,7 @@ const MOCK_PROJECT_MEETING_CONTACTS = [
   },
 ];
 
-function ProjectMeetingTab({ initialActiveId }) {
+function ProjectMeetingTab({ initialActiveId, chatClient }) {
   // initialActiveId = 프로젝트 ID
   const projectId = initialActiveId ?? 1;
   const projectContact = MOCK_PROJECT_MEETING_CONTACTS.find(c => c.id === projectId);
@@ -3446,14 +3497,90 @@ function ProjectMeetingTab({ initialActiveId }) {
       initialContactId={projectId}
       initialStatuses={projectMeetingStatuses}
       showDashboardMoveButton={true}
+      chatClient={chatClient}
     />
   );
 }
 
-function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
+// ── Module-level helper: 날짜 한국어 포맷 (chat-v3 ContractMeetingTab 버그 수정) ──
+function formatDateKorean(date) {
+  const d = new Date(date);
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${weekdays[d.getDay()]}요일`;
+}
+
+function useStreamChannel(client, type, myDbId, contact, contractId) {
+  const [channel, setChannel] = useState(null);
+  useEffect(() => {
+    if (!client || !myDbId || !contact?.isStreamReal) { setChannel(null); return; }
+    let ch;
+    const setup = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const headers = {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+        let room;
+        if (type === "self") {
+          const sid = client.userID;
+          if (!sid) return;
+          ch = client.channel("messaging", `self-${sid}`, { members: [sid] });
+          await ch.watch();
+          setChannel(ch);
+          return;
+        }
+        if (type === "negotiation" && contractId) {
+          const res = await fetch(`/api/chat/rooms/negotiation`, {
+            method: "POST", headers,
+            body: JSON.stringify({ contractNegotiationId: contractId, targetUserId: contact.targetUserId }),
+          });
+          if (!res.ok) return;
+          room = await res.json();
+        } else {
+          const res = await fetch(`/api/chat/rooms/dm?userId=${myDbId}`, {
+            method: "POST", headers,
+            body: JSON.stringify({ targetUserId: contact.targetUserId }),
+          });
+          if (!res.ok) return;
+          room = await res.json();
+        }
+        ch = client.channel(room.streamChannelType, room.streamChannelId);
+        await ch.watch();
+        setChannel(ch);
+      } catch (err) {
+        console.error("[Stream] useStreamChannel error:", err);
+      }
+    };
+    setup();
+    return () => { if (ch) ch.stopWatching().catch(() => {}); };
+  }, [client, type, myDbId, contact?.id, contractId]);
+  return { channel };
+}
+
+function useHeadlessMessages(channel) {
+  const [messages, setMessages] = useState([]);
+  useEffect(() => {
+    if (!channel) { setMessages([]); return; }
+    setMessages(channel.state?.messages || []);
+    const handler = (event) => {
+      if (event.message) setMessages(prev => [...prev, event.message]);
+    };
+    channel.on("message.new", handler);
+    return () => channel.off("message.new", handler);
+  }, [channel]);
+  return messages;
+}
+
+function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwitchTab }) {
+  const [freeMeetingSearchParams, setFreeMeetingSearchParams] = useSearchParams();
+  const dmTargetParam = freeMeetingSearchParams.get("dm");
+  const dmTargetUserId = dmTargetParam ? Number(dmTargetParam) : null;
+  const user = useStore(s => s.user);
+  const { dbId } = useStore();
   const proposalId = proposalPartner?._contactId ?? null;
   const [contacts, setContacts] = useState(() => {
-    if (!proposalPartner) return MOCK_CONTACTS;
+    if (!proposalPartner) return [];
     const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
     const newContact = {
       id: proposalId,
@@ -3467,38 +3594,374 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
       messages: [{ id: proposalId + 1, from: "me", text: "협업 제안합니다", time: now }],
       sharedFiles: [], sharedImages: [], sharedLinks: [],
     };
-    return [newContact, ...MOCK_CONTACTS];
+    return [newContact];
   });
-  const [activeId, setActiveId] = useState(proposalId ?? 1);
+  const [activeId, setActiveId] = useState(proposalId ?? null);
   const [searchVal, setSearchVal] = useState("");
   const [msgInput, setMsgInput] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Pinned chat ids (persisted per user in localStorage)
+  const pinKey = dbId ? `chat-pinned-${dbId}` : null;
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    if (!pinKey) return [];
+    try { return JSON.parse(localStorage.getItem(pinKey) || "[]"); } catch { return []; }
+  });
+  useEffect(() => {
+    if (!pinKey) return;
+    try { localStorage.setItem(pinKey, JSON.stringify(pinnedIds)); } catch {}
+  }, [pinKey, pinnedIds]);
+  const togglePin = (id) => {
+    setPinnedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState("파일");
   const [acceptedIds, setAcceptedIds] = useState([]);
+  const clientProfileDetail = useStore(s => s.clientProfileDetail);
+  const partnerProfileDetail = useStore(s => s.partnerProfileDetail);
+  const userRole = useStore(s => s.userRole);
+  const loadProfileDetailFromServer = useStore(s => s.loadProfileDetailFromServer);
+  const [fetchedHero, setFetchedHero] = useState(null);
+  const storedHero = (userRole === "partner" ? partnerProfileDetail?.heroImage : clientProfileDetail?.heroImage) || null;
+  const myHeroImage = storedHero || fetchedHero || null;
+  useEffect(() => {
+    if (storedHero) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await profileApi.getMyDetail();
+        if (!cancelled && data?.profileImageUrl) setFetchedHero(data.profileImageUrl);
+        loadProfileDetailFromServer?.(userRole);
+      } catch (_) { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [storedHero, userRole, loadProfileDetailFromServer]);
   const messagesEndRef = useRef(null);
   const msgContainerRef = useRef(null);
   const menuRef = useRef(null);
-  const user = useStore(s => s.user);
   const [menuOpen, setMenuOpen] = useState(false);
   const [projectActionMode, setProjectActionMode] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
 
+  // Fetch real chat rooms
+  useEffect(() => {
+    if (!dbId) return;
+    fetch(`/api/chat/rooms?userId=${dbId}`)
+      .then(res => res.json())
+      .then(rooms => {
+        const realContacts = rooms
+          .filter(r => r.roomType === "DIRECT_MESSAGE")
+          .map(r => {
+            const counterpartId = r.user1Id === dbId ? r.user2Id : r.user1Id;
+            const counterpartName = r.user1Id === dbId ? r.user2Username : r.user1Username;
+            const counterpartAvatar = r.user1Id === dbId ? r.user2ProfileImageUrl : r.user1ProfileImageUrl;
+            return {
+              id: counterpartId,
+              targetUserId: counterpartId,
+              name: counterpartName,
+              project: "자유 미팅",
+              avatar: counterpartAvatar || (counterpartName?.toLowerCase().startsWith("partner") ? heroTeacher : counterpartName?.toLowerCase().startsWith("client") ? heroStudent : heroDefault),
+              initials: (counterpartName || "U")[0].toUpperCase(),
+              time: "진행중",
+              lastMsg: "채팅방이 연결되었습니다",
+              unread: 0,
+              active: false,
+              isStreamReal: true,
+              messages: [],
+              sharedFiles: [], sharedImages: [], sharedLinks: [],
+            };
+          });
+        
+        setContacts(prev => {
+          const selfId = `self-${dbId}`;
+          const selfContact = {
+            id: selfId,
+            targetUserId: dbId,
+            name: `${user?.username || "나"} (나)`,
+            project: "나에게 보내기",
+            avatar: user?.heroImage || null,
+            initials: "\uD83D\uDDD2\uFE0F",
+            time: "고정",
+            lastMsg: "메모, 링크 등을 자유롭게 저장하세요",
+            unread: 0,
+            active: false,
+            isStreamReal: true,
+            isSelfChat: true,
+            messages: [],
+            sharedFiles: [], sharedImages: [], sharedLinks: [],
+          };
+          const filteredPrev = prev.filter(c => !realContacts.find(rc => rc.id === c.id) && c.id !== selfId);
+          const newContacts = [selfContact, ...realContacts, ...filteredPrev];
+          // ?dm=<userId> 로 진입했으면 그 사람을 우선 선택
+          if (dmTargetUserId && realContacts.find(rc => rc.id === dmTargetUserId)) {
+            setActiveId(dmTargetUserId);
+          } else if (realContacts.length > 0 && (!activeId || activeId < 60)) {
+            // Auto-select the first real contact if no activeId is set or if activeId is a placeholder
+            setActiveId(realContacts[0].id);
+          } else if (!activeId) {
+            setActiveId(selfId);
+          }
+          return newContacts;
+        });
+      })
+      .catch(err => console.error("[FreeMeetingTab] Fetch rooms failed:", err));
+  }, [dbId, activeId, dmTargetUserId]);
+
+  // dm 쿼리 파라미터는 한 번 사용 후 URL에서 제거 (재방문/탭전환 시 강제 선택 방지)
+  useEffect(() => {
+    if (!dmTargetUserId) return;
+    const t = setTimeout(() => {
+      setFreeMeetingSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete("dm");
+        return next;
+      }, { replace: true });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [dmTargetUserId, setFreeMeetingSearchParams]);
+
+  // Fetch each counterpart's profile image (avatar)
+  useEffect(() => {
+    const targets = contacts.filter(c => c.isStreamReal && !c.isSelfChat && !c.avatar && c.name);
+    if (targets.length === 0) return;
+    const token = localStorage.getItem("accessToken");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    Promise.all(targets.map(c =>
+      fetch(`/api/profile/${encodeURIComponent(c.name)}/detail`, { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => ({ id: c.id, img: data?.profileImageUrl || null }))
+        .catch(() => ({ id: c.id, img: null }))
+    )).then(results => {
+      const imgMap = Object.fromEntries(results.filter(r => r.img).map(r => [r.id, r.img]));
+      if (Object.keys(imgMap).length === 0) return;
+      setContacts(prev => prev.map(c => imgMap[c.id] ? { ...c, avatar: imgMap[c.id] } : c));
+    });
+  }, [contacts.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch full counterpart info to determine userType
+  const [counterpartDetails, setCounterpartDetails] = useState({});
+  useEffect(() => {
+    if (!activeId || typeof activeId === "string" || activeId < 60) return;
+    if (counterpartDetails[activeId]) return;
+    fetch(`/api/users/${activeId}`)
+      .then(res => res.json())
+      .then(data => {
+        setCounterpartDetails(prev => ({ ...prev, [activeId]: data }));
+      })
+      .catch(err => console.error("[FreeMeetingTab] Fetch user detail failed:", err));
+  }, [activeId, counterpartDetails]);
+
   // 협업 제안 처리 완료 통보 (마운트 시 1회)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (proposalId) onProposalHandled?.(); }, []);
 
-  const progressByClient = Object.fromEntries(MOCK_MANAGE_PROJECTS.map(p => [p.client.name, p.progress]));
-  const contactsUnderNinety = contacts.filter(c => {
-    const progress = progressByClient[c.name];
-    return progress === undefined || progress <= 90;
-  });
+  const activeContact = useMemo(() => {
+    return contacts.find(c => c.id === activeId) || contacts[0];
+  }, [contacts, activeId]);
 
-  const activeContact = contactsUnderNinety.find(c => c.id === activeId) || contactsUnderNinety[0];
-  const filtered = contactsUnderNinety.filter(c =>
-    c.name.toLowerCase().includes(searchVal.toLowerCase()) ||
-    c.project.toLowerCase().includes(searchVal.toLowerCase())
-  );
+  const activeCounterpart = counterpartDetails[activeId];
+  const canProposeProject = user?.userType === "CLIENT" && activeCounterpart?.userType === "PARTNER";
+
+  const filtered = contacts
+    .filter(c =>
+      c.name.toLowerCase().includes(searchVal.toLowerCase()) ||
+      c.project.toLowerCase().includes(searchVal.toLowerCase())
+    )
+    .sort((a, b) => {
+      // 1. self-chat always at top
+      if (a.isSelfChat && !b.isSelfChat) return -1;
+      if (!a.isSelfChat && b.isSelfChat) return 1;
+      // 2. pinned next
+      const aPinned = pinnedIds.includes(a.id);
+      const bPinned = pinnedIds.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+
+  const sharedFiles = activeContact?.sharedFiles || [];
+  const sharedLinks = activeContact?.sharedLinks || [];
+  const sharedImages = activeContact?.sharedImages || [];
+
+  // ── Helper to render text with clickable links ─────────────────
+  const renderTextWithLinks = (text) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(\b[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?\b)/gi;
+    const elements = [];
+    let lastIndex = 0;
+    let match;
+    urlRegex.lastIndex = 0;
+    while ((match = urlRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(text.substring(lastIndex, match.index));
+      }
+      let url = match[0];
+      const cleanUrl = url.replace(/[.,!?;:]+$/, "");
+      if (cleanUrl.length < url.length) {
+        url = cleanUrl;
+        urlRegex.lastIndex = match.index + url.length;
+      }
+      let href = url;
+      if (!href.startsWith("http")) {
+        href = "https://" + href;
+      }
+      elements.push(
+        <a key={match.index} href={href} target="_blank" rel="noreferrer" 
+           style={{ color: "inherit", textDecoration: "underline", fontWeight: "inherit" }}
+           onClick={(e) => e.stopPropagation()}
+        >
+          {url}
+        </a>
+      );
+      lastIndex = urlRegex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      elements.push(text.substring(lastIndex));
+    }
+    return elements.length > 0 ? elements : text;
+  };
+
+  // ── Stream Chat integration ───────────────────────────────────
+  useEffect(() => {
+    if (activeContact?.isStreamReal) {
+      console.log(`[Stream] Active Room for ${user?.email}:`, {
+        counterpart: activeContact.name,
+        targetUserId: activeContact.targetUserId,
+        isReal: activeContact.isStreamReal
+      });
+    }
+  }, [activeContact, user?.email]);
+
+  const { channel } = useStreamChannel(chatClient, activeContact?.isSelfChat ? "self" : "dm", dbId, activeContact);
+  const streamMessages = useHeadlessMessages(channel);
+
+
+  // Merge Stream messages into displayMessages (falls back to local mock when not connected)
+  const displayMessages = useMemo(() => {
+    if (activeContact?.isStreamReal && streamMessages && chatClient?.userID) {
+      const extractedFiles = [];
+      const extractedImages = [];
+      const extractedLinks = [];
+      const messages = [];
+
+      let lastDateLabel = null;
+
+      streamMessages.forEach(sm => {
+        const dateLabel = formatDateKorean(sm.created_at);
+        if (dateLabel !== lastDateLabel) {
+          messages.push({
+            id: `date-${sm.id}`,
+            type: "date_divider",
+            label: dateLabel,
+          });
+          lastDateLabel = dateLabel;
+        }
+
+        let fileObj = sm.file;
+        if (!fileObj && sm.attachments && sm.attachments.length > 0) {
+          const att = sm.attachments[0];
+          if (att.file_size || att.mime_type) {
+            fileObj = {
+              name: att.title || att.fallback || "첨부파일",
+              type: att.type === "image" ? "img" : (att.mime_type?.includes("pdf") ? "pdf" : "doc"),
+              url: att.asset_url || att.image_url
+            };
+          }
+        }
+
+        // Extract for Cabinet
+        if (sm.attachments && sm.attachments.length > 0) {
+          sm.attachments.forEach(att => {
+            const dateStr = new Date(sm.created_at).toISOString().slice(0, 7); // YYYY-MM
+            const isUploaded = att.file_size || att.mime_type;
+
+            if ((att.type === "image" || att.type === "video") && isUploaded) {
+              extractedImages.push({ name: att.title || "image", url: att.image_url || att.asset_url, date: dateStr });
+            } else if (att.type === "file" && isUploaded) {
+              extractedFiles.push({ 
+                name: att.title || att.fallback || "파일", 
+                type: att.mime_type?.includes("pdf") ? "pdf" : "doc", 
+                size: att.file_size ? (att.file_size / 1024).toFixed(0) + " KB" : "Unknown",
+                url: att.asset_url,
+                date: dateStr 
+              });
+            }
+          });
+        }
+
+        // Extract links from text or attachments
+        const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(\b[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?\b)/gi;
+        const matches = sm.text?.match(urlRegex);
+        if (matches) {
+          matches.forEach(m => {
+            let url = m.replace(/[.,!?;:]+$/, "");
+            if (!url.startsWith("http")) url = "https://" + url;
+            if (!extractedLinks.includes(url)) extractedLinks.push(url);
+          });
+        }
+        if (sm.attachments) {
+          sm.attachments.forEach(att => {
+            if (att.type === "url" && att.og_scrape_url) {
+              let url = att.og_scrape_url;
+              if (!url.startsWith("http")) url = "https://" + url;
+              if (!extractedLinks.includes(url)) extractedLinks.push(url);
+            }
+          });
+        }
+
+        messages.push({
+          id: sm.id,
+          from: (sm.user?.id || sm.userId) === chatClient.userID ? "me" : "them",
+          text: sm.text || "",
+          time: new Date(sm.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+          type: sm.type_meta || (sm.project_card ? "project_card" : "text"),
+          project: sm.project_card,
+          role: sm.role_meta,
+          applicationId: sm.application_id,
+          _origin: sm.origin_meta,
+          file: fileObj,
+        });
+      });
+
+      return { messages, extractedFiles, extractedImages, extractedLinks };
+    }
+    const fallbackMsgs = activeContact?.messages || [];
+    return { messages: fallbackMsgs, extractedFiles: [], extractedImages: [], extractedLinks: [] };
+  }, [activeContact, streamMessages, chatClient?.userID]);
+
+  useEffect(() => {
+    if (activeContact?.isStreamReal) {
+      setContacts(prev => prev.map(c => {
+        if (c.id === activeId) {
+          const changedMessages = JSON.stringify(c.messages) !== JSON.stringify(displayMessages.messages);
+          const changedFiles = JSON.stringify(c.sharedFiles) !== JSON.stringify(displayMessages.extractedFiles);
+          const changedImages = JSON.stringify(c.sharedImages) !== JSON.stringify(displayMessages.extractedImages);
+          const changedLinks = JSON.stringify(c.sharedLinks) !== JSON.stringify(displayMessages.extractedLinks);
+
+          if (changedMessages || changedFiles || changedImages || changedLinks) {
+            return { 
+              ...c, 
+              messages: displayMessages.messages,
+              sharedFiles: displayMessages.extractedFiles,
+              sharedImages: displayMessages.extractedImages,
+              sharedLinks: displayMessages.extractedLinks
+            };
+          }
+        }
+        return c;
+      }));
+    }
+  }, [displayMessages, activeId, activeContact?.isStreamReal]);
 
   const scrollToBottom = () => {
     if (msgContainerRef.current) {
@@ -3507,24 +3970,135 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
   };
   useEffect(() => { scrollToBottom(); }, [activeId, contacts]);
 
-  const sendMessage = () => {
+  const sendMessage = useCallback(async () => {
     const text = msgInput.trim();
-    if (!text) return;
-    const newMsg = { id: Date.now(), from: "me", text, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) };
-    setContacts(prev => prev.map(c => c.id === activeId ? { ...c, messages: [...c.messages, newMsg], lastMsg: text, time: "방금" } : c));
-    setMsgInput("");
-  };
+    if (!text && !selectedFile) return;
+    
+    if (activeContact?.isStreamReal && channel) {
+      try {
+        setIsUploading(true);
+        let fileUrl = null;
+        let fileType = null;
+        
+        if (selectedFile) {
+          const isImage = selectedFile.type.startsWith("image/");
+          const response = isImage 
+            ? await channel.sendImage(selectedFile, selectedFile.name, selectedFile.type)
+            : await channel.sendFile(selectedFile, selectedFile.name, selectedFile.type);
+          
+          fileUrl = response.file;
+          fileType = isImage ? "image" : "file";
+        }
+
+        const messageData = text ? { text } : {};
+        if (fileUrl) {
+          messageData.attachments = [
+            {
+              type: fileType,
+              asset_url: fileUrl,
+              title: selectedFile.name,
+              file_size: selectedFile.size,
+              mime_type: selectedFile.type,
+            }
+          ];
+        }
+
+        await channel.sendMessage(messageData);
+        setContacts(prev => prev.map(c => c.id === activeId ? { ...c, lastMsg: text || selectedFile.name, time: "방금" } : c));
+        setMsgInput("");
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      } catch (err) {
+        console.error("[Stream] sendMessage failed:", err);
+        alert("파일 업로드 또는 메시지 전송에 실패했습니다.");
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      const newMsg = { id: Date.now(), from: "me", text, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) };
+      setContacts(prev => prev.map(c => c.id === activeId ? { ...c, messages: [...c.messages, newMsg], lastMsg: text, time: "방금" } : c));
+      setMsgInput("");
+      setSelectedFile(null);
+    }
+  }, [msgInput, activeContact, channel, activeId, selectedFile]);
 
   const acceptRequest = (contactId) => setAcceptedIds(prev => [...prev, contactId]);
 
-  const viewerName = user?.name || user?.nickname || "나";
-  const appendMsg = (msgs, lastMsgText) => {
+  const viewerName = user?.name || user?.nickname || user?.username || "나";
+  // Stream-aware appendMsg: 실제 DM 채팅방이면 Stream channel에 sendMessage,
+  // mock contact 이면 기존 로컬 messages 배열 업데이트 폴백.
+  const appendMsg = async (msgs, lastMsgText) => {
+    if (channel && activeContact?.isStreamReal) {
+      for (const m of msgs) {
+        try {
+          const fallbackText = m.text
+            || (m.type === "project_card" && m.project?.title ? `[프로젝트 카드] ${m.project.title}` : "")
+            || (m.type === "system_notice" ? "✨ 시스템 메시지" : "");
+          await channel.sendMessage({
+            text: fallbackText,
+            type_meta: m.type || null,
+            project_card: m.project || null,
+            role_meta: m.role || null,
+            application_id: m.applicationId || null,
+            origin_meta: m._origin || null,
+          });
+        } catch (e) {
+          console.error("[Stream] sendMessage 실패:", e);
+        }
+      }
+      return;
+    }
     setContacts(prev => prev.map(c =>
       c.id === activeId
-        ? { ...c, messages: [...c.messages, ...msgs], lastMsg: lastMsgText, time: "방금" }
+        ? { ...c, messages: [...(c.messages || []), ...msgs], lastMsg: lastMsgText, time: "방금" }
         : c
     ));
   };
+
+  // backend ProjectSummaryResponse → 카드/모달 표시용 정규화
+  const normalizeProject = (p) => ({
+    id: p.id,
+    title: p.title || "(제목 없음)",
+    desc: p.desc || p.slogan || p.sloganSub || "",
+    tags: (p.tags || []).map(t => (typeof t === "string" && t.startsWith("#")) ? t : `#${t}`),
+    period: p.period || (p.durationDays ? `${Math.max(1, Math.round(p.durationDays / 30))}개월` : "기간 협의"),
+    budget: p.price || ((p.budgetMin != null && p.budgetMax != null) ? `${p.budgetMin}~${p.budgetMax}만원` : "예산 협의"),
+    badge: p.priceType || (p.priceType === "무료" ? "무료" : "유료"),
+    deadline: p.deadline ? `마감 ${p.deadline}` : (p.status || "모집중"),
+    deadlineColor: "#F59E0B",
+    _raw: p,
+  });
+
+  // 모달 열림 시 프로젝트 목록 fetch
+  const [modalProjects, setModalProjects] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  useEffect(() => {
+    if (!projectActionMode) return;
+    setModalLoading(true);
+    setModalProjects([]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        if (projectActionMode === "myProject" || projectActionMode === "proposal") {
+          const data = await projectsApi.myList();
+          if (!cancelled) setModalProjects((data || []).map(normalizeProject));
+        } else if (projectActionMode === "theirProject") {
+          const username = activeContact?.name;
+          if (!username) { if (!cancelled) setModalProjects([]); return; }
+          const data = await projectsApi.byUsername(username);
+          if (!cancelled) setModalProjects((data || []).map(normalizeProject));
+        }
+      } catch (err) {
+        console.error("[FreeMeetingTab] 프로젝트 목록 불러오기 실패:", err);
+        if (!cancelled) setModalProjects([]);
+      } finally {
+        if (!cancelled) setModalLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [projectActionMode, activeContact?.name]);
+
   const handleShareProject = (project) => {
     appendMsg(
       [{ id: Date.now(), type: "project_card", from: "me", project, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) }],
@@ -3532,15 +4106,69 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
     );
     setProjectActionMode(null);
   };
-  const handleSuggestProject = (project, role) => {
+  const handleSuggestProject = (project, role, note = "") => {
     const t = Date.now();
     const tl = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    const baseText = `${viewerName}님이 ${activeContact?.name}님께 [${project.title}] 프로젝트를 ${role} 직무로 제안하셨습니다.`;
+    const fullText = note ? `${baseText}\n\n“${note}”` : baseText;
     appendMsg([
       { id: t, type: "project_card", from: "me", project, time: tl },
-      { id: t + 1, type: "proposal_request", project, role, text: `${viewerName}님이 ${activeContact?.name}님께 [${project.title}] 프로젝트에서 ${role} 직무 함께하기를 제안했습니다.요청 수락을 기다립니다. 🤝`, time: tl },
+      { id: t + 1, type: "proposal_request", project, role, text: fullText, time: tl, _origin: "proposal" },
     ], `${project.title} 협업 제안을 보냈어요.`);
     setProjectActionMode(null);
   };
+  // 상대 프로젝트(클라이언트)에 지원: project_card + 시스템 메시지(수락/거절 버튼)
+  const handleApplyProject = async (project, role) => {
+    const t = Date.now();
+    const tl = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    let applicationId = null;
+    try {
+      const result = await applicationsApi.apply(project.id, `${role} 직무로 지원합니다.`);
+      applicationId = result?.id || result?.applicationId || null;
+    } catch (err) {
+      console.error("[FreeMeetingTab] 지원 실패:", err);
+      alert("지원 처리 중 오류가 발생했어요.");
+      return;
+    }
+    appendMsg([
+      { id: t, type: "project_card", from: "me", project, time: tl },
+      { id: t + 1, type: "proposal_request", project, role, applicationId, text: `${viewerName}님이 [${project.title}] 프로젝트에 ${role} 직무로 지원하셨습니다.`, time: tl, _origin: "apply" },
+    ], `${project.title}에 지원했어요.`);
+    setProjectActionMode(null);
+  };
+  // 수락/거절 후 처리
+  const handleAcceptProposal = async (msg) => {
+    const tl = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    if (msg.applicationId) {
+      try { await applicationsApi.updateStatus(msg.applicationId, "ACCEPTED"); }
+      catch (err) { console.warn("[FreeMeetingTab] application 수락 실패:", err?.message); }
+    }
+    const projId = msg?.project?.id;
+    if (projId) {
+      try { await projectsApi.updateStatus(projId, "IN_PROGRESS"); }
+      catch (err) { console.warn("[FreeMeetingTab] project status 업데이트 실패(권한 부족일 수 있음):", err?.message); }
+    }
+    await appendMsg([
+      { id: Date.now(), type: "system_notice", text: `✨ 세부 계약 협의 미팅이 활성화됩니다.\n세부협의를 이어가주세요 ⭐ Good Luck !`, time: tl },
+    ], "제안을 수락했어요.");
+    setTimeout(() => { onSwitchTab && onSwitchTab("contract_meeting"); }, 800);
+  };
+  const handleRejectProposal = async (msg) => {
+    const tl = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    if (msg.applicationId) {
+      try { await applicationsApi.updateStatus(msg.applicationId, "REJECTED"); }
+      catch (err) { console.error("[FreeMeetingTab] 거절 처리 실패:", err); }
+    }
+    appendMsg([
+      { id: Date.now(), type: "system_notice", text: `요청을 거절했어요.`, time: tl },
+    ], "제안을 거절했어요.");
+  };
+  const counterpartIsClient = useMemo(() => {
+    const ct = activeCounterpart?.userType;
+    if (ct) return ct === "CLIENT";
+    // fallback: 내가 PARTNER면 상대는 CLIENT일 가능성 높음
+    return user?.userType === "PARTNER";
+  }, [activeCounterpart, user]);
 
   const DRAWER_TABS = ["사진/동영상", "파일", "링크"];
 
@@ -3575,14 +4203,15 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                 background: activeId === contact.id ? "#EFF6FF" : "white",
                 borderLeft: `3px solid ${activeId === contact.id ? "#3B82F6" : "transparent"}`,
                 cursor: "pointer", transition: "all 0.15s",
+                position: "relative",
               }}
               onMouseEnter={e => { if (activeId !== contact.id) e.currentTarget.style.background = "#F8FAFC"; }}
               onMouseLeave={e => { if (activeId !== contact.id) e.currentTarget.style.background = "white"; }}
             >
-              <AvatarCircle initials={contact.initials} size={42} />
+              <AvatarCircle initials={contact.initials} size={42} avatar={contact.isSelfChat ? myHeroImage : contact.avatar} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
                   <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, flexShrink: 0 }}>{contact.time}</span>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#3B82F6", fontFamily: F, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contact.project}</div>
@@ -3593,6 +4222,27 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                   )}
                 </div>
               </div>
+              {/* 고정 아이콘 (self-chat 제외) */}
+              {!contact.isSelfChat && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); togglePin(contact.id); }}
+                  title={pinnedIds.includes(contact.id) ? "고정 해제" : "채팅 고정"}
+                  style={{
+                    position: "absolute", top: 10, right: 8,
+                    width: 22, height: 22, padding: 0, border: "none", background: "transparent",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    opacity: pinnedIds.includes(contact.id) ? 1 : 0.35,
+                    transition: "opacity 0.15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = pinnedIds.includes(contact.id) ? 1 : 0.35; }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={pinnedIds.includes(contact.id) ? "#3B82F6" : "none"} stroke={pinnedIds.includes(contact.id) ? "#3B82F6" : "#94A3B8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 17v5"/>
+                    <path d="M9 10.76V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5.76a2 2 0 0 0 1.11 1.79l1.78.9A2 2 0 0 1 19 14.24V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-1.76a2 2 0 0 1 1.11-1.79l1.78-.9A2 2 0 0 0 9 10.76z"/>
+                  </svg>
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -3604,9 +4254,9 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
 
           {/* 채팅 헤더 */}
           <div style={{ padding: "14px 20px", borderBottom: "1.5px solid #F1F5F9", display: "flex", alignItems: "center", gap: 12, background: "white" }}>
-            <AvatarCircle initials={activeContact.initials} size={38} />
+            <AvatarCircle initials={activeContact.initials} size={38} avatar={activeContact.isSelfChat ? myHeroImage : activeContact.avatar} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
               <div style={{ fontSize: 11, color: "#64748B", fontFamily: F }}>Project: {activeContact.project}</div>
             </div>
             {/* 햄버거 버튼 */}
@@ -3624,9 +4274,9 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
               {menuOpen && (
                 <div style={{ position: "absolute", top: 40, right: 0, width: 210, background: "white", border: "1px solid #E2E8F0", borderRadius: 16, boxShadow: "0 20px 48px rgba(15,23,42,0.14)", padding: 8, zIndex: 10 }}>
                   {[
-                    { key: "share", label: "프로젝트 보여주기", action: () => { setProjectActionMode("share"); setMenuOpen(false); } },
+                    { key: "myProject", label: "내 프로젝트 카드 보기", action: () => { setProjectActionMode("myProject"); setMenuOpen(false); } },
+                    { key: "theirProject", label: "상대 프로젝트 카드 보기", action: () => { setProjectActionMode("theirProject"); setMenuOpen(false); } },
                     { key: "proposal", label: "프로젝트 제안하기", action: () => { setProjectActionMode("proposal"); setMenuOpen(false); } },
-                    { key: "profile", label: "상대 프로필 보기", action: () => { setSelectedProfile(getMeetingPartnerPreview(activeContact)); setMenuOpen(false); } },
                   ].map(item => (
                     <button
                       key={item.key}
@@ -3654,19 +4304,21 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
             </button>
           </div>
 
-          {/* 채팅 + 서랍장 가로 분할 */}
-          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          {/* 채팅 + 서랍장 가로 분할 (오버레이) */}
+          <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
 
             {/* 메시지 영역 */}
             <div ref={msgContainerRef} style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 4 }}>
-              {/* 날짜 구분선 */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "10px 0 16px" }}>
-                <div style={{ flex: 1, height: 1, background: "#F1F5F9" }} />
-                <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, fontWeight: 600 }}>TODAY, OCT 24</span>
-                <div style={{ flex: 1, height: 1, background: "#F1F5F9" }} />
-              </div>
-
-              {activeContact.messages.map(msg => {
+              {displayMessages.messages.map(msg => {
+                if (msg.type === "date_divider") {
+                  return (
+                    <div key={msg.id} style={{ display: "flex", alignItems: "center", gap: 12, margin: "10px 0 16px" }}>
+                      <div style={{ flex: 1, height: 1, background: "#F1F5F9" }} />
+                      <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, fontWeight: 600 }}>{msg.label}</span>
+                      <div style={{ flex: 1, height: 1, background: "#F1F5F9" }} />
+                    </div>
+                  );
+                }
                 if (msg.type === "system_request") {
                   const accepted = acceptedIds.includes(activeContact.id);
                   return (
@@ -3711,7 +4363,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                 }
                 if (msg.type === "project_card") {
                   const isMe = msg.from === "me";
-                  const contactHero = CHAT_CONTACT_HEROES[activeContact.id];
+                  const contactHero = activeContact.avatar || CHAT_CONTACT_HEROES[activeContact.id];
                   return (
                     <div key={msg.id} style={{ display: "flex", flexDirection: "row", justifyContent: isMe ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
                       {!isMe && (
@@ -3731,16 +4383,18 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                       </div>
                       {isMe && (
                         <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid rgba(99,102,241,0.3)" }}>
-                          <img src={user?.heroImage || user?.profileImage || user?.picture || heroDefault} alt="me" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img src={myHeroImage || user?.heroImage || user?.profileImage || user?.picture || heroDefault} alt="me" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         </div>
                       )}
                     </div>
                   );
                 }
                 if (msg.type === "proposal_request") {
+                  const isMyProposal = msg.from === "me";
+                  const handled = acceptedIds.includes(msg.id);
                   return (
-                    <div key={msg.id} style={{ display: "flex", justifyContent: "center", margin: "8px 0 12px" }}>
-                      <div style={{ background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 14, padding: "14px 16px", maxWidth: "80%" }}>
+                    <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: "stretch", margin: "8px 0 12px", gap: 8 }}>
+                      <div style={{ background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 14, padding: "14px 16px", alignSelf: "stretch" }}>
                         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 1, flexShrink: 0 }}>
                             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -3748,12 +4402,43 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                           <p style={{ fontSize: 13, color: "#334155", fontFamily: F, margin: 0, lineHeight: 1.7, whiteSpace: "pre-line" }}>{msg.text}</p>
                         </div>
                       </div>
+                      {!handled && (
+                        <div style={{ display: "flex", gap: 10, marginTop: 4, alignSelf: "stretch" }}>
+                          {!isMyProposal && (
+                          <button
+                            onClick={() => { setAcceptedIds(prev => [...prev, msg.id]); handleAcceptProposal(msg); }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #4f46e5 100%)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(59,130,246,0.40)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, #93c5fd 0%, #a5b4fc 50%, #c7d2fe 100%)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(147,197,253,0.30)"; }}
+                            style={{ flex: 1, padding: "13px 28px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #93c5fd 0%, #a5b4fc 50%, #c7d2fe 100%)", color: "white", fontSize: 15, fontWeight: 800, fontFamily: F, cursor: "pointer", boxShadow: "0 4px 12px rgba(147,197,253,0.30)", transition: "background 0.18s, box-shadow 0.18s" }}
+                          >
+                            ✓ 요청 수락하기
+                          </button>
+                          )}
+                          <button
+                            onClick={() => setSelectedProject(msg.project)}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "#FEF9C3"; e.currentTarget.style.color = "#713f12"; e.currentTarget.style.borderColor = "#FDE047"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "#ffffff"; e.currentTarget.style.color = "#374151"; e.currentTarget.style.borderColor = "#E5E7EB"; }}
+                            style={{ flex: 1, padding: "13px 28px", borderRadius: 12, border: "1.5px solid #E5E7EB", background: "#ffffff", color: "#374151", fontSize: 15, fontWeight: 700, fontFamily: F, cursor: "pointer", transition: "background 0.18s, color 0.18s, border-color 0.18s" }}
+                          >
+                            상세 프로젝트 보기
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                if (msg.type === "system_notice") {
+                  return (
+                    <div key={msg.id} style={{ display: "flex", justifyContent: "center", margin: "8px 0 12px" }}>
+                      <div style={{ background: "#F0F9FF", border: "1.5px solid #BAE6FD", borderRadius: 14, padding: "12px 18px", maxWidth: "80%" }}>
+                        <p style={{ fontSize: 13, color: "#075985", fontFamily: F, margin: 0, lineHeight: 1.7, fontWeight: 600, textAlign: "center" }}>{msg.text}</p>
+                      </div>
                     </div>
                   );
                 }
 
                 const isMe = msg.from === "me";
-                const contactHero = CHAT_CONTACT_HEROES[activeContact.id];
+                const contactHero = activeContact.avatar || CHAT_CONTACT_HEROES[activeContact.id];
                 return (
                   <div key={msg.id} style={{ display: "flex", flexDirection: "row", justifyContent: isMe ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 10 }}>
                     {!isMe && (
@@ -3767,6 +4452,11 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                     <div style={{ maxWidth: "60%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
                       {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
                       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
+                        {(!msg.file && isOnlyEmoji(msg.text)) ? (
+                        <div style={{ background: "transparent", padding: 0, fontSize: 56, lineHeight: 1.1, fontFamily: F }}>
+                          {msg.text}
+                        </div>
+                        ) : (
                         <div style={{
                           background: isMe ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#F8FAFC",
                           color: isMe ? "white" : "#1E293B",
@@ -3775,16 +4465,27 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                           boxShadow: isMe ? "0 2px 8px rgba(99,102,241,0.25)" : "0 1px 4px rgba(0,0,0,0.05)",
                           border: isMe ? "none" : "1px solid #F1F5F9",
                         }}>
-                          {msg.text}
-                          {msg.file && <FileBubble file={msg.file} />}
+                          {renderTextWithLinks(msg.text)}
+                          {msg.file && (
+                            msg.file.type === "img" ? (
+                              <div onClick={() => window.open(msg.file.url, "_blank")} style={{ cursor: "pointer", marginTop: msg.text ? 8 : 0 }}>
+                                <img src={msg.file.url} alt="attachment" style={{ maxWidth: "100%", borderRadius: 8 }} />
+                              </div>
+                            ) : (
+                              <div onClick={() => window.open(msg.file.url, "_blank")} style={{ cursor: "pointer" }}>
+                                <FileBubble file={msg.file} />
+                              </div>
+                            )
+                          )}
                         </div>
+                        )}
                         <span style={{ fontSize: 10.4, color: "#94A3B8", fontFamily: F, flexShrink: 0, marginBottom: 2 }}>{msg.time}</span>
                       </div>
                     </div>
                     {isMe && (
                       <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid rgba(99,102,241,0.3)" }}>
                         <img
-                          src={user?.heroImage || user?.profileImage || user?.picture || heroDefault}
+                          src={myHeroImage || user?.heroImage || user?.profileImage || user?.picture || heroDefault}
                           alt="me"
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
@@ -3796,9 +4497,9 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* 서랍장 (... 클릭 시 */}
+            {/* 서랍장 (... 클릭 시 - 절대 위치 오버레이로 항상 다 보이게) */}
             {drawerOpen && (
-              <div style={{ width: 280, flexShrink: 0, borderLeft: "1.5px solid #F1F5F9", background: "#FAFBFC", display: "flex", flexDirection: "column" }}>
+              <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 280, borderLeft: "1.5px solid #F1F5F9", background: "#FAFBFC", display: "flex", flexDirection: "column", boxShadow: "-6px 0 18px rgba(15,23,42,0.08)", zIndex: 5 }}>
                 {/* 서랍 헤더 */}
                 <div style={{ padding: "14px 16px 0", borderBottom: "1px solid #F1F5F9" }}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#1E293B", fontFamily: F, marginBottom: 12 }}>대화 서랍장</div>
@@ -3818,7 +4519,9 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                       ? <div style={{ color: "#94A3B8", fontSize: 12, fontFamily: F, textAlign: "center", marginTop: 40 }}>공유된 사진/동영상이 없습니다.</div>
                       : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                           {activeContact.sharedImages.map((img, i) => (
-                            <div key={i} style={{ aspectRatio: "1", background: "#E2E8F0", borderRadius: 8, overflow: "hidden", cursor: "pointer" }} />
+                            <div key={i} onClick={() => window.open(img.url, "_blank")} style={{ aspectRatio: "1", background: "#F1F5F9", borderRadius: 8, overflow: "hidden", cursor: "pointer", border: "1px solid #E2E8F0" }}>
+                              <img src={img.url} alt="shared" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            </div>
                           ))}
                         </div>
                   )}
@@ -3834,7 +4537,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
                         {files.map((file, i) => {
                           const color = FILE_ICON_COLORS[file.type] || FILE_ICON_COLORS.default;
                           return (
-                            <div key={i} style={{ background: "white", border: "1.5px solid #E2E8F0", borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "pointer", transition: "border-color 0.15s" }}
+                            <div key={i} onClick={() => window.open(file.url, "_blank")} style={{ background: "white", border: "1.5px solid #E2E8F0", borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "pointer", transition: "border-color 0.15s" }}
                               onMouseEnter={e => e.currentTarget.style.borderColor = "#93C5FD"}
                               onMouseLeave={e => e.currentTarget.style.borderColor = "#E2E8F0"}
                             >
@@ -3877,58 +4580,99 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled }) {
           </div>
 
           {/* 메시지 입력창 */}
-          <div style={{ borderTop: "1.5px solid #F1F5F9", padding: "12px 16px", background: "white", display: "flex", alignItems: "center", gap: 10 }}>
-            <button style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #E2E8F0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-              </svg>
-            </button>
-            <input
-              value={msgInput}
-              onChange={e => setMsgInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  if (e.nativeEvent.isComposing) return;
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder="메시지를 입력하세요..."
-              style={{ flex: 1, border: "1.5px solid #E2E8F0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontFamily: F, outline: "none", background: "#FAFBFC", transition: "border-color 0.15s" }}
-              onFocus={e => e.target.style.borderColor = "#93C5FD"}
-              onBlur={e => e.target.style.borderColor = "#E2E8F0"}
-            />
-            <button style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #E2E8F0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
-              </svg>
-            </button>
-            <button
-              onClick={sendMessage}
-              disabled={!msgInput.trim()}
-              style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: msgInput.trim() ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", cursor: msgInput.trim() ? "pointer" : "default", flexShrink: 0, transition: "background 0.2s" }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
+          <div style={{ borderTop: "1.5px solid #F1F5F9", padding: "12px 16px", background: "white", display: "flex", flexDirection: "column", gap: 10 }}>
+            {selectedFile && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#F1F5F9", borderRadius: 8, alignSelf: "flex-start" }}>
+                <span style={{ fontSize: 12, color: "#374151", fontFamily: F, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedFile.name}</span>
+                <button onClick={() => { setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
+              <button onClick={() => fileInputRef.current?.click()} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #E2E8F0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+              </button>
+              <input
+                value={msgInput}
+                onChange={e => setMsgInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey && !isUploading) {
+                    if (e.nativeEvent.isComposing) return;
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+                placeholder="메시지를 입력하세요..."
+                style={{ flex: 1, border: "1.5px solid #E2E8F0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontFamily: F, outline: "none", background: "#FAFBFC", transition: "border-color 0.15s" }}
+                onFocus={e => e.target.style.borderColor = "#93C5FD"}
+                onBlur={e => e.target.style.borderColor = "#E2E8F0"}
+              />
+              <button onClick={() => setShowEmojiPicker(prev => !prev)} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #E2E8F0", background: showEmojiPicker ? "#EFF6FF" : "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={showEmojiPicker ? "#3b82f6" : "#94A3B8"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+              </button>
+              {showEmojiPicker && (
+                <div style={{ position: "absolute", bottom: 50, right: 0, background: "white", border: "1.5px solid #E2E8F0", borderRadius: 14, padding: "12px 10px", boxShadow: "0 10px 32px rgba(0,0,0,0.12)", zIndex: 100, width: 290, maxHeight: 220, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 4 }}>
+                  {COMMON_EMOJIS.map(emoji => (
+                    <button key={emoji} onClick={() => { setMsgInput(prev => prev + emoji); setShowEmojiPicker(false); }} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: "6px 0", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, transition: "background 0.1s" }} onMouseEnter={e => e.currentTarget.style.background = "#F1F5F9"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={sendMessage}
+                disabled={!msgInput.trim() && !selectedFile}
+                style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: (msgInput.trim() || selectedFile) ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", cursor: (msgInput.trim() || selectedFile) ? "pointer" : "default", flexShrink: 0, transition: "background 0.2s" }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
-          {projectActionMode && (
-            <MeetingProjectSelectModal
-              title={projectActionMode === "share" ? "프로젝트 보여주기" : "프로젝트 제안하기"}
-              subtitle={projectActionMode === "share" ? "채팅창에 프로젝트 카드를 바로 공유합니다." : "프로젝트를 고르고 함께할 직무를 선택해 제안 메시지를 보냅니다."}
-              projects={CLIENT_MEETING_PROJECT_OPTIONS}
-              requireRole={projectActionMode === "proposal"}
-              roleOptions={MEETING_COLLAB_ROLES}
-              confirmLabel={projectActionMode === "share" ? "채팅에 공유하기" : "제안 보내기"}
-              onClose={() => setProjectActionMode(null)}
-              onConfirm={(project, role) => {
-                if (projectActionMode === "share") { handleShareProject(project); return; }
-                handleSuggestProject(project, role);
-              }}
-            />
-          )}
+          {projectActionMode && (() => {
+            const isMy = projectActionMode === "myProject";
+            const isProposal = projectActionMode === "proposal";
+            const isTheir = projectActionMode === "theirProject";
+            const theirCanApply = isTheir && counterpartIsClient;
+            const requireRole = isProposal || theirCanApply;
+            const titleMap = { myProject: "내 프로젝트 카드 보기", theirProject: "상대 프로젝트 카드 보기", proposal: "프로젝트 제안하기" };
+            const subtitleMap = {
+              myProject: "내가 등록한 프로젝트 중 하나를 골라 채팅창에 카드로 공유합니다.",
+              theirProject: theirCanApply
+                ? "상대(클라이언트)의 프로젝트 중 하나를 고르고 직무를 선택해 지원합니다."
+                : "상대가 등록한 프로젝트 카드를 채팅창에 공유합니다.",
+              proposal: "내 프로젝트와 함께할 직무를 선택해 협업 제안 메시지를 보냅니다.",
+            };
+            const confirmMap = { myProject: "채팅에 공유하기", proposal: "제안 보내기" };
+            const confirmLabel = isTheir ? (theirCanApply ? "지원하기" : "채팅에 공유하기") : confirmMap[projectActionMode];
+            return (
+              <MeetingProjectSelectModal
+                title={titleMap[projectActionMode]}
+                subtitle={modalLoading ? "프로젝트 목록을 불러오는 중…" : (subtitleMap[projectActionMode] + (modalProjects.length === 0 ? " (등록된 프로젝트가 없습니다)" : ""))}
+                projects={modalProjects}
+                requireRole={requireRole}
+                roleOptions={MEETING_COLLAB_ROLES}
+                confirmLabel={confirmLabel}
+                onClose={() => setProjectActionMode(null)}
+                onConfirm={(project, role) => {
+                  if (isMy) { handleShareProject(project); return; }
+                  if (isProposal) { handleSuggestProject(project, role); return; }
+                  if (isTheir) {
+                    if (theirCanApply) { handleApplyProject(project, role); }
+                    else { handleShareProject(project); }
+                  }
+                }}
+              />
+            );
+          })()}
           {selectedProfile && <PartnerDetailPopup partner={selectedProfile} onClose={() => setSelectedProfile(null)} backdrop="transparent" />}
           {selectedProject && <ProjectDetailPopup proj={selectedProject} onClose={() => setSelectedProject(null)} />}
         </div>
@@ -3998,11 +4742,76 @@ const STATUS_STYLES = {
   "협의완료": { bg: "#D1FAE5", color: "#059669", border: "#6EE7B7" },
 };
 
-function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialContactId = 1, initialStatuses = null, showDashboardMoveButton = false }) {
+function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialContactId = 1, initialStatuses = null, showDashboardMoveButton = false, chatClient, projectId = null }) {
   const user = useStore(s => s.user);
+  const { dbId } = useStore();
+  const clientProfileDetail = useStore(s => s.clientProfileDetail);
+  const partnerProfileDetail = useStore(s => s.partnerProfileDetail);
+  const userRole = useStore(s => s.userRole);
+  const [fetchedHero, setFetchedHero] = useState(null);
+  const storedHero = (userRole === "partner" ? partnerProfileDetail?.heroImage : clientProfileDetail?.heroImage) || null;
+  const myHeroImage = storedHero || fetchedHero || null;
+  useEffect(() => {
+    if (storedHero) return;
+    let cancelled = false;
+    profileApi.getMyDetail().then(d => { if (!cancelled && d?.profileImageUrl) setFetchedHero(d.profileImageUrl); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [storedHero]);
   const [, setSearchParams] = useSearchParams();
-  const [contacts, setContacts] = useState(initialContacts);
-  const [activeId, setActiveId] = useState(initialContactId);
+  // 기본 (대시보드 직접 진입) 모드에서는 BE 채팅방을 fetch해서 contacts 사용.
+  // ProjectMeetingTab 등이 명시적으로 initialContacts 를 넘겨주면 그 mock 을 그대로 사용.
+  const isDefaultContacts = initialContacts === MOCK_CONTRACT_CONTACTS;
+  const [contacts, setContacts] = useState(isDefaultContacts ? [] : initialContacts);
+  const [activeId, setActiveId] = useState(isDefaultContacts ? null : initialContactId);
+  // BE chat rooms fetch (자유미팅과 동일한 DIRECT_MESSAGE 방을 contacts 로 사용)
+  useEffect(() => {
+    if (!isDefaultContacts || !dbId) return;
+    let cancelled = false;
+    fetch(`/api/chat/rooms?userId=${dbId}`)
+      .then(r => r.json())
+      .then(rooms => {
+        if (cancelled) return;
+        const list = (rooms || [])
+          .filter(r => r.roomType === "DIRECT_MESSAGE")
+          .map(r => {
+            const counterpartId = r.user1Id === dbId ? r.user2Id : r.user1Id;
+            const counterpartName = r.user1Id === dbId ? r.user2Username : r.user1Username;
+            const counterpartAvatar = r.user1Id === dbId ? r.user2ProfileImageUrl : r.user1ProfileImageUrl;
+            return {
+              id: counterpartId,
+              targetUserId: counterpartId,
+              name: counterpartName,
+              project: "계약 세부 협의",
+              avatar: counterpartAvatar || (counterpartName?.toLowerCase().startsWith("partner") ? heroTeacher : counterpartName?.toLowerCase().startsWith("client") ? heroStudent : heroDefault),
+              initials: (counterpartName || "U")[0].toUpperCase(),
+              time: "진행중",
+              lastMsg: "계약 협의를 이어가세요",
+              unread: 0,
+              active: false,
+              isStreamReal: true,
+              messages: [],
+              sharedFiles: [],
+              sharedImages: [],
+              sharedLinks: [],
+              agreementItems: [
+                { label: "작업 범위",            status: "미확정" },
+                { label: "최종 전달물 정의서",   status: "미확정" },
+                { label: "마감 일정 및 마일 스톤", status: "미확정" },
+                { label: "총 금액",              status: "미확정" },
+                { label: "수정 가능 범위",        status: "미확정" },
+                { label: "완료 기준",            status: "미확정" },
+                { label: "추가 특약 (선택)",     status: "미확정" },
+              ],
+            };
+          });
+        setContacts(list);
+        if (list.length > 0) {
+          setActiveId(prev => (prev && list.find(c => c.id === prev)) ? prev : list[0].id);
+        }
+      })
+      .catch(err => console.error("[ContractMeetingTab] Fetch rooms failed:", err));
+    return () => { cancelled = true; };
+  }, [dbId, isDefaultContacts]);
   const [itemStatusesByContact, setItemStatusesByContact] = useState(() => {
     const defaults = {
       scope: "논의 중",
@@ -4036,6 +4845,16 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
   });
   const [searchVal, setSearchVal] = useState("");
   const [msgInput, setMsgInput] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
   const [openModal, setOpenModal] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState("파일");
@@ -4044,6 +4863,77 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [proposalAccepted, setProposalAccepted] = useState({});
+  // ── 7모듈 BE 연동 (project_modules) ────────────────────────
+  // projectId prop 이 없으면 본인 진행중 프로젝트 첫 번째를 자동 매칭 (시연 편의)
+  const [autoProjectId, setAutoProjectId] = useState(null);
+  const [contactProjects, setContactProjects] = useState([]);
+  const [selectedContractProjectId, setSelectedContractProjectId] = useState(null);
+  useEffect(() => {
+    if (projectId) return;
+    let cancelled = false;
+    projectsApi.myList()
+      .then(list => {
+        if (cancelled) return;
+        const pick = (list || []).find(p => p.status === "IN_PROGRESS" || p.status === "진행중") || (list || [])[0];
+        if (pick?.id) setAutoProjectId(pick.id);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [projectId]);
+  // activeContact 변경 시 해당 partner 와 진행중인 내 프로젝트 후보 fetch
+  useEffect(() => {
+    if (projectId || !activeId) return;
+    let cancelled = false;
+    applicationsApi.receivedList()
+      .then(list => {
+        if (cancelled) return;
+        const counterpartId = Number(activeId);
+        const matched = (list || []).filter(a =>
+          Number(a.partnerUserId) === counterpartId &&
+          ["ACCEPTED", "IN_PROGRESS", "CONTRACTED"].includes(a.status)
+        );
+        const dedup = [];
+        const seen = new Set();
+        matched.forEach(a => {
+          const pid = a.projectId || a.project?.id;
+          if (!pid || seen.has(pid)) return;
+          seen.add(pid);
+          dedup.push({ id: pid, title: a.projectTitle || a.project?.title || `프로젝트 #${pid}` });
+        });
+        setContactProjects(dedup);
+        setSelectedContractProjectId(prev => {
+          if (prev && dedup.find(p => p.id === prev)) return prev;
+          return dedup[0]?.id || null;
+        });
+      })
+      .catch(() => { if (!cancelled) { setContactProjects([]); setSelectedContractProjectId(null); } });
+    return () => { cancelled = true; };
+  }, [activeId, projectId]);
+  const effectiveProjectId = projectId || selectedContractProjectId || autoProjectId;
+  // modules[moduleKey] = { status, data, lastModifierId, lastModifierName, updatedAt }
+  const [modules, setModules] = useState({});
+  const fetchModules = useCallback(async () => {
+    if (!effectiveProjectId) return;
+    try {
+      const list = await projectModulesApi.list(effectiveProjectId);
+      const map = {};
+      list.forEach(m => {
+        let parsed = null;
+        try { parsed = m.data ? JSON.parse(m.data) : null; } catch { parsed = null; }
+        map[m.moduleKey] = { status: m.status, data: parsed, lastModifierId: m.lastModifierId, lastModifierName: m.lastModifierName, updatedAt: m.updatedAt };
+      });
+      setModules(map);
+    } catch (err) {
+      console.warn("[ContractMeetingTab] modules fetch failed:", err?.message);
+    }
+  }, [effectiveProjectId]);
+  useEffect(() => { fetchModules(); }, [fetchModules]);
+  // 7초마다 polling (상대방의 수정 자동 반영)
+  useEffect(() => {
+    if (!effectiveProjectId) return;
+    const id = setInterval(fetchModules, 7000);
+    return () => clearInterval(id);
+  }, [fetchModules, effectiveProjectId]);
   const msgContainerRef = useRef(null);
   const menuRef = useRef(null);
 
@@ -4064,7 +4954,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
   const viewerName = user?.name || user?.nickname || "Eden (본인)";
 
   const activeContact = contacts.find(c => c.id === activeId);
-  const activeStatuses = itemStatusesByContact[activeId] || {
+  const fallbackStatuses = itemStatusesByContact[activeId] || {
     scope: "논의 중",
     deliverable: "미확정",
     schedule: "논의 중",
@@ -4073,10 +4963,177 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
     completion: "논의 중",
     terms: "미확정",
   };
+  // BE modules 의 status 가 있으면 우선 사용
+  const activeStatuses = effectiveProjectId
+    ? Object.fromEntries(["scope","deliverable","schedule","payment","revision","completion","terms"].map(k => [k, modules[k]?.status || fallbackStatuses[k]]))
+    : fallbackStatuses;
   const filtered = contacts.filter(c =>
     c.name.toLowerCase().includes(searchVal.toLowerCase()) ||
     c.project.toLowerCase().includes(searchVal.toLowerCase())
   );
+
+  const sharedFiles = activeContact?.sharedFiles || [];
+  const sharedLinks = activeContact?.sharedLinks || [];
+  const sharedImages = activeContact?.sharedImages || [];
+
+  // ── Helper to render text with clickable links ─────────────────
+  const renderTextWithLinks = (text) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(\b[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?\b)/gi;
+    const elements = [];
+    let lastIndex = 0;
+    let match;
+    urlRegex.lastIndex = 0;
+    while ((match = urlRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(text.substring(lastIndex, match.index));
+      }
+      let url = match[0];
+      const cleanUrl = url.replace(/[.,!?;:]+$/, "");
+      if (cleanUrl.length < url.length) {
+        url = cleanUrl;
+        urlRegex.lastIndex = match.index + url.length;
+      }
+      let href = url;
+      if (!href.startsWith("http")) {
+        href = "https://" + href;
+      }
+      elements.push(
+        <a key={match.index} href={href} target="_blank" rel="noreferrer" 
+           style={{ color: "inherit", textDecoration: "underline", fontWeight: "inherit" }}
+           onClick={(e) => e.stopPropagation()}
+        >
+          {url}
+        </a>
+      );
+      lastIndex = urlRegex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      elements.push(text.substring(lastIndex));
+    }
+    return elements.length > 0 ? elements : text;
+  };
+
+  // ── Stream Chat integration ───────────────────────────────────
+  const { channel } = useStreamChannel(chatClient, "negotiation", dbId, activeContact);
+  const streamMessages = useHeadlessMessages(channel);
+
+  // module_update 메시지 수신 시 즉시 modules refetch (상대방의 수정 반영)
+  useEffect(() => {
+    if (!channel) return;
+    const handler = (e) => {
+      if (e?.message?.custom_type === "module_update") {
+        fetchModules();
+      }
+    };
+    channel.on("message.new", handler);
+    return () => { try { channel.off("message.new", handler); } catch {} };
+  }, [channel, fetchModules]);
+
+  const displayMessages = useMemo(() => {
+    if (activeContact?.isStreamReal && streamMessages && chatClient?.userID) {
+      const extractedFiles = [];
+      const extractedImages = [];
+      const extractedLinks = [];
+      const messages = [];
+
+      let lastDateLabel = null;
+
+      streamMessages.forEach(sm => {
+        const dateLabel = formatDateKorean(sm.created_at);
+        if (dateLabel !== lastDateLabel) {
+          messages.push({
+            id: `date-${sm.id}`,
+            type: "date_divider",
+            label: dateLabel,
+          });
+          lastDateLabel = dateLabel;
+        }
+
+        let fileObj = sm.file;
+        if (!fileObj && sm.attachments && sm.attachments.length > 0) {
+          const att = sm.attachments[0];
+          if (att.file_size || att.mime_type) {
+            fileObj = {
+              name: att.title || att.fallback || "첨부파일",
+              type: att.type === "image" ? "img" : (att.mime_type?.includes("pdf") ? "pdf" : "doc"),
+              url: att.asset_url || att.image_url
+            };
+          }
+        }
+
+        // Extract for Cabinet
+        if (sm.attachments && sm.attachments.length > 0) {
+          sm.attachments.forEach(att => {
+            const dateStr = new Date(sm.created_at).toISOString().slice(0, 7);
+            const isUploaded = att.file_size || att.mime_type;
+
+            if ((att.type === "image" || att.type === "video") && isUploaded) {
+              extractedImages.push({ name: att.title || "image", url: att.image_url || att.asset_url, date: dateStr });
+            } else if (att.type === "file" && isUploaded) {
+              extractedFiles.push({ 
+                name: att.title || att.fallback || "파일", 
+                type: att.mime_type?.includes("pdf") ? "pdf" : "doc", 
+                size: att.file_size ? (att.file_size / 1024).toFixed(0) + " KB" : "Unknown",
+                url: att.asset_url,
+                date: dateStr 
+              });
+            }
+          });
+        }
+
+        const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(\b[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?\b)/gi;
+        const matches = sm.text?.match(urlRegex);
+        if (matches) {
+          matches.forEach(m => {
+            let url = m.replace(/[.,!?;:]+$/, "");
+            if (!url.startsWith("http")) url = "https://" + url;
+            if (!extractedLinks.includes(url)) extractedLinks.push(url);
+          });
+        }
+
+        messages.push({
+          id: sm.id,
+          from: (sm.user?.id || sm.userId) === chatClient.userID ? "me" : "them",
+          text: sm.text || "",
+          time: new Date(sm.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+          type: sm.type_meta || (sm.project_card ? "project_card" : "text"),
+          project: sm.project_card,
+          role: sm.role_meta,
+          applicationId: sm.application_id,
+          _origin: sm.origin_meta,
+          file: fileObj,
+        });
+      });
+
+      return { messages, extractedFiles, extractedImages, extractedLinks };
+    }
+    return { messages: activeContact?.messages || [], extractedFiles: [], extractedImages: [], extractedLinks: [] };
+  }, [activeContact, streamMessages, chatClient?.userID]);
+
+  useEffect(() => {
+    if (activeContact?.isStreamReal) {
+      setContacts(prev => prev.map(c => {
+        if (c.id === activeId) {
+          const changedMessages = JSON.stringify(c.messages) !== JSON.stringify(displayMessages.messages);
+          const changedFiles = JSON.stringify(c.sharedFiles) !== JSON.stringify(displayMessages.extractedFiles);
+          const changedImages = JSON.stringify(c.sharedImages) !== JSON.stringify(displayMessages.extractedImages);
+          const changedLinks = JSON.stringify(c.sharedLinks) !== JSON.stringify(displayMessages.extractedLinks);
+
+          if (changedMessages || changedFiles || changedImages || changedLinks) {
+            return { 
+              ...c, 
+              messages: displayMessages.messages,
+              sharedFiles: displayMessages.extractedFiles,
+              sharedImages: displayMessages.extractedImages,
+              sharedLinks: displayMessages.extractedLinks
+            };
+          }
+        }
+        return c;
+      }));
+    }
+  }, [displayMessages, activeId, activeContact?.isStreamReal]);
 
   useEffect(() => {
     if (msgContainerRef.current) msgContainerRef.current.scrollTop = msgContainerRef.current.scrollHeight;
@@ -4093,13 +5150,57 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const sendMessage = () => {
+  const sendMessage = useCallback(async () => {
     const text = msgInput.trim();
-    if (!text) return;
-    const newMsg = { id: Date.now(), from: "me", text, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) };
-    setContacts(prev => prev.map(c => c.id === activeId ? { ...c, messages: [...c.messages, newMsg], lastMsg: text, time: "방금" } : c));
-    setMsgInput("");
-  };
+    if (!text && !selectedFile) return;
+    
+    if (activeContact?.isStreamReal && channel) {
+      try {
+        setIsUploading(true);
+        let fileUrl = null;
+        let fileType = null;
+        
+        if (selectedFile) {
+          const isImage = selectedFile.type.startsWith("image/");
+          const response = isImage 
+            ? await channel.sendImage(selectedFile, selectedFile.name, selectedFile.type)
+            : await channel.sendFile(selectedFile, selectedFile.name, selectedFile.type);
+          
+          fileUrl = response.file;
+          fileType = isImage ? "image" : "file";
+        }
+
+        const messageData = text ? { text } : {};
+        if (fileUrl) {
+          messageData.attachments = [
+            {
+              type: fileType,
+              asset_url: fileUrl,
+              title: selectedFile.name,
+              file_size: selectedFile.size,
+              mime_type: selectedFile.type,
+            }
+          ];
+        }
+
+        await channel.sendMessage(messageData);
+        setContacts(prev => prev.map(c => c.id === activeId ? { ...c, lastMsg: text || selectedFile.name, time: "방금" } : c));
+        setMsgInput("");
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      } catch (err) {
+        console.error("[Stream] sendMessage failed:", err);
+        alert("파일 업로드 또는 메시지 전송에 실패했습니다.");
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      const newMsg = { id: Date.now(), from: "me", text, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) };
+      setContacts(prev => prev.map(c => c.id === activeId ? { ...c, messages: [...c.messages, newMsg], lastMsg: text, time: "방금" } : c));
+      setMsgInput("");
+      setSelectedFile(null);
+    }
+  }, [msgInput, activeContact, channel, activeId, selectedFile]);
 
   const appendMessagesToActive = (messages, lastMsg) => {
     setContacts(prev => prev.map(contact => (
@@ -4145,29 +5246,77 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
     setProjectActionMode(null);
   };
 
-  const handleAcceptProposal = (msg) => {
+  const handleAcceptProposal = async (msg) => {
     if (proposalAccepted[msg.id]) return;
-
     setProposalAccepted(prev => ({ ...prev, [msg.id]: true }));
+    // BE: application/project status 업데이트
+    if (msg.applicationId) {
+      try { await applicationsApi.updateStatus(msg.applicationId, "ACCEPTED"); }
+      catch (err) { console.warn("[ContractMeetingTab] application 수락 실패:", err?.message); }
+    }
+    const projId = msg?.project?.id;
+    if (projId) {
+      try { await projectsApi.updateStatus(projId, "IN_PROGRESS"); }
+      catch (err) { console.warn("[ContractMeetingTab] project status 업데이트 실패(권한 부족일 수 있음):", err?.message); }
+    }
+    // 시스템 메시지 송신
+    const tl = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    appendMessagesToActive(
+      [{ id: Date.now(), type: "system_notice", text: `✨ 세부 계약 협의 미팅이 활성화됩니다.\n세부협의를 이어가주세요 ⭐ Good Luck !`, time: tl }],
+      "제안을 수락했어요."
+    );
   };
 
-  const handlePropose = (idx) => {
+  const handlePropose = async (idx) => {
     const key = CLIENT_MODAL_DEFS[idx]?.key;
-    if (key) {
+    const label = activeContact?.agreementItems?.[idx]?.label || `${idx + 1}번 항목`;
+    const cur = modules[key];
+    const curData = cur?.data || {};
+    const curNego = curData._nego || {};
+    const myName = user?.name || user?.username || "나";
+    const otherAlreadyProposed = curNego.proposerAccepted && Number(curNego.proposerUserId) !== Number(dbId);
+    let nextStatus, nextNego;
+    if (otherAlreadyProposed) {
+      nextStatus = "협의완료";
+      nextNego = { ...curNego, workerUserId: dbId, workerName: myName, workerAccepted: true };
+    } else {
+      nextStatus = "제안됨";
+      nextNego = { ...curNego, proposerUserId: dbId, proposerName: myName, proposerAccepted: true, workerAccepted: curNego.workerAccepted || false };
+    }
+    const newData = { ...curData, _nego: nextNego };
+    if (key && effectiveProjectId) {
+      try {
+        await projectModulesApi.upsert(effectiveProjectId, key, { status: nextStatus, data: newData });
+        await fetchModules();
+      } catch (err) {
+        console.warn("[ContractMeetingTab] propose upsert 실패:", err?.message);
+      }
+    } else if (key) {
       setItemStatusesByContact(prev => ({
         ...prev,
-        [activeId]: { ...prev[activeId], [key]: "제안됨" },
+        [activeId]: { ...prev[activeId], [key]: nextStatus },
       }));
     }
+    if (channel) {
+      try {
+        await channel.sendMessage({
+          text: otherAlreadyProposed
+            ? `🤝 [${label}] 항목을 수락했습니다 — 협의 완료 😀✅`
+            : `📋 [${label}] 항목을 제안했습니다. 상대방 확인 대기 중`,
+          custom_type: otherAlreadyProposed ? "module_complete" : "module_update",
+          module_key: key,
+        });
+      } catch (e) { /* noop */ }
+    }
     setOpenModal(null);
+    alert(otherAlreadyProposed
+      ? `🎉 협의 완료!\n[${label}] 항목이 확정되었습니다.`
+      : `✅ 제안 완료\n상대방의 수락하기를 기다립니다.`);
   };
 
   const doneCount = Object.values(activeStatuses).filter(isAgreementCompleted).length;
   const totalCount = Object.keys(activeStatuses).length || 7;
   const progress = Math.round((doneCount / totalCount) * 100);
-  const sharedFiles = activeContact?.sharedFiles || [];
-  const sharedLinks = activeContact?.sharedLinks || [];
-  const sharedImages = activeContact?.sharedImages || [];
 
   const renderSystemNotice = (msg) => (
     <div key={msg.id} style={{ display: "flex", justifyContent: "center", margin: "8px 0 14px" }}>
@@ -4231,7 +5380,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
 
   const renderProjectCardMessage = (msg) => {
     const isMe = msg.from === "me";
-    const contactHero = CHAT_CONTRACT_HEROES[activeContact.id];
+    const contactHero = activeContact.avatar || CHAT_CONTRACT_HEROES[activeContact.id];
 
     return (
       <div key={msg.id} style={{ display: "flex", flexDirection: "row", justifyContent: isMe ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
@@ -4253,7 +5402,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
         {isMe && (
           <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid rgba(99,102,241,0.3)" }}>
             <img
-              src={user?.heroImage || user?.profileImage || user?.picture || heroDefault}
+              src={myHeroImage || user?.heroImage || user?.profileImage || user?.picture || heroDefault}
               alt="me"
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
@@ -4265,7 +5414,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
 
   const renderDefaultMessage = (msg) => {
     const isMe = msg.from === "me";
-    const contactHero = CHAT_CONTRACT_HEROES[activeContact.id];
+    const contactHero = activeContact.avatar || CHAT_CONTRACT_HEROES[activeContact.id];
 
     return (
       <div key={msg.id} style={{ display: "flex", flexDirection: "row", justifyContent: isMe ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 10 }}>
@@ -4280,6 +5429,11 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
         <div style={{ maxWidth: "60%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
           {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
+            {(!msg.file && isOnlyEmoji(msg.text)) ? (
+            <div style={{ background: "transparent", padding: 0, fontSize: 56, lineHeight: 1.1, fontFamily: F }}>
+              {msg.text}
+            </div>
+            ) : (
             <div style={{
               background: isMe ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "white",
               color: isMe ? "white" : "#1E293B",
@@ -4288,15 +5442,27 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
               boxShadow: isMe ? "0 2px 8px rgba(99,102,241,0.25)" : "0 1px 4px rgba(0,0,0,0.06)",
               border: isMe ? "none" : "1px solid #F1F5F9",
             }}>
-              {msg.text}
+              {renderTextWithLinks(msg.text)}
+              {msg.file && (
+                msg.file.type === "img" ? (
+                  <div onClick={() => window.open(msg.file.url, "_blank")} style={{ cursor: "pointer", marginTop: msg.text ? 8 : 0 }}>
+                    <img src={msg.file.url} alt="attachment" style={{ maxWidth: "100%", borderRadius: 8 }} />
+                  </div>
+                ) : (
+                  <div onClick={() => window.open(msg.file.url, "_blank")} style={{ cursor: "pointer" }}>
+                    <FileBubble file={msg.file} />
+                  </div>
+                )
+              )}
             </div>
+            )}
             <span style={{ fontSize: 10.4, color: "#94A3B8", fontFamily: F, flexShrink: 0, marginBottom: 2 }}>{msg.time}</span>
           </div>
         </div>
         {isMe && (
           <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid rgba(99,102,241,0.3)" }}>
             <img
-              src={user?.heroImage || user?.profileImage || user?.picture || heroDefault}
+              src={myHeroImage || user?.heroImage || user?.profileImage || user?.picture || heroDefault}
               alt="me"
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
@@ -4307,7 +5473,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
   };
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 80px)", minHeight: 1050, gap: 0, overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100%", gap: 0, overflow: "hidden", position: "relative" }}>
 
       {/* ── 왼쪽: 연락처 목록 + 협의항목 카드 ── */}
       <div style={{ width: 400, flexShrink: 0, background: "white", borderRight: "1.5px solid #F1F5F9", display: "flex", flexDirection: "column", position: "relative", transform: "translate(0, 0)", overflow: "hidden" }}>
@@ -4342,10 +5508,10 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
                 onMouseEnter={e => { if (activeId !== contact.id) e.currentTarget.style.background = "#F8FAFC"; }}
                 onMouseLeave={e => { if (activeId !== contact.id) e.currentTarget.style.background = "white"; }}
               >
-                <AvatarCircle initials={contact.initials} size={42} />
+                <AvatarCircle initials={contact.initials} size={42} avatar={contact.isSelfChat ? myHeroImage : contact.avatar} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
                     <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, flexShrink: 0 }}>{contact.time}</span>
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#3B82F6", fontFamily: F, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contact.project}</div>
@@ -4368,60 +5534,67 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           })}
         </div>
 
-        {/* 계약 세부 협의 항목 카드 */}
+        {/* 계약 세부 협의 항목 카드 - 컴팩트 디자인 (이미지4 스타일) */}
         {activeContact && (
-          <div style={{ flexShrink: 0, borderTop: "2px solid #EFF6FF", background: "white", padding: "16px 18px" }}>
+          <div style={{ flexShrink: 0, borderTop: "2px solid #EFF6FF", background: "white", padding: "12px 14px" }}>
+            {contactProjects.length > 1 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 5 }}>📁 협의할 프로젝트 선택</div>
+                <select
+                  value={selectedContractProjectId || ""}
+                  onChange={(e) => setSelectedContractProjectId(Number(e.target.value))}
+                  style={{
+                    width: "100%", padding: "8px 10px", borderRadius: 8,
+                    border: "1.5px solid #E2E8F0", background: "#F8FAFC",
+                    fontSize: 12.5, fontFamily: F, color: "#1E293B", fontWeight: 600,
+                    cursor: "pointer", outline: "none",
+                  }}
+                >
+                  {contactProjects.map(p => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {/* 카드 헤더 */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                 </svg>
-                <span style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>계약 세부 협의 항목</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#1E293B", fontFamily: F }}>계약 세부 협의 항목</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: progress === 100 ? "#16A34A" : "#3B82F6", background: progress === 100 ? "#F0FDF4" : "#EFF6FF", border: `1px solid ${progress === 100 ? "#BBF7D0" : "#BFDBFE"}`, borderRadius: 99, padding: "3px 10px", fontFamily: F }}>진행률 {progress}%</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: progress === 100 ? "#16A34A" : "#3B82F6", background: progress === 100 ? "#F0FDF4" : "#EFF6FF", border: `1px solid ${progress === 100 ? "#BBF7D0" : "#BFDBFE"}`, borderRadius: 99, padding: "2px 8px", fontFamily: F }}>진행률 {progress}%</span>
             </div>
-            {/* 항목 리스트 */}
+            {/* 항목 리스트 - 한 줄 컴팩트 */}
             {activeContact.agreementItems.map((item, idx) => {
               const key = CLIENT_MODAL_DEFS[idx]?.key;
               const st = STATUS_STYLES[activeStatuses[key]] || STATUS_STYLES["미확정"];
               return (
                 <div
                   key={idx}
-                  onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 50%, #EDE9FE 100%)"; e.currentTarget.style.borderColor = "#C7D2FE"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#F8FAFC"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "10px 12px", borderRadius: 10, marginBottom: 4,
-                    cursor: "pointer", transition: "background 0.2s, border-color 0.2s",
+                    padding: "6px 8px", borderRadius: 6, marginBottom: 1,
+                    cursor: "pointer", transition: "background 0.15s",
                     background: "transparent",
-                    border: "1px solid transparent",
                   }}
                   onClick={() => setOpenModal(idx)}
                 >
-                  <span style={{ fontSize: 15, color: "#374151", fontWeight: 500, fontFamily: F }}>
-                    <span style={{ color: "#94A3B8", fontWeight: 600, marginRight: 6 }}>{idx + 1}.</span>
+                  <span style={{ fontSize: 12.5, color: "#374151", fontWeight: 500, fontFamily: F }}>
+                    <span style={{ color: "#94A3B8", fontWeight: 600, marginRight: 4 }}>{idx + 1}.</span>
                     {item.label}
                   </span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: st.color, background: st.bg, border: `1px solid ${st.border}`, borderRadius: 99, padding: "3px 10px", fontFamily: F, flexShrink: 0 }}>{activeStatuses[key]}</span>
-                    <span style={{ fontSize: 14, color: "#C4C9D4" }}>›</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, border: `1px solid ${st.border}`, borderRadius: 99, padding: "1.5px 8px", fontFamily: F, flexShrink: 0 }}>{activeStatuses[key]}</span>
+                    <span style={{ fontSize: 12, color: "#C4C9D4" }}>›</span>
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
-
-        {/* 계약 세부 협의 모달 오버레이 */}
-        {openModal !== null && ActiveModal && (
-          <ActiveModal
-            inline={true}
-            onClose={() => setOpenModal(null)}
-            onSubmit={() => handlePropose(openModal)}
-            moduleStatus={activeStatuses[CLIENT_MODAL_DEFS[openModal]?.key]}
-            showHeaderStatusBadge={true}
-          />
         )}
       </div>
 
@@ -4432,9 +5605,9 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           {/* 채팅 헤더 */}
           <div style={{ padding: "14px 18px", background: "white", borderBottom: "1.5px solid #F1F5F9", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <AvatarCircle initials={activeContact.initials} size={38} />
+              <AvatarCircle initials={activeContact.initials} size={38} avatar={activeContact.isSelfChat ? myHeroImage : activeContact.avatar} />
               <div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
                 <div style={{ fontSize: 11, color: "#64748B", fontFamily: F }}>Project: {activeContact.project}</div>
               </div>
             </div>
@@ -4492,8 +5665,8 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
             </div>
           </div>
 
-          {/* 채팅 + 서랍장 */}
-          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          {/* 채팅 + 서랍장 (오버레이) */}
+          <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
             <div ref={msgContainerRef} style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 0 }}>
 
               {/* 시스템 메시지 (채팅 시작점, 스크롤과 함께 올라감) */}
@@ -4512,7 +5685,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
                 </span>
               </div>
 
-              {activeContact.messages.map(msg => {
+              {(displayMessages.messages || displayMessages || []).map(msg => {
                 if (msg.type === "project_card") return renderProjectCardMessage(msg);
                 if (msg.type === "proposal_request") return renderProposalRequest(msg);
                 if (msg.type === "system_notice") return renderSystemNotice(msg);
@@ -4521,7 +5694,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
             </div>
 
             {drawerOpen && (
-              <div style={{ width: 280, flexShrink: 0, borderLeft: "1.5px solid #F1F5F9", background: "#FAFBFC", display: "flex", flexDirection: "column" }}>
+              <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 280, borderLeft: "1.5px solid #F1F5F9", background: "#FAFBFC", display: "flex", flexDirection: "column", boxShadow: "-6px 0 18px rgba(15,23,42,0.08)", zIndex: 5 }}>
                 <div style={{ padding: "14px 16px 0", borderBottom: "1px solid #F1F5F9" }}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#1E293B", fontFamily: F, marginBottom: 12 }}>대화 서랍장</div>
                   <div style={{ display: "flex", gap: 0 }}>
@@ -4538,7 +5711,9 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
                       ? <div style={{ color: "#94A3B8", fontSize: 12, fontFamily: F, textAlign: "center", marginTop: 40 }}>공유된 사진/동영상이 없습니다.</div>
                       : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           {sharedImages.map((image, index) => (
-                            <div key={`${image.name || "image"}-${index}`} style={{ aspectRatio: "1", background: "#E2E8F0", borderRadius: 10 }} />
+                            <div key={`${image.name || "image"}-${index}`} onClick={() => image.url && window.open(image.url, "_blank")} style={{ aspectRatio: "1", background: "#F1F5F9", borderRadius: 10, overflow: "hidden", cursor: image.url ? "pointer" : "default", border: "1px solid #E2E8F0" }}>
+                              {image.url && <img src={image.url} alt="shared" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                            </div>
                           ))}
                         </div>
                   )}
@@ -4590,31 +5765,61 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           </div>
 
           {/* 메시지 입력창 */}
-          <div style={{ borderTop: "1.5px solid #F1F5F9", padding: "12px 16px", background: "white", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <input
-              value={msgInput}
-              onChange={e => setMsgInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  if (e.nativeEvent.isComposing) return;
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder="메시지를 입력하세요..."
-              style={{ flex: 1, border: "1.5px solid #E2E8F0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontFamily: F, outline: "none", background: "#FAFBFC", transition: "border-color 0.15s" }}
-              onFocus={e => e.target.style.borderColor = "#93C5FD"}
-              onBlur={e => e.target.style.borderColor = "#E2E8F0"}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!msgInput.trim()}
-              style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: msgInput.trim() ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", cursor: msgInput.trim() ? "pointer" : "default", flexShrink: 0, transition: "background 0.2s" }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
+          <div style={{ borderTop: "1.5px solid #F1F5F9", padding: "12px 16px", background: "white", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0, position: "relative" }}>
+            {selectedFile && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#F1F5F9", borderRadius: 8, alignSelf: "flex-start" }}>
+                <span style={{ fontSize: 12, color: "#374151", fontFamily: F, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedFile.name}</span>
+                <button onClick={() => { setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
+              <button onClick={() => fileInputRef.current?.click()} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #E2E8F0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+              </button>
+              <input
+                value={msgInput}
+                onChange={e => setMsgInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey && !isUploading) {
+                    if (e.nativeEvent.isComposing) return;
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+                placeholder="메시지를 입력하세요..."
+                style={{ flex: 1, border: "1.5px solid #E2E8F0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontFamily: F, outline: "none", background: "#FAFBFC", transition: "border-color 0.15s" }}
+                onFocus={e => e.target.style.borderColor = "#93C5FD"}
+                onBlur={e => e.target.style.borderColor = "#E2E8F0"}
+              />
+              <button onClick={() => setShowEmojiPicker(prev => !prev)} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #E2E8F0", background: showEmojiPicker ? "#EFF6FF" : "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={showEmojiPicker ? "#3b82f6" : "#94A3B8"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+              </button>
+              {showEmojiPicker && (
+                <div style={{ position: "absolute", bottom: 50, right: 0, background: "white", border: "1.5px solid #E2E8F0", borderRadius: 14, padding: "12px 10px", boxShadow: "0 10px 32px rgba(0,0,0,0.12)", zIndex: 100, width: 290, maxHeight: 220, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 4 }}>
+                  {COMMON_EMOJIS.map(emoji => (
+                    <button key={emoji} onClick={() => { setMsgInput(prev => prev + emoji); setShowEmojiPicker(false); }} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: "6px 0", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, transition: "background 0.1s" }} onMouseEnter={e => e.currentTarget.style.background = "#F1F5F9"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={sendMessage}
+                disabled={(!msgInput.trim() && !selectedFile) || isUploading}
+                style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: ((msgInput.trim() || selectedFile) && !isUploading) ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", cursor: ((msgInput.trim() || selectedFile) && !isUploading) ? "pointer" : "default", flexShrink: 0, transition: "background 0.2s" }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {projectActionMode && (
@@ -4641,6 +5846,88 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           {selectedProfile && <PartnerDetailPopup partner={selectedProfile} onClose={() => setSelectedProfile(null)} backdrop="transparent" />}
         </div>
       )}
+
+      {/* ── 계약 세부 협의 모달: 7항목 영역 + 채팅 영역을 모두 덮는 absolute overlay ── */}
+      {openModal !== null && ActiveModal && (() => {
+        const key = CLIENT_MODAL_DEFS[openModal]?.key;
+        const moduleData = modules[key]?.data || null;
+        const beStatus = modules[key]?.status;
+        const itemLabel = activeContact?.agreementItems?.[openModal]?.label || "";
+        // 작업자 = 채팅 상대방 (계약 수주자), 제안자 = 마지막으로 수정 제안한 사람
+        const workerName = (modules[key]?.data?._nego?.workerName) || activeContact?.name || "상대방";
+        const proposerName = (modules[key]?.data?._nego?.proposerName) || modules[key]?.lastModifierName || (user?.name || user?.username || "나");
+        return (
+          <div style={{ position: "absolute", left: 400, top: 0, right: 0, bottom: 0, background: "white", zIndex: 50, display: "flex", flexDirection: "column", borderLeft: "1.5px solid #F1F5F9" }}>
+            {/* 헤더 바: 항목명 + 작업자/제안자 배지 + X 닫기 */}
+            <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 22px", borderBottom: "1.5px solid #F1F5F9", background: "linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{openModal + 1}. {itemLabel}</span>
+                {(() => {
+                  const status = beStatus || activeStatuses?.[key];
+                  const nego = modules[key]?.data?._nego || {};
+                  const proposerAccepted = !!nego.proposerAccepted || status === "제안됨" || status === "협의완료";
+                  const workerAccepted = !!nego.workerAccepted || status === "협의완료";
+                  const bothAccepted = proposerAccepted && workerAccepted;
+                  const Check = ({ on, color }) => (
+                    on
+                      ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", background: color, color: "#FFFFFF", fontSize: 10, fontWeight: 900, flexShrink: 0 }}>✓</span>
+                      : <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", background: "transparent", border: `1.5px dashed ${color}80`, color: "transparent", fontSize: 10, flexShrink: 0 }}>✓</span>
+                  );
+                  return (
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#0369A1", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 99, padding: "5px 13px", fontFamily: F }}>
+                        <Check on={workerAccepted} color="#0EA5E9" />
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0369A1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        작업자: {workerName}
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#9A3412", background: "#FFEDD5", border: "1px solid #FED7AA", borderRadius: 99, padding: "5px 13px", fontFamily: F }}>
+                        <Check on={proposerAccepted} color="#F97316" />
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9A3412" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        제안자: {proposerName}
+                      </span>
+                      {bothAccepted && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: "#FFFFFF", background: "linear-gradient(135deg, #34D399 0%, #10B981 100%)", border: "none", borderRadius: 99, padding: "5px 13px", fontFamily: F, boxShadow: "0 2px 6px rgba(16,185,129,0.25)" }}>
+                          <span style={{ fontSize: 12 }}>✓</span>
+                          협의 완료
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              <button
+                onClick={() => setOpenModal(null)}
+                style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #E5E7EB", background: "white", color: "#64748B", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#FEF9C3"; e.currentTarget.style.color = "#713f12"; e.currentTarget.style.borderColor = "#FDE047"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "white"; e.currentTarget.style.color = "#64748B"; e.currentTarget.style.borderColor = "#E5E7EB"; }}
+                aria-label="닫기"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            {/* 모달 본문 */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 12px 20px 24px", background: "white" }}>
+              <ActiveModal
+                inline={true}
+                onClose={() => setOpenModal(null)}
+                onSubmit={() => handlePropose(openModal)}
+                moduleStatus={activeStatuses[key]}
+                showHeaderStatusBadge={false}
+                value={moduleData}
+                onChange={async (newData) => {
+                  if (!effectiveProjectId || !key) return;
+                  try {
+                    await projectModulesApi.upsert(effectiveProjectId, key, { status: "논의 중", data: newData });
+                    await fetchModules();
+                  } catch (err) {
+                    console.warn("[ContractMeetingTab] module save failed:", err?.message);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -4984,6 +6271,7 @@ function ComingSoonDash({ label }) {
 
 /* ── 메인 컴포넌트 ───────────────────────────────────────────── */
 export default function ClientDashboard() {
+  const { dbId, username } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "schedule";
   const setActiveTab = (key) => setSearchParams({ tab: key }, { replace: true });
@@ -4993,6 +6281,33 @@ export default function ClientDashboard() {
   const [projectMeetingTarget, setProjectMeetingTarget] = useState(null);
   const [proposalPartner, setProposalPartner] = useState(null);
   const [syncedPanelMinHeight, setSyncedPanelMinHeight] = useState(0);
+
+  // ── Stream Chat connection ───────────────────────────────────
+  const [chatClient, setChatClient] = useState(null);
+  useEffect(() => {
+    if (!dbId) return;
+    let client;
+    const connect = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const res = await fetch(`/api/chat/token?userId=${dbId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) {
+          console.error(`[Stream] Token fetch failed: HTTP ${res.status}`);
+          return;
+        }
+        const { apiKey, token: streamToken, streamUserId } = await res.json();
+        client = StreamChat.getInstance(apiKey);
+        await client.connectUser({ id: streamUserId, name: username || streamUserId }, streamToken);
+        setChatClient(client);
+      } catch (err) {
+        console.error("[Stream] connectUser failed:", err);
+      }
+    };
+    connect();
+    return () => { if (client) { client.disconnectUser(); setChatClient(null); } };
+  }, [dbId, username]);
 
   const currentMilestones = MOCK_MANAGE_PROJECTS.flatMap(p =>
     p.milestones
@@ -5006,7 +6321,7 @@ export default function ClientDashboard() {
   const isMeetingTab = activeTab === "free_meeting" || activeTab === "contract_meeting" || activeTab === "project_meeting";
   const isApplicationsTab = activeTab === "apply_active" || activeTab === "apply_done";
   const isInterestsTab = activeTab === "interests";
-  const isHeightSyncedTab = isScheduleTab || isInterestsTab;
+  const isHeightSyncedTab = isScheduleTab || isInterestsTab || isMeetingTab;
   const defaultPanelMinHeight = activeTab === "contract_meeting" ? 900 : (activeTab === "free_meeting" || activeTab === "project_meeting") ? 760 : 600;
   const syncedPanelHeight = Math.max(isScheduleTab ? 820 : defaultPanelMinHeight, syncedPanelMinHeight);
 
@@ -5049,9 +6364,9 @@ export default function ClientDashboard() {
     }
     if (activeTab === "portfolio_add")  return <PortfolioAddManagementTab viewer="client" dashboardPath="/client_dashboard" />;
     if (activeTab === "evaluation")      return <EvaluationTab />;
-    if (activeTab === "free_meeting")    return <FreeMeetingTab proposalPartner={proposalPartner} onProposalHandled={() => setProposalPartner(null)} />;
-    if (activeTab === "contract_meeting") return <ContractMeetingTab />;
-    if (activeTab === "project_meeting") return <ProjectMeetingTab initialActiveId={projectMeetingTarget} />;
+    if (activeTab === "free_meeting")    return <FreeMeetingTab proposalPartner={proposalPartner} onProposalHandled={() => setProposalPartner(null)} chatClient={chatClient} onSwitchTab={setActiveTab} />;
+    if (activeTab === "contract_meeting") return <ContractMeetingTab chatClient={chatClient} />;
+    if (activeTab === "project_meeting") return <ProjectMeetingTab initialActiveId={projectMeetingTarget} chatClient={chatClient} />;
     const label = SECTIONS.flatMap(s => s.items).find(i => i.key === activeTab)?.label || "";
     return <ComingSoonDash label={label} />;
   };
@@ -5159,7 +6474,7 @@ export default function ClientDashboard() {
             borderRadius: 16,
             padding: (isScheduleTab || isMeetingTab) ? "0" : "32px 36px",
             boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            height: isScheduleTab ? syncedPanelHeight : undefined,
+            height: (isScheduleTab || isMeetingTab) ? syncedPanelHeight : undefined,
             minHeight: isHeightSyncedTab ? syncedPanelHeight : defaultPanelMinHeight,
             overflow: (isScheduleTab || activeTab === "free_meeting" || activeTab === "project_meeting") ? "hidden" : activeTab === "contract_meeting" ? "auto" : "visible",
           }}>

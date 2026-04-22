@@ -35,7 +35,7 @@ import UsageGuide_Matching from "./pages/UsageGuide_Matching";
 import UsageGuide_Contract from "./pages/UsageGuide_Contract";
 import UsageGuide_Policy from "./pages/UsageGuide_Policy";
 import Onboarding from "./pages/Onboarding";
-// import StreamChatPage from "./pages/StreamChatPage"; // chat-v3 패키지(stream-chat) 미설치 - 트랙 완료 후 다시 활성화
+import StreamChatPage from "./pages/StreamChatPage";
 import ChatBot from "./components/ChatBot";
 import Footer from "./components/ui/Footer";
 
@@ -85,7 +85,7 @@ function App() {
         <Route path="/usage_guide/contract" element={<UsageGuide_Contract />} />
         <Route path="/usage_guide/policy" element={<UsageGuide_Policy />} />
         <Route path="/onboarding" element={<Onboarding />} />
-        {/* <Route path="/chat" element={<StreamChatPage />} /> */}
+        <Route path="/chat" element={<StreamChatPage />} />
       </Routes>
       {showFooter && <Footer />}
       {!isLandingPage && <ChatBot />}

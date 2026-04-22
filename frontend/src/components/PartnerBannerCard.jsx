@@ -95,7 +95,35 @@ export default function PartnerBannerCard({ activePage, viewMode = false, partne
     partnerProfileDetail,
     profileRefreshTrigger,
     bumpProfileRefresh,
+    dbId,
+    userRole,
   } = store;
+
+  // 자유 미팅 시작 버튼 핸들러 (viewMode 전용)
+  const [startingFreeMeeting, setStartingFreeMeeting] = useState(false);
+  const handleStartFreeMeeting = async () => {
+    const targetUserId = partnerData?.userId || partnerData?.id;
+    if (!dbId) { alert("로그인 정보를 불러올 수 없어요. 다시 로그인해주세요."); return; }
+    if (!targetUserId) { alert("상대방 정보를 불러올 수 없어요."); return; }
+    if (Number(dbId) === Number(targetUserId)) { alert("본인과는 자유 미팅을 시작할 수 없어요."); return; }
+    setStartingFreeMeeting(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const headers = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+      const res = await fetch(`/api/chat/rooms/dm?userId=${dbId}`, {
+        method: "POST", headers,
+        body: JSON.stringify({ targetUserId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const dashboardPath = userRole === "client" ? "/client_dashboard" : "/partner_dashboard";
+      navigate(`${dashboardPath}?tab=free_meeting&dm=${targetUserId}`);
+    } catch (err) {
+      console.error("[FreeMeeting] DM 생성 실패:", err);
+      alert("자유 미팅 시작에 실패했어요.");
+    } finally {
+      setStartingFreeMeeting(false);
+    }
+  };
 
   // 본인/타인 모두 안정적 표시 필드는 username (회원가입 시 입력한 로그인 핸들) 으로 통일
   // - viewMode (타인 프로필 보기): partnerData.username
@@ -376,6 +404,35 @@ export default function PartnerBannerCard({ activePage, viewMode = false, partne
           );
         })}
       </div>}
+
+      {/* 우측 버튼 - 뷰 모드에서 자유 미팅 시작 */}
+      {viewMode && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, flexShrink: 0, minWidth: 196, alignItems: "stretch", justifyContent: "center" }}>
+          <button
+            onClick={handleStartFreeMeeting}
+            disabled={startingFreeMeeting}
+            style={{
+              padding: "14px 22px", borderRadius: 14, border: "none",
+              background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)",
+              color: "white", fontSize: 15, fontWeight: 700, cursor: startingFreeMeeting ? "wait" : "pointer",
+              fontFamily: F, boxShadow: "0 6px 18px rgba(99,102,241,0.35)",
+              whiteSpace: "nowrap", transition: "transform 0.15s, box-shadow 0.15s",
+              opacity: startingFreeMeeting ? 0.7 : 1,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
+            onMouseEnter={e => { if (!startingFreeMeeting) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 22px rgba(99,102,241,0.45)"; } }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(99,102,241,0.35)"; }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            {startingFreeMeeting ? "연결 중..." : "자유 미팅 시작"}
+          </button>
+          <p style={{ fontSize: 11, color: "#64748B", fontFamily: F, margin: 0, textAlign: "center", lineHeight: 1.5 }}>
+            채팅방을 열고 바로 대화를<br/>시작할 수 있어요.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header_partner from "../components/Header_partner";
 import mascotIcon from "../assets/hero_check.png";
 import heroMeeting from "../assets/hero_meeting.png";
+import heroStudent from "../assets/hero_student.png";
 import { chatWithAI } from "../lib/aiClient";
 import useStore from "../store/useStore";
 
@@ -187,11 +188,20 @@ function safeParseJson(str) {
 }
 
 async function extractProfileFromPdf(text) {
-  const reply = await chatWithAI(
-    [{ role: "user", text: `다음은 CV PDF에서 추출한 텍스트야. 위 스키마대로 JSON만 반환해줘:\n\n${text.slice(0, 12000)}` }],
-    EXTRACT_SYSTEM
-  );
-  const parsed = safeParseJson(reply);
+  const res = await fetch("/api/ai/extract", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: EXTRACT_SYSTEM,
+      text: `다음은 CV PDF에서 추출한 텍스트야. 위 스키마대로 JSON만 반환해줘:\n\n${text.slice(0, 12000)}`,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `AI 요청 실패 (${res.status})`);
+  }
+  const data = await res.json();
+  const parsed = safeParseJson(data.reply);
   if (!parsed) throw new Error("AI 응답을 JSON으로 파싱하지 못했어요");
   return parsed;
 }
@@ -254,6 +264,7 @@ export default function AIchatProfile() {
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [githubInput, setGithubInput] = useState("");
+  const [freeInput, setFreeInput] = useState("");
 
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -448,6 +459,7 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
     setGithubInput("");
     setTimeout(() => {
       pushBot(DONE_MSG);
+      pushBot("💬 프로필에 추가로 반영하고 싶은 내용이 있으시면 자유롭게 말씀해 주세요! 없으시면 아래 초록 버튼을 눌러 적용하세요 👇");
       setStep("DONE");
     }, 600);
   };
@@ -457,8 +469,33 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
     pushBot("알겠습니다! 그럼 지금까지 모은 정보로 프로필을 정리해드릴게요 ✨");
     setTimeout(() => {
       pushBot(DONE_MSG);
+      pushBot("💬 프로필에 추가로 반영하고 싶은 내용이 있으시면 자유롭게 말씀해 주세요! 없으시면 아래 초록 버튼을 눌러 적용하세요 👇");
       setStep("DONE");
     }, 400);
+  };
+
+  const handleFreeChat = async () => {
+    const input = freeInput.trim();
+    if (!input || busy) return;
+    pushUser(input);
+    setFreeInput("");
+    setBusy(true);
+    try {
+      const context = [
+        pdfProfile ? `PDF 프로필 요약: 스킬 ${pdfProfile.skills?.length || 0}개, 경력 ${pdfProfile.careers?.length || 0}건, 학력 ${pdfProfile.educations?.length || 0}건` : "",
+        githubData ? `GitHub: @${githubData.handle}, ${githubData.publicRepos} repos` : "",
+        verifiedEmail ? `이메일 인증: ${verifiedEmail.email}` : "",
+      ].filter(Boolean).join("\n");
+      const reply = await chatWithAI(
+        [{ role: "user", text: input }],
+        `너는 DevBridge 플랫폼의 AI 프로필 도우미 '행운이'야. 사용자가 방금 3단계 프로필 자동 작성을 마쳤어.\n수집된 정보:\n${context}\n\n사용자가 추가 요청이나 질문을 할 수 있어. 친절하고 간결하게 한국어로 답해줘.`
+      );
+      pushBot(reply);
+    } catch (e) {
+      pushBot("앗, 답변을 가져오는 중 오류가 생겼어요 😢 다시 시도해 주세요.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   /* ─── 적용하기: store에 병합 ─── */
@@ -784,9 +821,13 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
 
     if (step === "DONE") {
       return (
-        <div style={{ padding: "16px 24px", textAlign: "center", color: "#10B981", fontSize: 13, fontWeight: 700, fontFamily: F }}>
-          ✓ 모든 질문이 끝났어요! 아래 초록색 버튼을 눌러주세요 👇
-        </div>
+        <InputRow
+          value={freeInput}
+          onChange={setFreeInput}
+          onSubmit={handleFreeChat}
+          placeholder="추가로 반영하고 싶은 내용을 입력하세요 (예: bio를 더 간결하게 해줘)"
+          buttonText="전송"
+        />
       );
     }
 
@@ -847,11 +888,46 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
         }}>
           {/* 채팅 헤더 */}
           <div style={{
-            padding: "16px 24px",
+            padding: "14px 24px",
             background: "#FAFAFA",
+            display: "flex", alignItems: "center", gap: 16,
           }}>
+            {/* 마스코트 + 이름 + 온라인 */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+              <div style={{ position: "relative" }}>
+                <img
+                  src={heroStudent}
+                  alt="AI 행운이"
+                  style={{
+                    width: 72, height: 72, borderRadius: "50%",
+                    objectFit: "cover",
+                    background: "#EFF6FF",
+                  }}
+                />
+                <div style={{
+                  position: "absolute", bottom: 3, right: 3,
+                  width: 14, height: 14, borderRadius: "50%",
+                  background: "#22C55E", border: "2.5px solid white",
+                }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#1E3A8A", fontFamily: F, lineHeight: 1.2 }}>AI 행운이</div>
+                <div style={{ fontSize: 14, color: "#22C55E", fontWeight: 600, fontFamily: F }}>● 온라인</div>
+              </div>
+            </div>
             {/* 진행 단계 표시 */}
-            <StepIndicator step={step} />
+            <div style={{ flex: 1 }}>
+              <StepIndicator step={step} onStepClick={(idx) => {
+                const stepMap = ["ASK_VERIFY", "ASK_PDF", "ASK_GITHUB"];
+                const labels = [
+                  "다시 이메일 인증 단계로 돌아왔어요! 처음부터 다시 진행해볼까요? 😊",
+                  "다시 CV / Portfolio 단계로 돌아왔어요! PDF를 새로 올려주세요 📄",
+                  "다시 GitHub 연동 단계로 돌아왔어요! URL을 다시 입력해주세요 🐙",
+                ];
+                setStep(stepMap[idx]);
+                pushBot(labels[idx]);
+              }} />
+            </div>
           </div>
           <div style={{ borderTop: "1px solid #F1F5F9" }} />
 
@@ -940,6 +1016,23 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
               <div>{verifiedEmail ? `✅ ${verifiedEmail.type === "school" ? "학교" : "회사"} 인증: ${verifiedEmail.email}` : "⏭️ 이메일 인증 건너뜀"}</div>
               <div>{pdfProfile ? `✅ CV PDF 분석: ${pdfFileName} (스킬 ${pdfProfile.skills?.length || 0}개 / 경력 ${pdfProfile.careers?.length || 0}건 / 학력 ${pdfProfile.educations?.length || 0}건)` : "⏭️ PDF 업로드 건너뜀"}</div>
               <div>{githubData ? `✅ GitHub 연동: @${githubData.handle} (${githubData.publicRepos} repos / ${githubData.totalCommits.toLocaleString()} commits)` : "⏭️ GitHub 연동 건너뜀"}</div>
+              {githubData?.skills?.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: "#065F46", fontWeight: 700, marginBottom: 6, fontFamily: F }}>🏷️ GitHub 추출 기술 스택</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {githubData.skills.map((s, i) => (
+                      <span key={i} style={{
+                        padding: "4px 12px", borderRadius: 999,
+                        background: "linear-gradient(135deg, #D1FAE5 0%, #FEF9C3 100%)",
+                        border: "1px solid #A7F3D0",
+                        fontSize: 12, fontWeight: 600, color: "#065F46", fontFamily: F,
+                      }}>
+                        {s.techName} · {s.commits.toLocaleString()} commits
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
@@ -1032,7 +1125,7 @@ function InputRow({ value, onChange, onSubmit, placeholder, buttonText, onSkip }
   );
 }
 
-function StepIndicator({ step }) {
+function StepIndicator({ step, onStepClick }) {
   const stepIdx =
     ["ASK_VERIFY", "VERIFY_EMAIL", "VERIFY_CODE"].includes(step) ? 0 :
     ["ASK_PDF", "PARSING_PDF"].includes(step) ? 1 :
@@ -1047,38 +1140,55 @@ function StepIndicator({ step }) {
 
   return (
     <div style={{
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-      flexWrap: "wrap",
+      display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10,
+      flexWrap: "wrap", paddingLeft: 4,
     }}>
       {items.map((it, i) => {
         const done = stepIdx > i;
         const active = stepIdx === i;
+        const clickable = onStepClick && (done || active);
         return (
-          <div key={it.n} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "6px 14px", borderRadius: 999,
-              background: done ? "#D1FAE5" : active ? "#DBEAFE" : "#F1F5F9",
-              border: `1px solid ${done ? "#A7F3D0" : active ? "#93C5FD" : "#E2E8F0"}`,
-              transition: "all 0.2s",
-            }}>
+          <div key={it.n} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              onClick={() => clickable && onStepClick(i)}
+              style={{
+                display: "flex", alignItems: "center", gap: 9,
+                padding: "9px 20px", borderRadius: 999,
+                background: done
+                  ? "linear-gradient(135deg, #D1FAE5 0%, #FEF9C3 100%)"
+                  : active
+                  ? "linear-gradient(135deg, #ECFDF5 0%, #FEFCE8 100%)"
+                  : "#F1F5F9",
+                border: `1.5px solid ${done ? "#6EE7B7" : active ? "#86EFAC" : "#E2E8F0"}`,
+                cursor: clickable ? "pointer" : "default",
+                transition: "all 0.2s",
+                boxShadow: active ? "0 2px 8px rgba(134,239,172,0.35)" : "none",
+              }}
+              onMouseEnter={e => { if (clickable) e.currentTarget.style.filter = "brightness(0.96)"; }}
+              onMouseLeave={e => { if (clickable) e.currentTarget.style.filter = "none"; }}
+            >
               <div style={{
-                width: 22, height: 22, borderRadius: "50%",
-                background: done ? "#10B981" : active ? "#3B82F6" : "#CBD5E1",
+                width: 28, height: 28, borderRadius: "50%",
+                background: done
+                  ? "linear-gradient(135deg, #34D399, #A3E635)"
+                  : active
+                  ? "linear-gradient(135deg, #6EE7B7, #BEF264)"
+                  : "#CBD5E1",
                 color: "white", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: 800, fontFamily: F,
+                fontSize: 13, fontWeight: 800, fontFamily: F,
+                flexShrink: 0,
               }}>
                 {done ? "✓" : it.n}
               </div>
               <span style={{
-                fontSize: 12, fontWeight: 700, fontFamily: F,
-                color: done ? "#065F46" : active ? "#1E3A8A" : "#64748B",
+                fontSize: 14, fontWeight: 700, fontFamily: F,
+                color: done ? "#065F46" : active ? "#14532D" : "#64748B",
               }}>
                 {it.label}
               </span>
             </div>
             {i < items.length - 1 && (
-              <div style={{ width: 24, height: 2, background: stepIdx > i ? "#A7F3D0" : "#E2E8F0" }} />
+              <div style={{ width: 28, height: 2, background: stepIdx > i ? "#86EFAC" : "#E2E8F0", borderRadius: 2 }} />
             )}
           </div>
         );
