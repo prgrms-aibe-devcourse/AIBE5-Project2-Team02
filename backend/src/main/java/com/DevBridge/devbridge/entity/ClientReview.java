@@ -40,6 +40,11 @@ public class ClientReview {
     @Column(nullable = false)
     private Double rating;
 
+    private Double expertise;
+    private Double schedule;
+    private Double communication;
+    private Double proactivity;
+
     @Column(columnDefinition = "TEXT")
     private String content;
 

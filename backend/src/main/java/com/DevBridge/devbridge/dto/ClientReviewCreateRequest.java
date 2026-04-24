@@ -3,9 +3,9 @@ package com.DevBridge.devbridge.dto;
 import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class PartnerReviewCreateRequest {
-    private Long   partnerProfileId;
-    private Long   projectId; // optional
+public class ClientReviewCreateRequest {
+    private Long   clientProfileId;
+    private Long   projectId;
     private Double rating;
     private Double expertise;
     private Double schedule;

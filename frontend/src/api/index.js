@@ -17,4 +17,5 @@ export * from './portfolio.api';
 export * from './projectModules.api';
 export * from './paymentMethods.api';
 export * from './progressDashboard.api';
+export * from './evaluation.api';
 

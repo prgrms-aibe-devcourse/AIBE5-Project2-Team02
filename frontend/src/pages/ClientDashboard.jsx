@@ -18,7 +18,7 @@ import {
 } from "../components/ContractModals";
 import MOCK_INTEREST_PROJECTS from "../data/mockInterestProjects.json";
 import MOCK_INTEREST_PARTNERS from "../data/mockInterestPartners.json";
-import { projectsApi, partnersApi, applicationsApi, profileApi, projectModulesApi, dashboardApi, milestonesApi, escrowsApi, paymentMethodsApi } from "../api";
+import { projectsApi, partnersApi, applicationsApi, profileApi, projectModulesApi, dashboardApi, milestonesApi, escrowsApi, paymentMethodsApi, evaluationApi, reviewsApi } from "../api";
 
 /* ── 찜 목록 상세 API 응답을 카드 표시용으로 매핑 ───────────── */
 function toCardProject(p) {
@@ -2371,7 +2371,11 @@ function PortfolioAddTab() {
 }
 
 /* ── EvaluationTab (평가 대기 프로젝트) ────────────────────── */
-const MOCK_EVAL_PENDING = [
+// [MOCK DATA DISABLED] — replaced by live API in Step 10 of REVIEW_IMPLEMENTATION_GUIDE.md
+// Original placeholder data is preserved below in comments for reference.
+const MOCK_EVAL_PENDING = [];
+/* ORIGINAL MOCK_EVAL_PENDING:
+[
   {
     id: 1,
     badge: "유료",
@@ -2400,9 +2404,12 @@ const MOCK_EVAL_PENDING = [
     revieweeAvatarColor: "#0EA5E9",
     budget: "₩8,000,000",
   },
-];
+]
+*/
 
-const MOCK_RECEIVED_REVIEWS = [
+const MOCK_RECEIVED_REVIEWS = [];
+/* ORIGINAL MOCK_RECEIVED_REVIEWS:
+[
   {
     id: 1,
     badge: "유료",
@@ -2455,9 +2462,12 @@ const MOCK_RECEIVED_REVIEWS = [
     duration: "4개월",
     reviewText: "어려운 기술적 요구사항도 척척 해결해주셨습니다. 3D 렌더링 최적화 부분에서 보여주신 실력이 정말 대단하십니다. 강력 추천합니다!",
   },
-];
+]
+*/
 
-const MOCK_EXPIRED_REVIEWS = [
+const MOCK_EXPIRED_REVIEWS = [];
+/* ORIGINAL MOCK_EXPIRED_REVIEWS:
+[
   {
     id: 1,
     title: "실시간 스트리밍 앱 최적화 및 안정화",
@@ -2465,7 +2475,8 @@ const MOCK_EXPIRED_REVIEWS = [
     tags: ["#Streaming", "#Go", "#Redis"],
     endDate: "2024.11.10",
   },
-];
+]
+*/
 
 function EvalPendingCard({ proj, onWrite }) {
   const [hov, setHov] = useState(false);
@@ -2480,7 +2491,7 @@ function EvalPendingCard({ proj, onWrite }) {
           </div>
           <p style={{ fontSize: 13, color: "#64748B", margin: "0 0 12px", fontFamily: F, lineHeight: 1.6 }}>{proj.desc}</p>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-            {proj.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
+            {proj.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>#{t}</span>)}
           </div>
           <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>
             완료일: {proj.endDate}&nbsp;&nbsp;&nbsp;총 기간: {proj.duration}
@@ -2514,7 +2525,7 @@ function ReceivedReviewCard({ review, onView }) {
           </div>
           <p style={{ fontSize: 13, color: "#64748B", margin: "0 0 12px", fontFamily: F, lineHeight: 1.6 }}>{review.desc}</p>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
+            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>#{t}</span>)}
           </div>
           <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>
             완료일: {review.endDate}&nbsp;&nbsp;&nbsp;작성일: {review.reviewDate}
@@ -2547,7 +2558,7 @@ function ExpiredReviewCard({ proj }) {
           </div>
           <p style={{ fontSize: 13, color: "#94A3B8", margin: "0 0 12px", fontFamily: F, lineHeight: 1.6 }}>{proj.desc}</p>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-            {proj.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#94A3B8", fontFamily: F }}>{t}</span>)}
+            {proj.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#94A3B8", fontFamily: F }}>#{t}</span>)}
           </div>
           <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>종료일: {proj.endDate}</div>
         </div>
@@ -2593,18 +2604,20 @@ function ViewReviewPopup({ review, onClose }) {
             <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, marginLeft: 4 }}>{review.endDate} 완료</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
+            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>#{t}</span>)}
           </div>
         </div>
         <div style={{ padding: "20px 28px 28px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px", marginBottom: 20 }}>
-            {[{ label: "전문성", val: review.expertise }, { label: "일정 준수", val: review.schedule }, { label: "소통 능력", val: review.communication }, { label: "적극성", val: review.proactivity }].map(({ label, val }) => (
-              <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F1F5F9" }}>
-                <span style={{ fontSize: 13, color: "#64748B", fontFamily: F }}>{label}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#1D4ED8", fontFamily: F }}>{val.toFixed(1)}</span>
-              </div>
-            ))}
-          </div>
+          {review.expertise != null && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px", marginBottom: 20 }}>
+              {[{ label: "전문성", val: review.expertise }, { label: "일정 준수", val: review.schedule }, { label: "소통 능력", val: review.communication }, { label: "적극성", val: review.proactivity }].map(({ label, val }) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F1F5F9" }}>
+                  <span style={{ fontSize: 13, color: "#64748B", fontFamily: F }}>{label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1D4ED8", fontFamily: F }}>{val != null ? val.toFixed(1) : "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
             <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 18px", border: "1.5px solid #E2E8F0" }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", fontFamily: F, letterSpacing: 1, marginBottom: 4 }}>BUDGET</div>
@@ -2649,18 +2662,20 @@ function ViewWrittenReviewPopup({ review, onClose, onEdit }) {
             <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, marginLeft: 4 }}>{review.endDate} 완료</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
+            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>#{t}</span>)}
           </div>
         </div>
         <div style={{ padding: "20px 28px 28px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px", marginBottom: 20 }}>
-            {[{ label: "전문성", val: review.expertise }, { label: "일정 준수", val: review.schedule }, { label: "소통 능력", val: review.communication }, { label: "적극성", val: review.proactivity }].map(({ label, val }) => (
-              <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F1F5F9" }}>
-                <span style={{ fontSize: 13, color: "#64748B", fontFamily: F }}>{label}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#1D4ED8", fontFamily: F }}>{val.toFixed(1)}</span>
-              </div>
-            ))}
-          </div>
+          {review.expertise != null && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px", marginBottom: 20 }}>
+              {[{ label: "전문성", val: review.expertise }, { label: "일정 준수", val: review.schedule }, { label: "소통 능력", val: review.communication }, { label: "적극성", val: review.proactivity }].map(({ label, val }) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F1F5F9" }}>
+                  <span style={{ fontSize: 13, color: "#64748B", fontFamily: F }}>{label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1D4ED8", fontFamily: F }}>{val != null ? val.toFixed(1) : "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
             <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 18px", border: "1.5px solid #E2E8F0" }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", fontFamily: F, letterSpacing: 1, marginBottom: 4 }}>BUDGET</div>
@@ -2704,7 +2719,7 @@ function WriteReviewPopup({ proj, onClose, onSubmit, initialScores, initialRevie
         <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
         <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", fontFamily: F }}>{isEdit ? "후기가 수정되었습니다!" : "후기가 등록되었습니다!"}</h3>
         <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 24px", fontFamily: F }}>{isEdit ? "수정해 주셔서 감사합니다." : "소중한 후기 감사합니다. 파트너 신뢰도에 반영됩니다."}</p>
-        <button onClick={() => { onSubmit({ projId: proj.id, badge: proj.badge, title: proj.title, tags: proj.tags, reviewerAvatarColor: proj.revieweeAvatarColor, reviewerInitial: proj.revieweeInitial, reviewerName: proj.revieweeName, rating: avgScore, endDate: proj.endDate, expertise: scores.expertise, schedule: scores.schedule, communication: scores.communication, proactivity: scores.proactivity, budget: proj.budget, duration: proj.duration, reviewText }); onClose(); }} style={{ padding: "12px 36px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", color: "white", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F }}>확인</button>
+        <button onClick={() => { onSubmit({ projectId: proj.projectId, partnerProfileId: proj.partnerProfileId, rating: avgScore, expertise: scores.expertise, schedule: scores.schedule, communication: scores.communication, proactivity: scores.proactivity, content: reviewText }); onClose(); }} style={{ padding: "12px 36px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", color: "white", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F }}>확인</button>
       </div>
     </div>
   );
@@ -2725,7 +2740,7 @@ function WriteReviewPopup({ proj, onClose, onSubmit, initialScores, initialRevie
             <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>완료일 {proj.endDate}</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-            {proj.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
+            {proj.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>#{t}</span>)}
           </div>
         </div>
         <div style={{ padding: "20px 28px 28px" }}>
@@ -2781,7 +2796,7 @@ function CompletedReviewCard({ review, onViewWritten }) {
             <span style={{ fontSize: 17, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{review.title}</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
+            {review.tags.map(t => <span key={t} style={{ padding: "3px 12px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>#{t}</span>)}
           </div>
           <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>평균 별점: <span style={{ fontWeight: 600, color: "#FBBF24" }}>★ {review.rating.toFixed(1)}</span>&nbsp;&nbsp;&nbsp;완료일: {review.endDate}</div>
         </div>
@@ -2798,24 +2813,151 @@ function CompletedReviewCard({ review, onViewWritten }) {
   );
 }
 
+/* ── EvaluationTab adapter functions ───────────────────────── */
+/* ── EvaluationTab adapter functions ───────────────────────── */
+function toBadge(item) {
+  return item.isPartnerFree ? "무료" : "유료";
+}
+function fmtBudget(item) {
+  if (item.budgetAmount) return `₩${Number(item.budgetAmount).toLocaleString()}`;
+  if (item.budgetMin && item.budgetMax) return `₩${Number(item.budgetMin).toLocaleString()}~${Number(item.budgetMax).toLocaleString()}`;
+  return "협의";
+}
+function fmtDeadline(days) {
+  if (days == null) return "";
+  if (days > 0) return `D-${days}`;
+  if (days === 0) return "D-Day";
+  return "만료";
+}
+function toPendingProj(item) {
+  return {
+    id: item.projectId,
+    projectId: item.projectId,
+    partnerProfileId: item.counterpartyProfileId,
+    badge: toBadge(item),
+    title: item.projectTitle,
+    desc: item.projectSlogan || "",
+    tags: item.projectTags || [],
+    endDate: item.completedDate || "",
+    duration: item.durationMonths ? `${item.durationMonths}개월` : "협의",
+    deadlineD: fmtDeadline(item.deadlineDays),
+    revieweeName: item.counterpartyUsername || "파트너",
+    revieweeInitial: (item.counterpartyUsername || "P")[0],
+    revieweeAvatarColor: item.counterpartyAvatarColor || "#6366F1",
+    budget: fmtBudget(item),
+  };
+}
+function toReceivedReview(item) {
+  const rating = item.counterpartyRating ?? 0;
+  const satisfactionLabel = rating >= 4.5 ? "너무 만족했어요" : rating >= 3.5 ? "만족했어요" : rating >= 2.5 ? "보통이에요" : "조금 불만족 했어요";
+  const satisfactionBg     = rating >= 3.5 ? "#F0FDF4" : "#FFF7ED";
+  const satisfactionBorder = rating >= 3.5 ? "#BBF7D0" : "#FED7AA";
+  const satisfactionColor  = rating >= 3.5 ? "#16A34A" : "#C2410C";
+  return {
+    id: item.projectId,
+    badge: toBadge(item),
+    satisfactionLabel, satisfactionBg, satisfactionBorder, satisfactionColor,
+    title: item.projectTitle,
+    desc: item.projectSlogan || "",
+    tags: item.projectTags || [],
+    endDate: item.completedDate || "",
+    reviewDate: item.counterpartyReviewDate || "",
+    commentText: item.counterpartyContent ? "더 발전할 수 있게 코멘트를 남겨주셨어요" : "별점만 있고 남겨진 코멘트가 없어요",
+    commentColor: item.counterpartyContent ? "#F97316" : "#94A3B8",
+    reviewerName: item.counterpartyUsername || "파트너",
+    reviewerInitial: (item.counterpartyUsername || "P")[0],
+    reviewerAvatarColor: item.counterpartyAvatarColor || "#6366F1",
+    rating: item.counterpartyRating ?? 0,
+    expertise: null, schedule: null, communication: null, proactivity: null,
+    budget: fmtBudget(item),
+    duration: item.durationMonths ? `${item.durationMonths}개월` : "협의",
+    reviewText: item.counterpartyContent,
+  };
+}
+function toWrittenReview(item) {
+  return {
+    projId: item.projectId,
+    title: item.projectTitle,
+    badge: toBadge(item),
+    tags: item.projectTags || [],
+    rating: item.myRating ?? 0,
+    expertise: item.myExpertise ?? null,
+    schedule: item.mySchedule ?? null,
+    communication: item.myCommunication ?? null,
+    proactivity: item.myProactivity ?? null,
+    endDate: item.completedDate || "",
+    reviewText: item.myContent,
+    budget: fmtBudget(item),
+    duration: item.durationMonths ? `${item.durationMonths}개월` : "협의",
+    reviewerName: item.counterpartyUsername || "파트너",
+    reviewerInitial: (item.counterpartyUsername || "P")[0],
+    reviewerAvatarColor: item.counterpartyAvatarColor || "#6366F1",
+  };
+}
+
+/* ── Full-list popup modal ──────────────────────────────────── */
+function EvalListModal({ title, onClose, children }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.48)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9998 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#F8FAFC", borderRadius: 20, width: "min(760px, 94vw)", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.22)" }}>
+        <div style={{ padding: "20px 28px 16px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", borderRadius: "20px 20px 0 0" }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{title}</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94A3B8", lineHeight: 1, padding: "2px 6px" }}>✕</button>
+        </div>
+        <div style={{ overflowY: "auto", padding: "20px 28px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EvaluationTab() {
   const navigate = useNavigate();
-  const [writeTarget, setWriteTarget] = useState(null);
-  const [viewTarget, setViewTarget] = useState(null);
-  const [writtenReviews, setWrittenReviews] = useState([]);
-  const [viewWrittenTarget, setViewWrittenTarget] = useState(null);
-  const [editTarget, setEditTarget] = useState(null);
+  const [writeTarget,       setWriteTarget]       = useState(null);
+  const [viewTarget,        setViewTarget]         = useState(null);
+  const [viewWrittenTarget, setViewWrittenTarget]  = useState(null);
+  const [editTarget,        setEditTarget]         = useState(null);
+  const [evalData,          setEvalData]           = useState([]);
+  const [loading,           setLoading]            = useState(true);
+  const [listModal,         setListModal]          = useState(null); // { section: 'pending'|'received'|'written' }
 
-  const pendingProjs = MOCK_EVAL_PENDING.filter(p => !writtenReviews.find(r => r.projId === p.id));
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await evaluationApi.forClient();
+      setEvalData(data);
+    } catch (e) {
+      console.error("평가 데이터 로드 실패:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handleSubmit = (reviewData) => {
-    setWrittenReviews(prev => [...prev, reviewData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const pendingItems  = evalData
+    .filter(i => !i.myReviewWritten)
+    .sort((a, b) => (a.deadlineDays ?? Infinity) - (b.deadlineDays ?? Infinity));
+  const receivedItems = evalData.filter(i => i.myReviewWritten && i.counterpartyReviewWritten);
+  const writtenItems  = evalData.filter(i => i.myReviewWritten);
+
+  const handleSubmit = async ({ projectId, partnerProfileId, rating, expertise, schedule, communication, proactivity, content }) => {
+    try {
+      await reviewsApi.create({ partnerProfileId, projectId, rating, expertise, schedule, communication, proactivity, content });
+      setListModal(null);
+      await fetchData();
+    } catch (e) {
+      console.error("후기 등록 실패:", e);
+    }
   };
 
-  const handleUpdate = (reviewData) => {
-    setWrittenReviews(prev => prev.map((r, i) => i === editTarget.idx ? reviewData : r));
-    setEditTarget(null);
-  };
+  const headerStyle = { fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: "0 0 4px", fontFamily: F, background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" };
+  const viewAllBtn  = (label, section) => (
+    <button onClick={() => setListModal({ section })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#3B82F6", fontFamily: F, fontWeight: 600, whiteSpace: "nowrap", padding: 0 }}>{label} &gt;</button>
+  );
+
+  if (loading) return <div style={{ textAlign: "center", padding: 60, color: "#94A3B8", fontFamily: F }}>데이터를 불러오는 중...</div>;
 
   return (
     <div>
@@ -2828,9 +2970,14 @@ function EvaluationTab() {
           onEdit={() => {
             const r = viewWrittenTarget.review;
             setEditTarget({
-              proj: { id: r.projId, badge: r.badge, title: r.title, tags: r.tags, revieweeAvatarColor: r.reviewerAvatarColor, revieweeInitial: r.reviewerInitial, revieweeName: r.reviewerName, endDate: r.endDate, budget: r.budget, duration: r.duration },
+              proj: toPendingProj(viewWrittenTarget.item),
               idx: viewWrittenTarget.idx,
-              initialScores: { expertise: r.expertise, schedule: r.schedule, communication: r.communication, proactivity: r.proactivity },
+              initialScores: {
+                expertise:     r.expertise     ?? 0,
+                schedule:      r.schedule      ?? 0,
+                communication: r.communication ?? 0,
+                proactivity:   r.proactivity   ?? 0,
+              },
               initialReviewText: r.reviewText,
             });
             setViewWrittenTarget(null);
@@ -2838,46 +2985,87 @@ function EvaluationTab() {
         />
       )}
       {editTarget && (
-        <WriteReviewPopup proj={editTarget.proj} onClose={() => setEditTarget(null)} onSubmit={handleUpdate} initialScores={editTarget.initialScores} initialReviewText={editTarget.initialReviewText} isEdit />
+        <WriteReviewPopup proj={editTarget.proj} onClose={() => setEditTarget(null)} onSubmit={handleSubmit} initialScores={editTarget.initialScores} initialReviewText={editTarget.initialReviewText} isEdit />
+      )}
+
+      {/* Full-list modals */}
+      {listModal?.section === "pending" && (
+        <EvalListModal title={`평가 대기 프로젝트 전체 (${pendingItems.length}건)`} onClose={() => setListModal(null)}>
+          {pendingItems.map(item => <EvalPendingCard key={item.projectId} proj={toPendingProj(item)} onWrite={p => { setListModal(null); setWriteTarget(p); }} />)}
+        </EvalListModal>
+      )}
+      {listModal?.section === "received" && (
+        <EvalListModal title={`내가 받은 후기 전체 (${receivedItems.length}건)`} onClose={() => setListModal(null)}>
+          {receivedItems.map(item => <ReceivedReviewCard key={item.projectId} review={toReceivedReview(item)} onView={r => { setListModal(null); setViewTarget(r); }} />)}
+        </EvalListModal>
+      )}
+      {listModal?.section === "written" && (
+        <EvalListModal title={`작성한 후기 전체 (${writtenItems.length}건)`} onClose={() => setListModal(null)}>
+          {writtenItems.map((item, idx) => (
+            <CompletedReviewCard key={item.projectId} review={toWrittenReview(item)}
+              onViewWritten={() => { setListModal(null); setViewWrittenTarget({ review: toWrittenReview(item), item, idx }); }} />
+          ))}
+        </EvalListModal>
       )}
 
       {/* ① 평가 대기 프로젝트 */}
-      {pendingProjs.length > 0 && (
-        <div style={{ marginBottom: 48 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <div>
-              <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: "0 0 4px", fontFamily: F, background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>평가 대기 프로젝트</h2>
-              <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: F }}>프로젝트 완료 후 파트너 및 프로젝트에 대한 평가와 후기를 남겨주세요.</p>
-            </div>
-            <button onClick={() => navigate("/project_search")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#3B82F6", fontFamily: F, fontWeight: 600, whiteSpace: "nowrap", padding: 0 }}>전체 / AI 추천 프로젝트 보기 &gt;</button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {pendingProjs.map(p => <EvalPendingCard key={p.id} proj={p} onWrite={setWriteTarget} />)}
-          </div>
-        </div>
-      )}
-
-      {/* ② 내가 받은 후기 */}
-      <div>
+      <div style={{ marginBottom: 48 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: "0 0 4px", fontFamily: F, background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>내가 받은 후기</h2>
-            <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: F }}>클라이언트가 작성을 완료한 후기들입니다. 다른 클라이언트들에게 전달되어 파트너의 신뢰도를 높여줍니다.</p>
+            <h2 style={headerStyle}>평가 대기 프로젝트</h2>
+            <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: F }}>프로젝트 완료 후 파트너 및 프로젝트에 대한 평가와 후기를 남겨주세요.</p>
           </div>
-          <button onClick={() => navigate("/partner_search")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#3B82F6", fontFamily: F, fontWeight: 600, whiteSpace: "nowrap", padding: 0 }}>전체 작성 내역 보기 &gt;</button>
+          {pendingItems.length > 2 && viewAllBtn(`전체 ${pendingItems.length}건 보기`, "pending")}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {MOCK_RECEIVED_REVIEWS.map(r => <ReceivedReviewCard key={r.id} review={r} onView={setViewTarget} />)}
+        {pendingItems.length === 0 ? (
+          <div style={{ borderRadius: 16, padding: "32px 28px", background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 40%, #bfdbfe 100%)", border: "1.5px solid #93C5FD", display: "flex", alignItems: "center", gap: 18 }}>
+            <div style={{ fontSize: 36, flexShrink: 0 }}>📋</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#1E3A5F", fontFamily: F, marginBottom: 4 }}>평가 대기 중인 프로젝트가 없어요~</div>
+              <div style={{ fontSize: 13, color: "#60A5FA", fontFamily: F, lineHeight: 1.6 }}>완료된 프로젝트가 생기면 이곳에서 후기를 작성할 수 있어요! 😊</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {pendingItems.slice(0, 2).map(item => <EvalPendingCard key={item.projectId} proj={toPendingProj(item)} onWrite={setWriteTarget} />)}
+          </div>
+        )}
+      </div>
+
+      {/* ② 내가 받은 후기 */}
+      <div style={{ marginBottom: 36 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+          <div>
+            <h2 style={headerStyle}>내가 받은 후기</h2>
+            <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: F }}>서로 후기를 작성한 프로젝트의 상대방 후기가 공개됩니다.</p>
+          </div>
+          {receivedItems.length > 2 && viewAllBtn(`전체 ${receivedItems.length}건 보기`, "received")}
         </div>
+        {receivedItems.length === 0 ? (
+          <div style={{ borderRadius: 16, padding: "32px 28px", background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 40%, #fde68a 100%)", border: "1.5px solid #FCD34D", display: "flex", alignItems: "center", gap: 18 }}>
+            <div style={{ fontSize: 36, flexShrink: 0 }}>💌</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#92400E", fontFamily: F, marginBottom: 4 }}>아직 받은 후기가 없어요~</div>
+              <div style={{ fontSize: 13, color: "#F59E0B", fontFamily: F, lineHeight: 1.6 }}>상대방도 후기를 작성하면 이곳에서 확인할 수 있어요! 😊</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {receivedItems.slice(0, 2).map(item => <ReceivedReviewCard key={item.projectId} review={toReceivedReview(item)} onView={setViewTarget} />)}
+          </div>
+        )}
       </div>
 
       {/* ③ 작성한 후기 */}
       <div style={{ marginTop: 36 }}>
-        <div style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: "0 0 4px", fontFamily: F, background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>작성한 후기</h2>
-          <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: F }}>내가 작성한 후기들을 모두 확인하고, 수정할 수 있습니다.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+          <div>
+            <h2 style={headerStyle}>작성한 후기</h2>
+            <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: F }}>내가 작성한 후기들을 모두 확인하고, 수정할 수 있습니다.</p>
+          </div>
+          {writtenItems.length > 2 && viewAllBtn(`전체 ${writtenItems.length}건 보기`, "written")}
         </div>
-        {writtenReviews.length === 0 ? (
+        {writtenItems.length === 0 ? (
           <div style={{ borderRadius: 16, padding: "32px 28px", background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 40%, #d1fae5 100%)", border: "1.5px solid #A7F3D0", display: "flex", alignItems: "center", gap: 18 }}>
             <div style={{ fontSize: 36, flexShrink: 0 }}>🌱</div>
             <div>
@@ -2887,8 +3075,12 @@ function EvaluationTab() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {writtenReviews.map((r, idx) => (
-              <CompletedReviewCard key={"written-" + idx} review={r} onViewWritten={(rev) => setViewWrittenTarget({ review: rev, idx })} />
+            {writtenItems.slice(0, 2).map((item, idx) => (
+              <CompletedReviewCard
+                key={item.projectId}
+                review={toWrittenReview(item)}
+                onViewWritten={() => setViewWrittenTarget({ review: toWrittenReview(item), item, idx })}
+              />
             ))}
           </div>
         )}

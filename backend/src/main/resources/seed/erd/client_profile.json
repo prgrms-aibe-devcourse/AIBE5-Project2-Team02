@@ -646,5 +646,15 @@
     "budget_max": 3233,
     "avg_project_budget": 2944,
     "avatar_color": "#14B8A6"
+  },
+  {
+    "id": 31,
+    "user_id": 61,
+    "client_type": "corporate",
+    "industry": "AI / 빅데이터",
+    "grade": "platinum",
+    "slogan": "데이터 기반의 새로운 가치를 창출합니다",
+    "bio": "(주)데이터플로우는 금융 및 이커머스 도메인의 빅데이터 분석 전문 기업입니다.",
+    "avatar_color": "#3B82F6"
   }
 ]

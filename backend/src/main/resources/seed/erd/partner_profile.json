@@ -1596,5 +1596,29 @@
     "strength_desc": "분산 시스템 설계, 성능 튜닝, 팀 리딩에 강점이 있습니다.",
     "avatar_color": "#EF4444",
     "grade": "diamond"
+  },
+  {
+    "id": 31,
+    "user_id": 62,
+    "title": "풀스택 시니어 개발자 (Java/Spring, React 전문가)",
+    "work_category": "dev",
+    "partner_type": "individual",
+    "dev_level": "lead",
+    "dev_experience": "10+",
+    "avatar_color": "#10B981",
+    "grade": "diamond",
+    "job_roles": [
+      "풀스택 개발자",
+      "백엔드 개발자"
+    ],
+    "work_available_hours": {
+      "weekday": "오전",
+      "weekend": false
+    },
+    "communication_channels": [
+      "Slack",
+      "Google Meet",
+      "Email"
+    ]
   }
 ]

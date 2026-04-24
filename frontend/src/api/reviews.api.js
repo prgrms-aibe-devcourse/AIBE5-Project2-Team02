@@ -10,6 +10,10 @@ export const reviewsApi = {
     api.get(`/reviews/partner/${partnerProfileId}`).then((r) => r.data),
 
   /** 리뷰 작성/수정 (JWT 필수). 같은 reviewer 라면 update. */
-  create: ({ partnerProfileId, projectId, rating, content }) =>
-    api.post('/reviews', { partnerProfileId, projectId, rating, content }).then((r) => r.data),
+  create: ({ partnerProfileId, projectId, rating, expertise, schedule, communication, proactivity, content }) =>
+    api.post('/reviews', { partnerProfileId, projectId, rating, expertise, schedule, communication, proactivity, content }).then((r) => r.data),
+
+  /** 파트너가 클라이언트에게 후기 작성 (JWT 필수). */
+  createClientReview: ({ clientProfileId, projectId, rating, expertise, schedule, communication, proactivity, content }) =>
+    api.post('/reviews/client', { clientProfileId, projectId, rating, expertise, schedule, communication, proactivity, content }).then((r) => r.data),
 };

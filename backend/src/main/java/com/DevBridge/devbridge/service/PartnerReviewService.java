@@ -50,12 +50,18 @@ public class PartnerReviewService {
                 ? projectRepository.findById(req.getProjectId()).orElse(null)
                 : null;
 
-        PartnerReview existing = reviewRepository.findByPartnerProfileAndReviewer(pp, reviewer).orElse(null);
+        PartnerReview existing = (project != null)
+                ? reviewRepository.findByPartnerProfileAndReviewerAndProject(pp, reviewer, project).orElse(null)
+                : null;
         PartnerReview entity = existing != null ? existing : PartnerReview.builder()
                 .partnerProfile(pp)
                 .reviewer(reviewer)
                 .build();
         entity.setRating(req.getRating());
+        entity.setExpertise(req.getExpertise());
+        entity.setSchedule(req.getSchedule());
+        entity.setCommunication(req.getCommunication());
+        entity.setProactivity(req.getProactivity());
         entity.setContent(req.getContent());
         entity.setProject(project);
         return toResponse(reviewRepository.save(entity));

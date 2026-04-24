@@ -1,5 +1,6 @@
 package com.DevBridge.devbridge.repository;
 
+import com.DevBridge.devbridge.entity.Project;
 import com.DevBridge.devbridge.entity.ProjectApplication;
 import com.DevBridge.devbridge.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,4 +33,13 @@ public interface ProjectApplicationRepository extends JpaRepository<ProjectAppli
     List<ProjectApplication> findAllByProjectOwner(@Param("owner") User owner);
 
     Optional<ProjectApplication> findByProjectIdAndPartnerUser(Long projectId, User partnerUser);
+
+    /** EvaluationService (파트너 시점): 특정 파트너가 매칭된 완료 프로젝트 목록 */
+    @Query("SELECT a FROM ProjectApplication a " +
+           "LEFT JOIN FETCH a.project p " +
+           "LEFT JOIN FETCH p.user " +
+           "WHERE a.partnerUser = :user AND p.status = :status")
+    List<ProjectApplication> findByPartnerUserAndProjectStatus(
+            @Param("user") User user,
+            @Param("status") Project.ProjectStatus status);
 }
