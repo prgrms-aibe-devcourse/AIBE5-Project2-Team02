@@ -172,6 +172,10 @@ export function toPortfolioPreviewProject(item) {
     liveUrl: item.liveUrl || "",
     thumbnailUrl: hasRealThumbnail ? convertGoogleDriveUrl(item.thumbnailUrl) : null,
     quickLinkLabel: item.role || item.period || "Project Detail",
-    quickLinkSubs: [],
+    quickLinkSubs: [
+      ...((sections.coreFeatures !== false) && coreFeatures.length > 0 ? [{ label: "Core Features", anchor: "core" }] : []),
+      ...((sections.devHighlights !== false) && (!!item.technicalChallenge || !!item.solution || !!item.vision) ? [{ label: "Development Highlights", anchor: "dev" }] : []),
+      ...((sections.techStack !== false) && techTags.length > 0 ? [{ label: "Technical Implementation Details", anchor: "tech" }] : []),
+    ],
   };
 }

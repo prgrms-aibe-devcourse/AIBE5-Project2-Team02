@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header_partner from "../components/Header_partner";
 import Header_client from "../components/Header_client";
 import mascotIcon from "../assets/hero_check.png";
@@ -46,6 +46,14 @@ const Q_GITHUB = `GitHub 저장소 URL 을 알려주세요 🐙
 
 레포지토리의 README, 언어 통계, 주요 파일을 읽어와서 포트폴리오 상세페이지의 모든 항목을 자동으로 작성해드릴게요 💻`;
 
+const Q_GITHUB_GATE = `안녕하세요! 저는 포트폴리오 작성을 도와드리는 AI 행운이예요 🐣
+
+먼저 **대표 GitHub URL** 하나만 알려주시면, 프로필에 잔디부터 심어드릴게요 🌱
+
+예: https://github.com/yourname
+
+이미 등록되어 있다면 ‘건너뛰기’를 눌러주세요!`;
+
 const DONE_MSG = `🎉 **포트폴리오 초안을 만들었어요!**
 
 상세 페이지에서 직접 확인하시고, 필요한 부분만 수정해서 저장하시면 됩니다.`;
@@ -72,9 +80,19 @@ function formatText(text) {
 
 export default function AIchatPortfolio() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const startAt = location?.state?.startAt; // "github" 이면 처음부터 GitHub 단계로 진입
   const userRole = useStore((s) => s.userRole);
-  const [step, setStep] = useState("ASK_SOURCE");
-  const [messages, setMessages] = useState([{ role: "bot", text: Q_INTRO, time: new Date() }]);
+  const partnerProfileDetail = useStore((s) => s.partnerProfileDetail);
+  const clientProfileDetail = useStore((s) => s.clientProfileDetail);
+  // step 초기값: startAt === "github"면 깃헙 분석 단계로 직진, 아니면 게이트로 시작 (마운트 시 자동 스킵 결정)
+  const [step, setStep] = useState(startAt === "github" ? "ASK_GITHUB" : "ASK_GITHUB_GATE");
+  const [messages, setMessages] = useState(
+    startAt === "github"
+      ? [{ role: "bot", text: Q_GITHUB, time: new Date() }]
+      : [{ role: "bot", text: Q_GITHUB_GATE, time: new Date() }]
+  );
+  const [gateInput, setGateInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [projects, setProjects] = useState([]);
   const [githubInput, setGithubInput] = useState("");
@@ -87,6 +105,56 @@ export default function AIchatPortfolio() {
   const [currentPayload, setCurrentPayload] = useState(null);
   const fileInputRef = useRef(null);
   const bottomRef = useRef(null);
+
+  // 마운트 시: 이미 GitHub URL 등록한 사용자는 게이트 단계 스킵하고 바로 ASK_SOURCE로
+  useEffect(() => {
+    if (startAt === "github") return; // 깃헙 분석 직진 모드는 게이트 무관
+    let alive = true;
+    (async () => {
+      try {
+        const { profileApi } = await import("../api/profile.api");
+        const d = await profileApi.getMyDetail().catch(() => null);
+        if (alive && d?.githubUrl && String(d.githubUrl).trim()) {
+          // 이미 잔디 심은 사용자: 게이트 건너뛰고 본 단계로
+          setStep("ASK_SOURCE");
+          setMessages([{ role: "bot", text: Q_INTRO, time: new Date() }]);
+        }
+      } catch { /* noop */ }
+    })();
+    return () => { alive = false; };
+  }, [startAt]);
+
+  // 게이트 단계: GitHub URL 저장 후 ASK_SOURCE로 전환
+  const submitGithubGate = async () => {
+    const url = (gateInput || "").trim();
+    if (!url) {
+      pushMessage(setMessages, "bot", "GitHub URL을 입력하거나 ‘건너뛰기’를 눌러주세요.");
+      return;
+    }
+    try {
+      setBusy(true);
+      const { profileApi } = await import("../api/profile.api");
+      const cur = await profileApi.getMyDetail().catch(() => ({}));
+      await profileApi.saveMyDetail({ ...(cur || {}), githubUrl: url });
+      pushMessage(setMessages, "user", `🔗 ${url}`);
+      pushMessage(setMessages, "bot", "🌱 잔디를 심었어요! 이제 포트폴리오를 만들어볼까요?");
+      setTimeout(() => {
+        setStep("ASK_SOURCE");
+        pushMessage(setMessages, "bot", Q_INTRO);
+      }, 600);
+    } catch (e) {
+      console.error(e);
+      pushMessage(setMessages, "bot", "❗ GitHub URL 저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const skipGithubGate = () => {
+    pushMessage(setMessages, "user", "건너뛰기");
+    setStep("ASK_SOURCE");
+    setTimeout(() => pushMessage(setMessages, "bot", Q_INTRO), 300);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -460,6 +528,36 @@ export default function AIchatPortfolio() {
   };
 
   const renderStepInput = () => {
+    if (step === "ASK_GITHUB_GATE") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <InputRow
+            value={gateInput}
+            onChange={setGateInput}
+            onSubmit={submitGithubGate}
+            placeholder="https://github.com/사용자"
+            buttonText="🌱 잔디 심기"
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 24px 6px" }}>
+            <button
+              type="button"
+              onClick={skipGithubGate}
+              disabled={busy}
+              style={{
+                padding: "8px 14px", borderRadius: 10,
+                border: "1px solid #E5E7EB", background: "white",
+                color: "#374151", fontSize: 12, fontWeight: 600,
+                cursor: busy ? "not-allowed" : "pointer", fontFamily: F,
+              }}
+              onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.background = "#FEF9C3"; e.currentTarget.style.color = "#713f12"; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "white"; e.currentTarget.style.color = "#374151"; }}
+            >
+              건너뛰기
+            </button>
+          </div>
+        </div>
+      );
+    }
     if (step === "ASK_SOURCE") {
       return (
         <div style={{ padding: "16px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -498,13 +596,57 @@ export default function AIchatPortfolio() {
     }
     if (step === "ASK_GITHUB") {
       return (
-        <InputRow
-          value={githubInput}
-          onChange={setGithubInput}
-          onSubmit={submitGithub}
-          placeholder="https://github.com/사용자/저장소"
-          buttonText="분석 시작"
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <InputRow
+            value={githubInput}
+            onChange={setGithubInput}
+            onSubmit={submitGithub}
+            placeholder="https://github.com/사용자/저장소"
+            buttonText="분석 시작"
+          />
+          {/* GitHub 등록만 하고 나가기 — 깃헙 URL만 저장하고 종료 */}
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 24px 6px" }}>
+            <button
+              type="button"
+              onClick={async () => {
+                const url = (githubInput || "").trim();
+                if (!url) {
+                  pushMessage(setMessages, "bot", "GitHub URL을 입력한 뒤 ‘등록만 하고 나가기’를 눌러주세요.");
+                  return;
+                }
+                try {
+                  setBusy(true);
+                  // 프로필의 GitHub URL만 갱신: 기존 detail 조회 후 githubUrl만 덮어써서 저장
+                  const { profileApi } = await import("../api/profile.api");
+                  const cur = await profileApi.getMyDetail().catch(() => ({}));
+                  await profileApi.saveMyDetail({ ...(cur || {}), githubUrl: url });
+                  pushMessage(setMessages, "user", `🔗 GitHub 등록만 완료: ${url}`);
+                  pushMessage(setMessages, "bot", "✅ GitHub URL이 프로필에 저장되었어요. 포트폴리오로 돌아갈게요!");
+                  setTimeout(() => {
+                    const back = (userRole || "partner") === "partner" ? "/partner_portfolio" : "/client_portfolio";
+                    navigate(back);
+                  }, 800);
+                } catch (e) {
+                  console.error(e);
+                  pushMessage(setMessages, "bot", "❗ GitHub URL 저장에 실패했어요. 다시 시도해주세요.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              disabled={busy}
+              style={{
+                padding: "8px 14px", borderRadius: 10,
+                border: "1px solid #E5E7EB", background: "white",
+                color: "#374151", fontSize: 12, fontWeight: 600,
+                cursor: busy ? "not-allowed" : "pointer", fontFamily: F,
+              }}
+              onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.background = "#FEF9C3"; e.currentTarget.style.color = "#713f12"; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "white"; e.currentTarget.style.color = "#374151"; }}
+            >
+              등록만 하고 나가기
+            </button>
+          </div>
+        </div>
       );
     }
     if (step === "ASK_ATTACHMENTS") {
@@ -755,7 +897,7 @@ export default function AIchatPortfolio() {
           <div style={{
             height: 700, overflowY: "auto",
             padding: "20px 24px",
-            display: "flex", flexDirection: "column", gap: 14,
+            display: "flex", flexDirection: "column", gap: 16,
           }}>
             {messages.map((msg, i) => (
               <div key={i} style={{
@@ -764,33 +906,40 @@ export default function AIchatPortfolio() {
                 gap: 10, alignItems: "flex-end",
               }}>
                 {msg.role === "bot" && (
-                  <img src={heroMeeting} alt="bot" style={{ width: 30, height: 30, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
+                  <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
                 )}
                 <div style={{
-                  maxWidth: "75%", padding: "11px 15px",
+                  maxWidth: "70%", padding: "12px 16px",
                   borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "4px 18px 18px 18px",
                   background: msg.role === "user" ? PRIMARY_GRAD : "#F8FAFC",
                   border: msg.role === "bot" ? "1px solid #E5E7EB" : "none",
                   color: msg.role === "user" ? "white" : "#111827",
-                  fontSize: 14, fontFamily: F, lineHeight: 1.6,
+                  fontSize: 16, fontFamily: F, lineHeight: 1.7,
                   boxShadow: msg.role === "user" ? "0 2px 10px rgba(99,102,241,0.25)" : "none",
                   whiteSpace: "pre-wrap", wordBreak: "break-word",
                 }}>
                   {formatText(msg.text)}
                   <p style={{
-                    fontSize: 11, margin: "4px 0 0",
+                    fontSize: 12, margin: "6px 0 0",
                     color: msg.role === "user" ? "rgba(255,255,255,0.7)" : "#9CA3AF",
                     textAlign: "right",
                   }}>
                     {msg.time.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
+                {msg.role === "user" && (
+                  <img
+                    src={(isPartner ? partnerProfileDetail?.heroImage : clientProfileDetail?.heroImage) || heroStudent}
+                    alt="\ub098"
+                    style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }}
+                  />
+                )}
               </div>
             ))}
 
             {busy && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <img src={heroMeeting} alt="bot" style={{ width: 30, height: 30, objectFit: "cover", borderRadius: "50%" }} />
+                <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%" }} />
                 <div style={{
                   padding: "10px 16px", borderRadius: "4px 18px 18px 18px",
                   background: "#F8FAFC", border: "1px solid #E5E7EB",
@@ -880,14 +1029,18 @@ function InputRow({ value, onChange, onSubmit, placeholder, buttonText }) {
 
 function PortfolioStepIndicator({ step, onJump }) {
   const STEPS = [
+    { key: "ASK_GITHUB_GATE", label: "잔디 심기" },
     { key: "ASK_SOURCE", label: "방식 선택" },
     { key: "ASK_PROJECT", label: "프로젝트 선택" },
+    { key: "ASK_ATTACHMENTS", label: "첨부 자료" },
     { key: "DONE", label: "완료" },
   ];
   const currentIdx = useMemo(() => {
-    if (step === "ASK_SOURCE") return 0;
-    if (step === "ASK_PROJECT" || step === "ASK_GITHUB") return 1;
-    if (step === "DONE") return 2;
+    if (step === "ASK_GITHUB_GATE") return 0;
+    if (step === "ASK_SOURCE") return 1;
+    if (step === "ASK_PROJECT" || step === "ASK_GITHUB") return 2;
+    if (step === "ASK_ATTACHMENTS") return 3;
+    if (step === "DONE") return 4;
     return 0;
   }, [step]);
 
@@ -903,8 +1056,10 @@ function PortfolioStepIndicator({ step, onJump }) {
               onClick={() => onJump?.(s.key)}
               style={{
                 padding: "8px 16px", borderRadius: 999,
-                background: active ? PRIMARY_GRAD : done ? "#DBEAFE" : "#F1F5F9",
-                color: active ? "white" : done ? "#1E40AF" : "#94A3B8",
+                background: active 
+                  ? "linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 50%, #6EE7B7 100%)" 
+                  : done ? "#ECFDF5" : "#F1F5F9",
+                color: active ? "#065F46" : done ? "#059669" : "#94A3B8",
                 fontSize: 14, fontWeight: 700, fontFamily: F,
                 border: "none", cursor: "pointer",
                 transition: "transform 0.15s",
@@ -915,7 +1070,7 @@ function PortfolioStepIndicator({ step, onJump }) {
               {i + 1}. {s.label}
             </button>
             {i < STEPS.length - 1 && (
-              <div style={{ width: 16, height: 1.5, background: done ? "#93C5FD" : "#CBD5E1" }} />
+              <div style={{ width: 16, height: 1.5, background: done ? "#6EE7B7" : "#CBD5E1" }} />
             )}
           </div>
         );

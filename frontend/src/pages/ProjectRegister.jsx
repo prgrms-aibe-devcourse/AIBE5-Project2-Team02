@@ -21,6 +21,183 @@ import { projectsApi } from "../api";
 
 const PROJECT_REGISTER_AI_PROMPT = `너는 DevBridge 플랫폼의 AI 행운이야. 클라이언트가 만들고 싶은 프로젝트를 듣고 서비스 개요, 주요 기능, 대상 사용자, 예상 규모, 추천 기술 스택을 정리해줘. 친근한 한국어로, 핵심은 **굵게** 표시하고, 이모지도 적절히. 5~10줄 이내.`;
 
+/* ─────────────────────────────────────────────────────────
+   7가지 세부 협의사항 자동 prefill
+   - 앞 단계에서 입력한 데이터(예산/일정/제목/카테고리 등)를 기반으로,
+     ContractModals 가 기대하는 구조(객체) 형태로 contractTerms 를 미리 채운다.
+   - AI가 이미 객체 모양으로 채운 키는 그대로 사용.
+   - AI가 문자열만 줬으면 해당 문자열을 memo/intro 등 적절한 자리에 흘려넣음.
+───────────────────────────────────────────────────────── */
+function fmtMoney(n) {
+  if (n == null || n === "") return "10,000,000";
+  const num = Number(String(n).replace(/[^0-9]/g, ""));
+  if (!num) return "10,000,000";
+  return num.toLocaleString("ko-KR");
+}
+function addMonthsKo(startDateStr, months) {
+  // startDateStr: "YYYY-MM-DD" or "YYYY.MM.DD"
+  if (!startDateStr) return "";
+  const norm = String(startDateStr).replace(/\./g, "-");
+  const d = new Date(norm);
+  if (isNaN(d.getTime())) return "";
+  d.setMonth(d.getMonth() + Number(months || 0));
+  const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, "0"); const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}.${m}.${dd}`;
+}
+function toKoDate(s) {
+  if (!s) return "";
+  return String(s).replace(/-/g, ".");
+}
+function buildPrefilledContractTerms(data, existing = {}) {
+  const months = Number(data.durationMonths || data.contractMonths || 2) || 2;
+  const startD = data.startDate || "";
+  const endD = startD ? addMonthsKo(startD, months) : "";
+  const launchD = startD ? addMonthsKo(startD, months) : "";
+  const total = Number(String(data.budgetAmount ?? data.monthlyRate ?? "").replace(/[^0-9]/g, "")) || 10000000;
+  const totalStr = fmtMoney(total);
+  const init = total / 10 * 3;
+  const mid  = total / 10 * 4;
+  const last = total - init - mid;
+
+  // 마일스톤: durationMonths 를 4 등분
+  const phaseCount = 4;
+  const weeksPer = Math.max(1, Math.round((months * 4) / phaseCount));
+  const phaseTitles = ["기획/설계", "1차 개발", "2차 개발 / 통합", "최종 검수 / 배포"];
+  const phaseDescs  = [
+    "요구사항 상세 정의 및 UI/UX 와이어프레임 설계 확정",
+    "핵심 기능 개발 및 주요 화면/API 구현",
+    "전체 모듈 통합 및 보조 기능, 어드민 페이지 개발",
+    "QA 테스트, 버그 수정 및 실 서버 배포 준비",
+  ];
+  const phases = phaseTitles.map((t, i) => ({
+    num: `PHASE 0${i + 1}`,
+    title: t,
+    desc: phaseDescs[i],
+    date: startD ? addMonthsKo(startD, Math.round((months / phaseCount) * (i + 1))) : "",
+    weeks: `${weeksPer}주 소요`,
+  }));
+
+  // AI가 객체로 잘 줬으면 그대로 사용
+  const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
+
+  // 작업 범위 (scope)
+  const scopeArr = Array.isArray(data.scope) ? data.scope : [];
+  const scopeMap = { planning: "기획", design: "디자인", publishing: "퍼블리싱", dev: "개발" };
+  const scopeIncluded = scopeArr.length
+    ? scopeArr.map(s => `${scopeMap[s] || s} 전반 작업`)
+    : ["요구사항 분석 및 설계", "핵심 기능 개발", "산출물 인도"];
+  const scopeExisting = existing.scope;
+  const scope = isObj(scopeExisting) ? scopeExisting : {
+    included: scopeIncluded,
+    excluded: ["서버 인프라 운영", "출시 후 운영/장애 대응", "콘텐츠 제작 및 마케팅"],
+    memo: typeof scopeExisting === "string"
+      ? scopeExisting
+      : `프로젝트명: ${data.title || "(제목 미입력)"}\n주요 기술: ${(data.techTags || []).join(", ") || "미정"}`,
+  };
+
+  // 산출물 (deliverables)
+  const delExisting = existing.deliverables;
+  const deliverables = isObj(delExisting) ? delExisting : {
+    deliverables: [
+      { icon: "📄", label: "요구사항 정의서 / 기획안 PDF" },
+      { icon: "🎨", label: "UI/UX 디자인 시안 (Figma 링크)" },
+      { icon: "💻", label: "소스코드 GitHub 레포지토리" },
+      { icon: "📖", label: "사용 가이드 / API 문서" },
+    ],
+    formats: ["PDF", "Figma URL", "GitHub URL", "Markdown 문서"],
+    delivery: ["DevBridge 채팅 첨부", "GitHub 링크 공유", "필요 시 ZIP 별도 전달"],
+    notes: typeof delExisting === "string" ? [delExisting] : ["전달물에는 한국어 설명 문서 포함", "운영 배포본은 별도 협의"],
+  };
+
+  // 일정 (schedule)
+  const schExisting = existing.schedule;
+  const schedule = isObj(schExisting) ? schExisting : {
+    phases,
+    startDate: toKoDate(startD) || "협의",
+    endDate: endD || "협의",
+    launchDate: launchD || "협의",
+    reviewRules: [
+      { label: "마일스톤별 검토 기간", value: "영업일 기준 3일 이내" },
+      { label: "무상 수정 횟수", value: "총 3회 (디자인/기능 포함)" },
+      { label: "피드백 지연 대응", value: "지연 일수만큼 자동 연장" },
+    ],
+  };
+
+  // 대금 (payment)
+  const payExisting = existing.payment;
+  const payment = isObj(payExisting) ? payExisting : {
+    total: totalStr,
+    vatNote: "VAT 별도",
+    stages: [
+      { label: "계약금 (30%)", tag: "Initial", amount: `₩${fmtMoney(init)}`, desc: "계약 후 3일 이내" },
+      { label: "중도금 (40%)", tag: null,      amount: `₩${fmtMoney(mid)}`,  desc: "1차 산출물 검수 완료 후" },
+      { label: "잔금 (30%)",   tag: null,      amount: `₩${fmtMoney(last)}`, desc: "최종 납품 및 검수 완료 후" },
+    ],
+    bankName: "추후 협의 (계약 시 확정)",
+    bankNote: "계좌 이체 · 일반 과세",
+    extraPolicies: typeof payExisting === "string"
+      ? [payExisting]
+      : ["범위 외 요청: Man-month 실비 정산", "긴급 수정: 일괄 20% 할증 적용"],
+  };
+
+  // 수정 (revision)
+  const revExisting = existing.revision;
+  const revision = isObj(revExisting) ? revExisting : {
+    freeItems: [
+      "단순 텍스트 문구 및 기배치 이미지의 교체",
+      "색상, 폰트 스타일 등 단순 UI/UX 스타일 가이드 조정",
+      "기존 기획안의 범주를 벗어나지 않는 마이너 업데이트",
+    ],
+    paidItems: [
+      "최초 기획에 없던 신규 페이지 제작 및 대규모 기능 추가",
+      "프로젝트 전체 디자인 컨셉 및 톤앤매너의 전면 재구축",
+      "백엔드 로직의 근본적 변경 또는 DB 스키마 구조의 재설계",
+    ],
+    memo: typeof revExisting === "string"
+      ? revExisting
+      : "무상 수정 횟수는 총 3회로 제한됩니다. 횟수 초과 시 또는 유상 수정 기준에 해당하는 요청의 경우, 작업량 산정 후 별도의 추가 비용이 발생할 수 있습니다.",
+  };
+
+  // 완료 기준 (completion)
+  const cmpExisting = existing.completion;
+  const completion = isObj(cmpExisting) ? cmpExisting : {
+    steps: [
+      { n: 1, title: "결과물 제출", desc: "작업자가 마일스톤 완료 후 결과물을 시스템에 업로드" },
+      { n: 2, title: "상호 검수 및 수정", desc: "의뢰자의 피드백에 따른 오류 수정 및 보완 작업 진행" },
+      { n: 3, title: "최종 승인 확정", desc: "모든 조건 충족 시 의뢰자가 최종 완료 버튼 클릭" },
+    ],
+    criteria: typeof cmpExisting === "string"
+      ? [cmpExisting]
+      : ["명세서 기반 기능 전수 동작", "주요 브라우저(Chrome, Safari) 호환성 확보", "코드 리뷰 인수인계 문서 포함"],
+    categories: [
+      { n: 1, title: "기획/디자인 산출물 전달", desc: "요구사항 정의서(PRD), UI/UX/Figma 디자인 파일 최종안 전달 완료." },
+      { n: 2, title: "소스코드 리포지토리 전달", desc: "Github 프라이빗 리포지토리의 모든 개발 코드 및 배포 스크립트 최종 푸시 완료." },
+      { n: 3, title: "API 명세 / 문서 전달", desc: "합의된 모든 핵심 및 부가 API의 명세서(Swagger 등) 전달 완료." },
+      { n: 4, title: "운영 환경 테스트 완료", desc: "합의된 테스트 시나리오에 따른 QA 결과 보고서 제출 및 버그 수정 완료." },
+    ],
+  };
+
+  // 추가 특약 (specialTerms)
+  const spExisting = existing.specialTerms;
+  const specialTerms = isObj(spExisting) ? spExisting : {
+    intro: typeof spExisting === "string"
+      ? spExisting
+      : "프로젝트의 원활한 진행과 상호 권리 보호를 위해 아래의 추가 특약 사항을 협의합니다.",
+    terms: [
+      { id: "nda", icon: "🛡", title: "보안 및 기밀 유지 (NDA)", enabled: true,
+        items: ["프로젝트 관련 모든 내부 자료 및 산출물에 대한 제3자 유출 금지", "위반 시 발생한 실제 손해에 대한 배상 책임 부담"] },
+      { id: "ip", icon: "©", title: "지식재산권 귀속", enabled: true,
+        items: ["최종 대금 지급 완료 시 산출물에 대한 모든 저작권은 의뢰인에게 귀속", "단, 작업자의 비상업적 목적 포트폴리오 활용 권한은 인정"] },
+      { id: "dispute", icon: "⚖", title: "분쟁 해결 및 관할", enabled: false,
+        items: ["발생하는 분쟁은 상호 협의를 통해 해결함을 원칙으로 하되, 원만히 해결되지 않을 경우 서울중앙지방법원을 전속 관할로 합니다."] },
+      { id: "etc", icon: "…", title: "기타 특약", enabled: false,
+        items: ["Communication: 계약 기간 내 상호 비방 금지 및 신의성실 원칙 준수", "Handover: 프로젝트 종료 후 인수인계 기간 최소 1주일 보장"] },
+    ],
+  };
+
+  return { scope, deliverables, schedule, payment, revision, completion, specialTerms };
+}
+
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const BLUE_GRAD = "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)";
 
@@ -1962,6 +2139,24 @@ function Step7({ data, setData, onOpenAi }) {
 
   const itType = data.itExp || "yes";
 
+  // ─── 7가지 세부 협의사항 자동 prefill ─────────────────────────
+  // 사용자가 앞 단계에서 입력한 데이터 (예산, 일정, 제목, 카테고리 등) 와
+  // AI 가 채워준 contractTerms (있다면) 를 합쳐서 모달이 기대하는 구조로 만들어 둔다.
+  // - AI 가 객체 모양으로 잘 채웠으면 그대로 사용
+  // - AI 가 문자열 한 줄만 줬으면 그건 memo/intro/notes 등에 흘려넣고 나머지는 프로젝트 데이터로 구성
+  // - 아예 비어있으면 프로젝트 데이터 + 합리적 기본값으로 구성
+  React.useEffect(() => {
+    const ct = data.contractTerms || {};
+    // 이미 7개 모두 객체 모양이면 그대로 둠 (사용자가 직접 수정한 상태 보존)
+    const allFilled = ["scope","deliverables","schedule","payment","revision","completion","specialTerms"].every(
+      k => ct[k] && typeof ct[k] === "object" && !Array.isArray(ct[k])
+    );
+    if (allFilled) return;
+    const prefilled = buildPrefilledContractTerms(data, ct);
+    setData(d => ({ ...d, contractTerms: prefilled }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Step7 진입 시 1회만
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
 
@@ -3146,7 +3341,7 @@ export default function ProjectRegister() {
             }}>
               {/* X 버튼 */}
               <button
-                onClick={() => { setShowCompleteModal(false); navigate("/client_home"); }}
+                onClick={() => { setShowCompleteModal(false); navigate(isPartner ? "/partner_dashboard?tab=starting_projects" : "/client_dashboard?tab=starting_projects"); }}
                 style={{
                   position: "absolute", top: 16, right: 20,
                   background: "none", border: "none", cursor: "pointer",
@@ -3195,7 +3390,7 @@ export default function ProjectRegister() {
                   파트너 찾기 →
                 </button>
                 <button
-                  onClick={() => { setShowCompleteModal(false); navigate("/client_home"); }}
+                  onClick={() => { setShowCompleteModal(false); navigate(isPartner ? "/partner_dashboard?tab=starting_projects" : "/client_dashboard?tab=starting_projects"); }}
                   style={{
                     padding: "12px 28px", borderRadius: 999,
                     border: "1.5px solid #E5E7EB", background: "white",

@@ -28,6 +28,8 @@ public class ProgressDashboardService {
     private final UserRepository userRepository;
     private final ProjectApplicationRepository applicationRepository;
 
+    public ProjectAttachmentRepository getAttachmentRepository() { return attachmentRepository; }
+
     // ==================== Milestones ====================
 
     @Transactional(readOnly = true)
@@ -259,8 +261,15 @@ public class ProgressDashboardService {
     @Transactional(readOnly = true)
     public List<AttachmentResponse> listAttachments(Long projectId) {
         ensureMember(projectId);
-        return attachmentRepository.findByProjectIdOrderByCreatedAtDesc(projectId)
-                .stream().map(AttachmentResponse::from).toList();
+        List<ProjectAttachment> list = attachmentRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+        // 업로더 이름 일괄 조회
+        Map<Long, String> nameMap = new HashMap<>();
+        list.stream().map(ProjectAttachment::getUploaderUserId).filter(Objects::nonNull).distinct()
+                .forEach(uid -> userRepository.findById(uid)
+                        .ifPresent(u -> nameMap.put(uid, u.getUsername())));
+        return list.stream()
+                .map(a -> AttachmentResponse.from(a, nameMap.get(a.getUploaderUserId())))
+                .toList();
     }
 
     @Transactional
@@ -283,6 +292,30 @@ public class ProgressDashboardService {
                 .uploaderUserId(uid)
                 .build();
         return AttachmentResponse.from(attachmentRepository.save(a));
+    }
+
+    /**
+     * 실제 파일 업로드 후 attachment row 생성.
+     * 컨트롤러에서 디스크에 파일 저장 후 호출. 권한 체크만 위임받는다.
+     */
+    @Transactional
+    public AttachmentResponse createUploadedAttachment(Long projectId, String displayName,
+                                                        String publicUrl, String mimeType,
+                                                        Long sizeBytes, String notes) {
+        Long uid = ensureMember(projectId);
+        ProjectAttachment a = ProjectAttachment.builder()
+                .projectId(projectId)
+                .kind(ProjectAttachment.Kind.FILE)
+                .name(displayName)
+                .url(publicUrl)
+                .mimeType(mimeType)
+                .sizeBytes(sizeBytes)
+                .notes(notes)
+                .uploaderUserId(uid)
+                .build();
+        ProjectAttachment saved = attachmentRepository.save(a);
+        String uploaderName = userRepository.findById(uid).map(u -> u.getUsername()).orElse(null);
+        return AttachmentResponse.from(saved, uploaderName);
     }
 
     @Transactional

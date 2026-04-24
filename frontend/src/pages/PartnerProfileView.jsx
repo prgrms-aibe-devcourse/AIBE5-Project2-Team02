@@ -65,7 +65,7 @@ function SectionTitle({ icon, title }) {
       <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: icon === "</>" ? 12 : 20, fontWeight: 800, color: "#3B82F6", flexShrink: 0, fontFamily: F }}>
         {icon}
       </div>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1E293B", margin: 0, fontFamily: F }}>{title}</h2>
+      <h2 style={{ fontSize: 23, fontWeight: 900, background: PRIMARY_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: 0, fontFamily: F }}>{title}</h2>
     </div>
   );
 }
@@ -188,7 +188,7 @@ function HomeSection({ partner, reviews }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <div>
-          <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 6px", fontFamily: F }}>
+          <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 6px", fontFamily: F }}>
             클라이언트 평가
           </h2>
           <p style={{ fontSize: 14, color: "#64748B", margin: 0, fontFamily: F, lineHeight: 1.7 }}>
@@ -596,10 +596,13 @@ function PortfolioSection({ partner }) {
   
   const handleCardClick = (item) => {
     if (item.sourceKey && !item.sourceKey.startsWith('mock-')) {
+      const rawItems = Array.isArray(partner?.portfolioItems) ? partner.portfolioItems : [];
       navigate("/portfolio_project_preview", {
         state: {
           sourceKey: item.sourceKey,
           sourceKeys: sourceItems.filter(s => !s.sourceKey.startsWith('mock-')).map(s => s.sourceKey),
+          portfolioItems: rawItems,
+          username: partner?.username,
         },
       });
     }
@@ -611,7 +614,7 @@ function PortfolioSection({ partner }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "#3B82F6", flexShrink: 0, fontFamily: F }}>📋</div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1E293B", margin: 0, fontFamily: F }}>포트폴리오</h2>
+          <h2 style={{ fontSize: 23, fontWeight: 900, background: PRIMARY_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: 0, fontFamily: F }}>포트폴리오</h2>
           <span style={{ fontSize: 13, color: "#94A3B8", fontFamily: F, fontWeight: 500 }}>{sourceItems.length}건</span>
         </div>
         <button

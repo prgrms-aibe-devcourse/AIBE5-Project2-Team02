@@ -95,6 +95,41 @@ public class ChatController {
     }
 
     /**
+     * POST /api/chat/rooms/ensure-meeting?userId={id}
+     * Body: { targetUserId, mode }   where mode = "contract" | "project"
+     *
+     * Server-side ensure of a per-pair meeting Stream channel that is kept
+     * separate from the free-chat DM and from contract negotiation rooms.
+     * Used by ContractMeetingTab and ProjectMeetingTab so the same two users
+     * have three distinct chat rooms (자유 / 계약 세부 / 진행 미팅).
+     */
+    @PostMapping("/rooms/ensure-meeting")
+    public ResponseEntity<?> ensureMeetingRoom(@RequestParam Long userId,
+                                               @RequestBody Map<String, Object> body) {
+        Object t = body.get("targetUserId");
+        Object m = body.get("mode");
+        if (t == null || m == null) {
+            return ResponseEntity.badRequest().body("targetUserId and mode are required");
+        }
+        Long targetUserId;
+        try { targetUserId = Long.valueOf(t.toString()); }
+        catch (NumberFormatException e) { return ResponseEntity.badRequest().body("targetUserId must be numeric"); }
+        User requester = findUserOrThrow(userId);
+        User target = findUserOrThrow(targetUserId);
+        try {
+            String channelId = streamChatService.ensureMeetingChannel(requester, target, m.toString());
+            return ResponseEntity.ok(Map.of(
+                    "streamChannelId", channelId,
+                    "streamChannelType", "messaging"
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
+
+    /**
      * GET /api/chat/rooms?userId={id}
      */
     @GetMapping("/rooms")

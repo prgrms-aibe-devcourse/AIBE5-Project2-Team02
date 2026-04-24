@@ -1419,7 +1419,7 @@ function Mypage() {
             </div>
 
             {/* 히어로 이미지 */}
-            <div style={{ display:"flex", justifyContent:"center", padding:"0 28px 20px" }}>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"0 28px 20px" }}>
               <div style={{ position:"relative", cursor: isEditing?"pointer":"default" }}
                 onClick={() => isEditing && heroInputRef.current?.click()}>
                 <div style={{ width:160, height:160, borderRadius:28,
@@ -1438,6 +1438,11 @@ function Mypage() {
                   </div>
                 )}
               </div>
+              {!isEditing && (
+                <div style={{ marginTop:8, fontSize:12, color:"#94A3B8", textAlign:"center" }}>
+                  이미지 변경은 '내 정보 수정' 버튼 클릭 후 가능합니다
+                </div>
+              )}
               <input ref={heroInputRef} type="file" accept="image/*"
                 onChange={handleHeroChange} style={{ display:"none" }} />
             </div>

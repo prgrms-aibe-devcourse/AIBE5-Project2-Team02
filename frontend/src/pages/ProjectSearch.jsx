@@ -2,6 +2,7 @@
 import { useSearchParams } from "react-router-dom";
 import { Search, Loader2, Heart } from "lucide-react";
 import AppHeader from "../components/AppHeader";
+import { CONTRACT_MODAL_BY_KEY } from "../components/ContractModals";
 import { projectsApi, applicationsApi } from "../api";
 import useStore from "../store/useStore";
 import { matchApi } from "../api/match.api";
@@ -98,9 +99,11 @@ export default function ProjectSearch() {
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery]               = useState(initialQuery); // 상단 AI 검색용
   const [nameQuery, setNameQuery]       = useState("");           // 사이드바: 프로젝트명 키워드 검색
+  // 예산 슬라이더 최대값. 이 값이면 "무제한" 으로 간주하여 필터를 적용하지 않음.
+  const BUDGET_MAX = 30000;
   const didAutoSearch = useRef(false);
   const [fields, setFields]             = useState(initialField ? [initialField] : []);
-  const [budget, setBudget]             = useState(5000);
+  const [budget, setBudget]             = useState(30000);
   const [priceType, setPriceType]       = useState([]);
   const [grades, setGrades]             = useState([]);
   const [clientVerifs, setClientVerifs] = useState([]);
@@ -115,7 +118,7 @@ export default function ProjectSearch() {
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [applied, setApplied]           = useState(
-    initialField ? { fields: [initialField], budget: 5000, priceType: [], grades: [], clientVerifs: [], level: "전체", techs: [], remoteOnly: false, query: "" } : null
+    initialField ? { fields: [initialField], budget: 30000, priceType: [], grades: [], clientVerifs: [], level: "전체", techs: [], remoteOnly: false, query: "" } : null
   );
 
   /* AI 매칭 점수 */
@@ -136,11 +139,13 @@ export default function ProjectSearch() {
     const candidateIds = [...candidates].sort((a, b) => b.id - a.id).slice(0, 50).map(p => p.id);
 
     setAiLoading(true); setAiError(null);
-    matchApi.projects(trimmed, candidateIds)
-      .then((arr) => {
+    const minDelay = new Promise(resolve => setTimeout(resolve, 5000));
+    Promise.all([matchApi.projects(trimmed, candidateIds), minDelay])
+      .then(([arr]) => {
         const map = {};
         arr.forEach(s => { map[s.id] = { matchScore: s.matchScore, reasons: s.reasons || [] }; });
         setAiScores(map);
+        if (Object.keys(map).length > 0) setSort("AI 추천순");
       })
       .catch((err) => {
         console.error("[ProjectSearch] AI 매칭 실패:", err);
@@ -164,7 +169,7 @@ export default function ProjectSearch() {
   }, [allProjects.length]);
 
   const resetFilters = () => {
-    setFields([]); setBudget(5000); setPriceType([]);
+    setFields([]); setBudget(30000); setPriceType([]);
     setGrades([]); setClientVerifs([]); setLevel("전체"); setTechs([]); setTechInput("");
     setRemoteOnly(false); setNameQuery(""); setApplied(null); setPage(1);
     setAiScores({}); setAiError(null);
@@ -197,7 +202,8 @@ export default function ProjectSearch() {
     if (lv !== "전체" && p.level !== lv) return false;
     if (ts.length && !ts.every(t => p.tags.some(tag => tag.toLowerCase().includes(t.toLowerCase())))) return false;
     const priceMin = p.budgetMin ?? NaN;
-    if (!isNaN(priceMin) && priceMin > bg) return false;
+    // bg 가 슬라이더 최대값(=무제한)이면 예산 필터 미적용
+    if (bg < BUDGET_MAX && !isNaN(priceMin) && priceMin > bg) return false;
     if (ro && !p.remote) return false;
     if (pt.length) {
       const isPaid = p.priceType === "유료";
@@ -217,7 +223,7 @@ export default function ProjectSearch() {
   };
 
   const sorted = [...filtered].sort((a, b) => {
-    if (sort === "AI 매칭순") return effectiveMatch(b) - effectiveMatch(a);
+    if (sort === "AI 추천순") return effectiveMatch(b) - effectiveMatch(a);
     if (sort === "최신순") return b.id - a.id;
     return effectiveMatch(b) - effectiveMatch(a);
   });
@@ -310,8 +316,8 @@ export default function ProjectSearch() {
           </FilterSection>
 
           <FilterSection label="예산 (비용)">
-            <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, color: TEAL, fontWeight: 700, fontFamily: F, marginBottom: 8 }}>~ {budget.toLocaleString()}만원</div>
-            <input type="range" min={100} max={10000} step={100} value={budget}
+            <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, color: TEAL, fontWeight: 700, fontFamily: F, marginBottom: 8 }}>{budget >= BUDGET_MAX ? "무제한" : `~ ${budget.toLocaleString()}만원`}</div>
+            <input type="range" min={100} max={BUDGET_MAX} step={100} value={budget}
               onChange={e => setBudget(Number(e.target.value))}
               style={{ width: "100%", accentColor: PRIMARY, cursor: "pointer" }} />
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -386,10 +392,12 @@ export default function ProjectSearch() {
               <span style={{ fontSize: 21.3, fontWeight: 900, fontFamily: F, background: PRIMARY_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>모든 프로젝트 탐색 </span>
               <span style={{ fontSize: 14, color: "#94A3B8", fontFamily: F }}>총 {sorted.length.toLocaleString()}개의 프로젝트가 있습니다</span>
               {aiLoading && (
-                <span style={{ marginLeft: 12, fontSize: 13, fontWeight: 700, color: PRIMARY, fontFamily: F }}>✨ 행운이가 딱맞는 프로젝트를 찾는 중...</span>
+                <span style={{ marginLeft: 12, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#3B82F6", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 999, padding: "4px 12px", fontFamily: F }}>
+                  <Loader2 size={12} className="animate-spin" /> 행운이 AI가 찾는 중...
+                </span>
               )}
               {!aiLoading && Object.keys(aiScores).length > 0 && (
-                <span style={{ marginLeft: 12, fontSize: 12, fontWeight: 700, color: "#10B981", background: "#DCFCE7", borderRadius: 999, padding: "3px 10px", fontFamily: F }}>AI 맞춤 정렬 적용됨</span>
+                <span style={{ marginLeft: 12, fontSize: 12, fontWeight: 700, color: "#0F766E", background: "#CCFBF1", border: "1px solid #5EEAD4", borderRadius: 999, padding: "4px 12px", fontFamily: F }}>✨ 행운이 AI 매칭 완료!</span>
               )}
               {aiError && (
                 <span style={{ marginLeft: 12, fontSize: 12, color: "#EF4444", fontFamily: F }}>{aiError}</span>
@@ -423,7 +431,7 @@ export default function ProjectSearch() {
                 </button>
                 {sortOpen && (
                   <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, background: "white", border: "1.5px solid #E2E8F0", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50, minWidth: 140 }}>
-                    {["AI 매칭순", "최신순", "필터 추천순"].map(s => (
+                    {["AI 추천순", "최신순", "필터 추천순"].map(s => (
                       <div key={s} onClick={() => { setSort(s); setSortOpen(false); }}
                         style={{ padding: "11px 16px", fontSize: 14, fontFamily: F, color: sort === s ? PRIMARY : "#334155", fontWeight: sort === s ? 700 : 500, cursor: "pointer", background: sort === s ? "#EFF6FF" : "transparent" }}
                         onMouseEnter={e => e.currentTarget.style.background = "#F8FAFC"}
@@ -440,7 +448,7 @@ export default function ProjectSearch() {
           {selectedProject ? (
             <ProjectDetail project={selectedProject} onBack={() => setSelectedProject(null)} />
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {loading ? (
                 <div style={{ textAlign: "center", padding: "60px 0", color: "#94A3B8", fontSize: 16, fontFamily: F }}>
                   프로젝트 정보를 불러오는 중...
@@ -527,27 +535,37 @@ function ProjectCard({ data, onSelect }) {
           <span style={{ fontSize: 11, fontWeight: 700, color: "#374151", background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 6, padding: "3px 10px", fontFamily: F, whiteSpace: "nowrap", flexShrink: 0 }}>
             {data.workPref}
           </span>
-          <span style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {data.slogan}
+          <span style={{ fontSize: 18, fontWeight: 800, color: "#1E293B", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {data.title || data.slogan}
           </span>
         </div>
 
         <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, margin: "0 0 12px", fontFamily: F }}>
-          {data.sloganSub}
+          {data.slogan && data.slogan !== (data.title || "") ? data.slogan : data.sloganSub}
         </p>
 
-        {/* AI 매칭 이유 */}
-        {Array.isArray(data.aiReasons) && data.aiReasons.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-            {data.aiReasons.map((r, i) => (
-              <span key={i} style={{
-                fontSize: 11, fontWeight: 700, color: "#0F766E",
-                background: "#CCFBF1", border: "1px solid #5EEAD4",
-                borderRadius: 999, padding: "3px 10px", fontFamily: F,
-              }}>✨ {r}</span>
-            ))}
-          </div>
-        )}
+        {/* AI 매칭 이유 (AI 검색 실제 수행될 때만) */}
+        {Array.isArray(data.aiReasons) && (() => {
+          const reasons = data.aiReasons.length > 0
+            ? data.aiReasons
+            : [
+                `AI 매칭 점수 ${data.match}%`,
+                ...(Array.isArray(data.tags) && data.tags.length > 0 ? [`핵심 기술: ${data.tags.slice(0, 2).join(", ")}`] : []),
+                ...(data.serviceField ? [`${data.serviceField} 분야 적합`] : []),
+              ].slice(0, 3);
+          if (reasons.length === 0) return null;
+          return (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+              {reasons.map((r, i) => (
+                <span key={i} style={{
+                  fontSize: 11, fontWeight: 700, color: "#0F766E",
+                  background: "#CCFBF1", border: "1px solid #5EEAD4",
+                  borderRadius: 999, padding: "3px 10px", fontFamily: F,
+                }}>✨ {r}</span>
+              ))}
+            </div>
+          );
+        })()}
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           {data.tags.map(t => (
@@ -556,9 +574,9 @@ function ProjectCard({ data, onSelect }) {
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#6366F1", background: "#EEF2FF", borderRadius: 999, padding: "3px 10px", fontFamily: F }}>{data.serviceField}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#6366F1", background: "#EEF2FF", borderRadius: 999, padding: "4px 10px", fontFamily: F }}>{data.serviceField}</span>
           {data.verifications.map((v, i) => (
-            <span key={i} style={{ fontSize: 11, fontWeight: 600, color: "#059669", background: "#ECFDF5", borderRadius: 999, padding: "3px 10px", fontFamily: F }}>{v}</span>
+            <span key={i} style={{ fontSize: 12, fontWeight: 600, color: "#059669", background: "#ECFDF5", borderRadius: 999, padding: "4px 10px", fontFamily: F }}>{v}</span>
           ))}
         </div>
 
@@ -570,7 +588,7 @@ function ProjectCard({ data, onSelect }) {
         </div>
       </div>
 
-      <div style={{ flexShrink: 0, textAlign: "right", minWidth: 140, position: "relative" }}>
+      <div style={{ flexShrink: 0, textAlign: "right", minWidth: 180, position: "relative", alignSelf: "stretch", display: "flex", flexDirection: "column" }}>
         {/* 찜 하트 */}
         <button
           onClick={handleLikeClick}
@@ -582,24 +600,27 @@ function ProjectCard({ data, onSelect }) {
             border: `1.5px solid ${isLiked ? "#FCA5A5" : "#E2E8F0"}`,
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", transition: "all 0.15s", padding: 0,
+            zIndex: 1,
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; }}
           onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
         >
           <Heart size={16} color={isLiked ? "#EF4444" : "#94A3B8"} fill={isLiked ? "#EF4444" : "none"} strokeWidth={2.2} />
         </button>
-        <div style={{ fontSize: 14, fontWeight: 800, color: matchColor(data.match), marginBottom: 6, fontFamily: F, marginTop: 34 }}>
-          {data.match}% AI Match
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 900, color: "#1E293B", fontFamily: F, marginBottom: 4 }}>
+        {Array.isArray(data.aiReasons) && (
+          <div style={{ fontSize: 14, fontWeight: 800, color: matchColor(data.match), marginBottom: 6, fontFamily: F, paddingRight: 42 }}>
+            {data.match}% AI Match
+          </div>
+        )}
+        <div style={{ fontSize: 22, fontWeight: 900, color: "#3B82F6", fontFamily: F, marginBottom: 4, paddingRight: 42 }}>
           {data.price}
         </div>
-        <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, paddingRight: 42 }}>
           기간: {data.period}
         </div>
         <button
           onClick={() => onSelect(data)}
-          style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: "#EFF6FF", color: "#3B82F6", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F, transition: "background 0.15s" }}
+          style={{ width: "100%", padding: "13px 0", borderRadius: 10, border: "none", background: "#EFF6FF", color: "#3B82F6", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: F, transition: "background 0.15s", marginTop: "auto" }}
           onMouseEnter={e => e.currentTarget.style.background = "#DBEAFE"}
           onMouseLeave={e => e.currentTarget.style.background = "#EFF6FF"}
         >
@@ -897,14 +918,15 @@ function ProjectDetail({ project: p, onBack }) {
    7가지 세부 협의사항 탭 뷰 (read-only)
    - 등록 시 입력했던 contractTerms JSON 을 7개 탭으로 노출
 ───────────────────────────────────────────────────────── */
+// DB(project_modules.module_key) 표준 키와 일치시킴.
 const CONTRACT_TABS = [
-  { key: "scope",        label: "1. 작업 범위" },
-  { key: "deliverables", label: "2. 전달 결과물" },
-  { key: "schedule",     label: "3. 일정" },
-  { key: "payment",      label: "4. 결제" },
-  { key: "revision",     label: "5. 수정" },
-  { key: "completion",   label: "6. 완료" },
-  { key: "specialTerms", label: "7. 특약" },
+  { key: "scope",       label: "1. 작업 범위" },
+  { key: "deliverable", label: "2. 전달 결과물" },
+  { key: "schedule",    label: "3. 일정" },
+  { key: "payment",     label: "4. 결제" },
+  { key: "revision",    label: "5. 수정" },
+  { key: "completion",  label: "6. 완료" },
+  { key: "terms",       label: "7. 특약" },
 ];
 
 function ContractTermsTabs({ terms }) {
@@ -948,14 +970,47 @@ function ContractTermsTabs({ terms }) {
         })}
       </div>
 
-      {/* 탭 본문 */}
+      {/* 탭 본문 — 세부협의 모달을 inline + readOnly 로 렌더링 (세부협의미팅과 동일 디자인, 수정/수락 버튼만 제거) */}
       <div style={{
         background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12,
         padding: "18px 22px", minHeight: 80, fontFamily: F,
       }}>
-        <ContractTermContent termKey={active} data={terms[active]} />
+        <ContractTermInlineModal termKey={active} data={terms[active]} />
       </div>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   ContractTermInlineModal
+   - 세부협의 모달(ContractModals)을 inline + readOnly 로 임베드.
+   - DB 의 contractTerms[key] 데이터를 그대로 모달의 value 로 전달.
+   - data 가 줄글({text}) 만 있는 구버전이면 줄글로 fallback.
+───────────────────────────────────────────────────────── */
+function ContractTermInlineModal({ termKey, data }) {
+  const Comp = CONTRACT_MODAL_BY_KEY[termKey];
+  if (!data) {
+    return <div style={{ fontSize: 13, color: "#94A3B8" }}>이 항목은 아직 입력되지 않았어요.</div>;
+  }
+  // 모듈에서 사용 가능한 구조화된 키가 하나라도 있으면 모달로 렌더, 아니면 줄글 fallback
+  const structuredKeys = ["included","excluded","memo","deliverables","formats","delivery","notes","phases","milestones","total","payments","freeItems","paidItems","items","steps","terms"];
+  const hasStructured = data && typeof data === "object" && structuredKeys.some(k => data[k] != null);
+  if (!Comp || !hasStructured) {
+    if (data && typeof data === "object" && data.text) {
+      return <Prose text={String(data.text)} />;
+    }
+    return <div style={{ fontSize: 13, color: "#94A3B8" }}>표시할 데이터가 없어요.</div>;
+  }
+  return (
+    <Comp
+      inline
+      readOnly
+      showHeaderStatusBadge={false}
+      value={data}
+      onClose={() => {}}
+      onSubmit={null}
+      onChange={null}
+    />
   );
 }
 
@@ -967,14 +1022,16 @@ function ContractTermContent({ termKey, data }) {
     case "scope":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {data.text && <Prose text={data.text} />}
           {Array.isArray(data.included) && <ListBlock title="포함 작업" items={data.included} dotColor="#3B82F6" />}
           {Array.isArray(data.excluded) && <ListBlock title="제외 작업" items={data.excluded} dotColor="#9CA3AF" muted />}
           {data.memo && <Memo text={data.memo} />}
         </div>
       );
-    case "deliverables":
+    case "deliverable":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {data.text && <Prose text={data.text} />}
           {Array.isArray(data.deliverables) && (
             <div>
               <BlockTitle>전달물 목록</BlockTitle>
@@ -996,6 +1053,7 @@ function ContractTermContent({ termKey, data }) {
     case "schedule":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {data.text && <Prose text={data.text} />}
           {Array.isArray(data.phases) && (
             <div>
               <BlockTitle>마일스톤</BlockTitle>
@@ -1032,6 +1090,7 @@ function ContractTermContent({ termKey, data }) {
     case "payment":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {data.text && <Prose text={data.text} />}
           {data.total && (
             <div style={{ padding: "12px 16px", background: "white", border: "1px solid #E2E8F0", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>총 결제 금액 {data.vatNote ? `(${data.vatNote})` : ""}</div>
@@ -1065,6 +1124,7 @@ function ContractTermContent({ termKey, data }) {
     case "revision":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {data.text && <Prose text={data.text} />}
           {Array.isArray(data.freeItems) && <ListBlock title="무상 수정 범위" items={data.freeItems} dotColor="#10B981" />}
           {Array.isArray(data.paidItems) && <ListBlock title="유상 수정 기준" items={data.paidItems} dotColor="#EF4444" />}
           {data.memo && <Memo text={data.memo} />}
@@ -1073,6 +1133,7 @@ function ContractTermContent({ termKey, data }) {
     case "completion":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {data.text && <Prose text={data.text} />}
           {Array.isArray(data.steps) && (
             <div>
               <BlockTitle>완료 절차</BlockTitle>
@@ -1101,9 +1162,10 @@ function ContractTermContent({ termKey, data }) {
           )}
         </div>
       );
-    case "specialTerms":
+    case "terms":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {data.text && <Prose text={data.text} />}
           {data.intro && (
             <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.7 }}>{data.intro}</div>
           )}
@@ -1157,5 +1219,10 @@ function Memo({ text }) {
         <div key={i} style={{ fontSize: 13, color: "#92400E", lineHeight: 1.6, fontFamily: F }}>• {line}</div>
       ))}
     </div>
+  );
+}
+function Prose({ text }) {
+  return (
+    <div style={{ fontSize: 13.5, color: "#1E293B", lineHeight: 1.75, fontFamily: F, whiteSpace: "pre-wrap" }}>{text}</div>
   );
 }

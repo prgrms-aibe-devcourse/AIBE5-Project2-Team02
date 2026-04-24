@@ -19,6 +19,11 @@ public class UserProfileDetailResponse {
     private String profileImageUrl;  // 프로필 이미지 URL
     private String serviceField;  // PARTNER: users.service_field
     
+    // PartnerProfile/ClientProfile 등급 정보
+    private String grade;  // PARTNER/CLIENT: grade (SILVER, GOLD, PLATINUM, DIAMOND)
+    private Integer completedProjects;  // 완료된 프로젝트 수
+    private Double rating;  // 평균 평점
+    
     // UserProfileDetail 정보
     private String bio;
     private String strengthDesc;

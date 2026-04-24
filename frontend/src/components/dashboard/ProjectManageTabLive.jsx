@@ -3,7 +3,7 @@
  * Client / Partner 대시보드 공용. role 으로 분기.
  * 기존 ProjectDetailDash 디자인 완전 유지 + 실 DB 연결.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   projectsApi,
   applicationsApi,
@@ -108,9 +108,11 @@ export default function ProjectManageTabLive({
       let projects = [];
       if (role === "CLIENT") {
         const list = await projectsApi.myList();
-        // 진행 프로젝트 미팅 시작(🚀) 버튼을 누른 프로젝트만 표시.
-        // RECRUITING/CLOSED 등 아직 시작되지 않은 프로젝트는 제외.
-        const ALLOW = new Set(["IN_PROGRESS","COMPLETED","진행중","완료"]);
+        // 클라이언트는 본인이 등록한 프로젝트 중 "계약 협의 시작 이후" 단계의 프로젝트를 모두 노출.
+        // - IN_PROGRESS/COMPLETED : 진행 중 / 완료 카드
+        // - CLOSED                 : 계약 세부 협의 미팅 단계 → "시작 전" 뱃지로 구분 표시.
+        // - RECRUITING 은 "시작 전 프로젝트" 탭에서 별도 관리.
+        const ALLOW = new Set(["IN_PROGRESS","COMPLETED","CLOSED","진행중","완료"]);
         projects = (list || []).filter((p) => ALLOW.has(p.status)).map((p) => ({
           id: p.id, title: p.title, status: p.status,
           description: p.desc, budgetAmount: p.budgetAmount, deadline: p.deadline,
@@ -231,8 +233,13 @@ export default function ProjectManageTabLive({
 /* ── 목록 카드 ── */
 function ProjectSummaryCard({ project, role, onOpen, onMessage }) {
   const isCompleted = project.status === "COMPLETED" || project.status === "완료";
-  const color = isCompleted ? "#16A34A" : project.progress >= 70 ? "#3B82F6" : "#F59E0B";
-  const dday = calcDDay(project.deadline);
+  const isPreContract = project.status === "CLOSED" || project.status === "RECRUITING";
+  const color = isCompleted ? "#16A34A" : isPreContract ? "#94A3B8" : project.progress >= 70 ? "#3B82F6" : "#F59E0B";
+  // 완료된 프로젝트가 아니면 deadline 이 있는 한 D-Day 뱃지 표시 (CLOSED 포함).
+  const dday = !isCompleted ? calcDDay(project.deadline) : null;
+  const badgeLabel = isCompleted ? "완료" : isPreContract ? "시작 전" : "진행 중";
+  const badgeBg    = isCompleted ? "#F0FDF4" : isPreContract ? "#F1F5F9" : "#EFF6FF";
+  const badgeColor = isCompleted ? "#16A34A" : isPreContract ? "#64748B" : "#3B82F6";
   return (
     <div style={{ border: isCompleted ? "1.5px solid #86EFAC" : "1.5px solid #F1F5F9",
       borderRadius:16, padding:"22px 24px",
@@ -242,8 +249,8 @@ function ProjectSummaryCard({ project, role, onOpen, onMessage }) {
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, flexWrap:"wrap" }}>
           <span style={{ padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:700,
-            background:isCompleted?"#F0FDF4":"#EFF6FF", color:isCompleted?"#16A34A":"#3B82F6", fontFamily:F }}>
-            {isCompleted?"완료":"진행 중"}
+            background:badgeBg, color:badgeColor, fontFamily:F }}>
+            {badgeLabel}
           </span>
           {dday && (
             <span style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:700,
@@ -262,7 +269,7 @@ function ProjectSummaryCard({ project, role, onOpen, onMessage }) {
         <div style={{ width:"100%", height:8, borderRadius:99, background:"#F1F5F9", marginBottom:14, overflow:"hidden" }}>
           <div style={{ width:`${project.progress}%`, height:"100%", borderRadius:99, background:color, transition:"width 0.4s" }} />
         </div>
-        {(project.milestones||[]).slice(0,3).map((m) => (
+        {(project.milestones||[]).map((m) => (
           <div key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", marginBottom:6,
             borderRadius:8, background:"#F8FAFC", border:"1px solid #F1F5F9" }}>
             <span style={{ width:22, height:22, borderRadius:"50%", display:"inline-flex", alignItems:"center",
@@ -527,10 +534,14 @@ function ProjectDetailLive({ projectId, role, projects, onBack, onGoSchedule, on
                             수정 철회
                           </button>
                         )}
-                        {role==="CLIENT" && esc?.status==="PENDING" && ms.status!=="SUBMITTED" && (
-                          <button onClick={() => setPayOpen(esc)} style={{ padding:"6px 14px", borderRadius:8,
-                            border:"none", background:PRIMARY_GRAD, color:"white",
-                            fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:F }}>결제하기</button>
+                        {role==="CLIENT" && (!esc || esc?.status==="PENDING") && ms.status!=="SUBMITTED" && ms.status!=="APPROVED" && ms.status!=="COMPLETED" && (
+                          <button onClick={() => setPayOpen(esc || { milestoneId: ms.id, amount: ms.amount, status: "PENDING" })}
+                            onMouseEnter={e => { e.currentTarget.style.background="linear-gradient(135deg, #BBF7D0 0%, #86EFAC 100%)"; e.currentTarget.style.boxShadow="0 4px 12px rgba(134,239,172,0.5)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background="linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%)"; e.currentTarget.style.boxShadow="0 1px 4px rgba(187,247,208,0.4)"; }}
+                            style={{ padding:"6px 16px", borderRadius:8, border:"none",
+                              background:"linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%)",
+                              color:"#166534", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:F,
+                              boxShadow:"0 1px 4px rgba(187,247,208,0.4)", transition:"all 0.18s" }}>결제하기</button>
                         )}
                         {role==="PARTNER" && (ms.status==="IN_PROGRESS"||ms.status==="REVISION_REQUESTED") && (
                           <button onClick={() => setSubmitOpen(ms)} style={{ padding:"6px 14px", borderRadius:8,
@@ -640,9 +651,9 @@ function ProjectDetailLive({ projectId, role, projects, onBack, onGoSchedule, on
             </div>
             {fileTab==="files" ? (
               <div>
-                <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 0.8fr 0.8fr 40px",
+                <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1.2fr 0.7fr 0.6fr 52px",
                   padding:"8px 12px", borderBottom:"1px solid #F1F5F9" }}>
-                  {["파일명","업로더","날짜","크기",""].map(h => (
+                  {["파일명","설명","날짜","크기","다운로드"].map(h => (
                     <span key={h} style={{ fontSize:12.5, fontWeight:700, color:"#94A3B8",
                       fontFamily:F, letterSpacing:"0.05em" }}>{h}</span>
                   ))}
@@ -650,40 +661,66 @@ function ProjectDetailLive({ projectId, role, projects, onBack, onGoSchedule, on
                 {files.length===0 && <div style={{ padding:"16px 12px", color:"#94A3B8", fontSize:13, fontFamily:F }}>첨부 파일이 없습니다.</div>}
                 {files.map((f,i) => {
                   const isExp = expandedAttachId === f.id;
+                  const fmtSize = f.sizeBytes
+                    ? f.sizeBytes >= 1024*1024
+                      ? (f.sizeBytes/1024/1024).toFixed(1)+" MB"
+                      : (f.sizeBytes/1024).toFixed(0)+" KB"
+                    : "-";
+                  const preview = f.notes ? (f.notes.length > 20 ? f.notes.slice(0,20)+"…" : f.notes) : "-";
                   return (
                     <div key={f.id} style={{ borderBottom:i<files.length-1?"1px solid #F8FAFC":"none" }}>
-                      <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 0.8fr 0.8fr 40px",
+                      <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1.2fr 0.7fr 0.6fr 52px",
                         padding:"13px 12px", alignItems:"center" }}>
                         <button onClick={() => setExpandedAttachId(isExp ? null : f.id)}
                           style={{ display:"flex", alignItems:"center", gap:8, fontSize:14.5,
                             color:"#1E293B", fontFamily:F, background:"none", border:"none",
                             cursor:"pointer", padding:0, textAlign:"left" }}>
                           <span style={{ fontSize:17 }}>📄</span>
-                          <span style={{ textDecoration:f.notes?"underline dotted":"none", textUnderlineOffset:3 }}>{f.name}</span>
+                          <span>{f.name}</span>
                         </button>
-                        <span style={{ fontSize:14.5, color:"#475569", fontFamily:F }}>-</span>
-                        <span style={{ fontSize:14, color:"#475569", fontFamily:F }}>{fmtDate(f.createdAt)}</span>
-                        <span style={{ fontSize:14, color:"#475569", fontFamily:F }}>
-                          {f.sizeBytes?(f.sizeBytes/1024/1024).toFixed(1)+" MB":"-"}
+                        <span
+                          title={f.notes || ""}
+                          style={{ fontSize:13, color: f.notes ? "#475569" : "#CBD5E1",
+                            fontFamily:F, cursor: f.notes ? "help" : "default",
+                            overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {preview}
                         </span>
-                        <a href={f.url} target="_blank" rel="noreferrer" download
+                        <span style={{ fontSize:13, color:"#475569", fontFamily:F }}>{fmtDate(f.createdAt)}</span>
+                        <span style={{ fontSize:13, color:"#475569", fontFamily:F }}>{fmtSize}</span>
+                        <button
                           title="다운로드"
-                          style={{ display:"flex", alignItems:"center", justifyContent:"center",
-                            width:32, height:32, borderRadius:8, background:"#F1F5F9",
-                            color:"#475569", textDecoration:"none", fontSize:16,
-                            transition:"background 0.12s" }}
+                          onClick={() => {
+                            const token = localStorage.getItem("accessToken");
+                            fetch(`/api/projects/${f.projectId}/attachments/${f.id}/download`, {
+                              headers: token ? { Authorization: `Bearer ${token}` } : {}
+                            })
+                              .then(async res => {
+                                if (!res.ok) {
+                                  const err = await res.json().catch(() => ({}));
+                                  showToast(err.message || "다운로드에 실패했습니다.");
+                                  return;
+                                }
+                                const blob = await res.blob();
+                                const blobUrl = URL.createObjectURL(blob);
+                                const anchor = document.createElement("a");
+                                anchor.href = blobUrl;
+                                anchor.download = f.name;
+                                document.body.appendChild(anchor);
+                                anchor.click();
+                                document.body.removeChild(anchor);
+                                URL.revokeObjectURL(blobUrl);
+                              })
+                              .catch(() => showToast("다운로드에 실패했습니다."));
+                          }}
+                          style={{ display:"flex", alignItems:"center",
+                            justifyContent:"center", width:48, height:40, borderRadius:8,
+                            background:"#F1F5F9", color:"#475569", border:"none", cursor:"pointer",
+                            fontSize:16, transition:"background 0.12s" }}
                           onMouseEnter={e => { e.currentTarget.style.background="#DBEAFE"; e.currentTarget.style.color="#1D4ED8"; }}
                           onMouseLeave={e => { e.currentTarget.style.background="#F1F5F9"; e.currentTarget.style.color="#475569"; }}>
                           ⬇
-                        </a>
+                        </button>
                       </div>
-                      {isExp && f.notes && (
-                        <div style={{ margin:"0 12px 10px", padding:"10px 14px", borderRadius:8,
-                          background:"#F8FAFC", border:"1px solid #E2E8F0", fontSize:13,
-                          color:"#475569", fontFamily:F, lineHeight:1.6 }}>
-                          {f.notes}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -905,11 +942,14 @@ function ProjectDetailLive({ projectId, role, projects, onBack, onGoSchedule, on
                 <div><strong>마일스톤:</strong> {ms.title}</div>
                 {esc?.paymentTxId && <div><strong>거래 ID:</strong> {esc.paymentTxId}</div>}
               </div>
-              {role==="CLIENT" && esc?.status==="PENDING" && (
-                <button onClick={() => { setEscrowDetailIdx(null); setPayOpen(esc); }}
+              {role==="CLIENT" && (!esc || esc?.status==="PENDING") && (
+                <button onClick={() => { setEscrowDetailIdx(null); setPayOpen(esc || { milestoneId: ms.id, amount: ms.amount, status: "PENDING" }); }}
+                  onMouseEnter={e => { e.currentTarget.style.background="linear-gradient(135deg, #BBF7D0 0%, #86EFAC 100%)"; e.currentTarget.style.boxShadow="0 6px 18px rgba(134,239,172,0.55)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%)"; e.currentTarget.style.boxShadow="0 2px 8px rgba(187,247,208,0.5)"; }}
                   style={{ width:"100%", marginTop:16, padding:"12px 0", borderRadius:10, border:"none",
-                    background:PRIMARY_GRAD, color:"white", fontWeight:700, fontSize:14,
-                    cursor:"pointer", fontFamily:F }}>결제하기</button>
+                    background:"linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%)",
+                    color:"#166534", fontWeight:700, fontSize:14, cursor:"pointer", fontFamily:F,
+                    boxShadow:"0 2px 8px rgba(187,247,208,0.5)", transition:"all 0.18s" }}>결제하기</button>
               )}
             </div>
           </div>
@@ -1221,7 +1261,9 @@ function ModalShell({ title, children, onClose }) {
       <div style={{ background:"white", borderRadius:20, padding:28, width:"100%", maxWidth:480,
         maxHeight:"90vh", overflow:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}
         onClick={e => e.stopPropagation()}>
-        <h3 style={{ margin:"0 0 18px", fontSize:18, fontWeight:800, color:"#1E293B" }}>{title}</h3>
+        <h3 style={{ margin:"0 0 18px", fontSize:22, fontWeight:900, fontFamily:F,
+          background:PRIMARY_GRAD, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
+          backgroundClip:"text" }}>{title}</h3>
         {children}
       </div>
     </div>
@@ -1250,27 +1292,61 @@ const modalLabel = { display:"block", fontSize:12, fontWeight:700, color:"#47556
 
 function AddFileModal({ projectId, onClose, onSuccess, onToast }) {
   const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
   const [notes, setNotes] = useState("");
+  const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const onPickFile = (f) => {
+    if (!f) return;
+    setFile(f);
+    if (!name.trim()) setName(f.name);
+  };
   const handleSubmit = async () => {
-    if (!name.trim()) return onToast?.("파일 이름을 입력해 주세요.");
-    if (!url.trim()) return onToast?.("파일 URL을 입력해 주세요.");
+    if (!file) return onToast?.("업로드할 파일을 선택해 주세요.");
     setSubmitting(true);
     try {
-      await projectAttachmentsApi.create(projectId, { kind: "FILE", name: name.trim(), url: url.trim(), notes: notes.trim()||undefined });
+      const finalName = name.trim() || file.name;
+      await projectAttachmentsApi.upload(projectId, file, {
+        name: finalName,
+        notes: notes.trim() || undefined,
+      });
       onSuccess?.();
-    } catch (e) { onToast?.(e?.response?.data?.message || "파일 추가에 실패했습니다."); }
-    finally { setSubmitting(false); }
+    } catch (e) {
+      onToast?.(e?.response?.data?.message || "파일 업로드에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
     <ModalShell onClose={onClose} title="파일 업로드">
-      <label style={modalLabel}>파일 이름 *</label>
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="예) 기획서_v1.pdf"
-        style={{ width:"100%", padding:"12px 14px", marginBottom:14, borderRadius:10,
-          border:"1px solid #E5E7EB", fontSize:13, fontFamily:F, boxSizing:"border-box" }} />
-      <label style={modalLabel}>파일 URL *</label>
-      <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://drive.google.com/…"
+      <label style={modalLabel}>파일 첨부 <span style={{color:"#EF4444"}}>*</span></label>
+      <div
+        onClick={() => fileInputRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); e.currentTarget.style.background="#EFF6FF"; e.currentTarget.style.borderColor="#3B82F6"; }}
+        onDragLeave={e => { e.currentTarget.style.background="#F8FAFC"; e.currentTarget.style.borderColor="#CBD5E1"; }}
+        onDrop={e => { e.preventDefault(); e.currentTarget.style.background="#F8FAFC"; e.currentTarget.style.borderColor="#CBD5E1"; onPickFile(e.dataTransfer.files?.[0]); }}
+        style={{ marginBottom:14, padding:"22px 16px", borderRadius:12, border:"2px dashed #CBD5E1",
+          background:"#F8FAFC", textAlign:"center", cursor:"pointer", transition:"all 0.15s" }}>
+        <input ref={fileInputRef} type="file" style={{display:"none"}}
+          onChange={e => onPickFile(e.target.files?.[0])} />
+        {file ? (
+          <div>
+            <div style={{ fontSize:24, marginBottom:6 }}>📄</div>
+            <div style={{ fontSize:13, fontWeight:700, color:"#1E293B", marginBottom:2 }}>{file.name}</div>
+            <div style={{ fontSize:11, color:"#64748B" }}>{(file.size/1024).toFixed(1)} KB · 클릭해서 변경</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize:28, marginBottom:6 }}>📎</div>
+            <div style={{ fontSize:13, fontWeight:600, color:"#475569", marginBottom:2 }}>클릭 또는 드래그하여 파일 첨부</div>
+            <div style={{ fontSize:11, color:"#94A3B8" }}>모든 형식 지원</div>
+          </div>
+        )}
+      </div>
+
+      <label style={modalLabel}>파일 이름 (선택)</label>
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="비우면 원본 파일명을 사용합니다"
         style={{ width:"100%", padding:"12px 14px", marginBottom:14, borderRadius:10,
           border:"1px solid #E5E7EB", fontSize:13, fontFamily:F, boxSizing:"border-box" }} />
       <label style={modalLabel}>설명 (선택)</label>
@@ -1283,7 +1359,7 @@ function AddFileModal({ projectId, onClose, onSuccess, onToast }) {
         <button onClick={onClose} disabled={submitting} style={ghostBtn}>취소</button>
         <button onClick={handleSubmit} disabled={submitting}
           style={{ ...primaryBtnStyle, flex:1.4, padding:"14px 0", fontSize:14, opacity:submitting?0.6:1 }}>
-          {submitting ? "추가 중…" : "파일 추가"}
+          {submitting ? "업로드 중…" : "파일 업로드"}
         </button>
       </div>
     </ModalShell>

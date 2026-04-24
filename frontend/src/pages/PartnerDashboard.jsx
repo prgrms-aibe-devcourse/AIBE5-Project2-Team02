@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { StreamChat } from "stream-chat";
 import Header_partner from "../components/Header_partner";
@@ -597,33 +597,57 @@ function TagRow({ items, tone = "blue" }) {
 function ProjectDetailPopup({ proj, onClose }) {
   const [showAgreementModal, setShowAgreementModal] = useState(false);
 
-  // ERD 데이터와 병합해 정규화된 detail 생성 (매칭 실패 시 legacy fallback)
-  const detail = buildProjectDetail(proj);
+  // 실제 BE (/api/projects/{id}) 에서 프로젝트 상세 fetch.
+  // mock JSON (erdLookup) 폴백은 사용하지 않음.
+  const [beDetail, setBeDetail] = useState(null);
+  useEffect(() => {
+    if (!proj?.id) return;
+    let active = true;
+    projectsApi.detail(proj.id)
+      .then(d => { if (active) setBeDetail(d); })
+      .catch(err => console.warn("[ProjectDetailPopup] BE detail fetch 실패:", err?.message));
+    return () => { active = false; };
+  }, [proj?.id]);
+
   const aiMatch = proj.match ? proj.match + "%" : (proj.id === 1 ? "93%" : "87%");
 
-  // 레거시 호환: detail 이 없으면 legacy proj 를 약식 표시
-  const view = detail || {
-    id: proj.id,
-    type: proj.workPref === "외주" ? "outsource" : "fulltime",
-    title: proj.title,
-    desc: proj.desc,
-    tags: proj.tags || [],
-    budget_label: proj.budget,
-    period_label: proj.period,
-    deadline: (proj.deadline || "").replace("마감 ", "").replace("마감 임박 ", ""),
-    avatarColor: proj.avatarColor,
-    requiredSkills: proj.tags || [],
-    preferredSkills: [],
+  // BE 데이터 우선. 도착 전에는 카드(proj)에 담긴 최소 정보로 표시.
+  const src = beDetail || proj || {};
+  const view = {
+    id: src.id ?? proj?.id,
+    type: (src.projectType || (src.workPref === "외주" ? "outsource" : "fulltime")),
+    title: src.title || proj?.title,
+    desc: src.desc || proj?.desc,
+    tags: src.tags || proj?.tags || [],
+    budget_label: src.price || proj?.budget,
+    period_label: src.period || proj?.period,
+    deadline: (src.deadline || (proj?.deadline || "").replace("마감 ", "").replace("마감 임박 ", "")) || null,
+    avatarColor: src.avatarColor || proj?.avatarColor,
+    requiredSkills: src.requiredSkills || proj?.requiredSkills || [],
+    preferredSkills: src.preferredSkills || [],
+    serviceField: src.serviceField,
+    workPref: src.workPref || proj?.workPref,
+    // 아래 필드들은 현재 BE Summary 응답에 없음 → 빈값으로 두면 InfoGrid 가 자동으로 섹션 숨김.
     work_scopes: [], categories: [], fields: [],
     meeting_tools: [], req_tags: [], recruit_roles: [], current_stacks: [],
-    client: {
-      username: proj.clientId || "client_00000",
-      avatarColor: proj.avatarColor,
-      rating: 4.9,
+    work_style: null, work_location: null, work_days: null, work_hours: null,
+    contract_months: null, monthly_rate: null,
+    dev_stage: null, team_size: null, current_status: null,
+    outsource_project_type: null, ready_status: null, start_date: null,
+    gov_support: src.govSupport || false,
+    visibility: null, slogan_sub: src.sloganSub || null, detail_content: null,
+    client: src.clientId ? {
+      username: src.clientId,
+      avatarColor: src.avatarColor,
+      rating: null,
       completedProjects: null,
-      verifications: proj.verifications || ["본인인증", "사업자등록증"],
-    },
+      verifications: src.verifications || [],
+    } : null,
   };
+  // 상주/외주 전용 섹션 표시 여부 (BE 가 해당 정보를 제공하기 전엔 빈 헤더만 보이지 않도록).
+  const hasOnsiteWork = !!(view.work_style || view.work_location || view.work_days || view.work_hours || view.contract_months || view.monthly_rate);
+  const hasOnsiteDev  = !!(view.dev_stage || view.team_size || (view.current_stacks && view.current_stacks.length));
+  const hasOutsourcePrep = !!(view.outsource_project_type || view.ready_status || view.start_date || view.deadline);
 
   const isOutsource = view.type === "outsource";
   const typeBadge = isOutsource ? "외주" : "상주";
@@ -754,22 +778,22 @@ function ProjectDetailPopup({ proj, onClose }) {
           )}
 
           {/* 외주 전용 */}
-          {isOutsource && (
+          {isOutsource && hasOutsourcePrep && (
             <>
               <SectionHeader title="프로젝트 준비 상태 및 일정" />
               <InfoGrid items={[
                 { label: "프로젝트 유형", value: view.outsource_project_type },
                 { label: "준비 상태", value: view.ready_status },
                 { label: "시작 예정일", value: view.start_date && (view.start_date + (view.start_date_negotiable ? " (협의 가능)" : "")) },
-                { label: "기간", value: view.period_label + (view.schedule_negotiable ? " (협의 가능)" : "") },
+                { label: "기간", value: view.period_label && (view.period_label + (view.schedule_negotiable ? " (협의 가능)" : "")) },
                 { label: "모집 마감", value: view.deadline && <span style={{ color: "#EF4444", fontWeight: 700 }}>{view.deadline}</span> },
-                { label: "정부지원", value: view.gov_support ? "해당" : "해당 없음" },
+                { label: "정부지원", value: view.gov_support ? "해당" : null },
               ]} />
             </>
           )}
 
           {/* 상주 전용 */}
-          {!isOutsource && (
+          {!isOutsource && hasOnsiteWork && (
             <>
               <SectionHeader title="근무 조건" />
               <InfoGrid items={[
@@ -780,7 +804,11 @@ function ProjectDetailPopup({ proj, onClose }) {
                 { label: "계약 기간", value: view.contract_months ? `${view.contract_months}개월` : null },
                 { label: "월 단가", value: view.monthly_rate ? `${view.monthly_rate.toLocaleString()}만원` : null },
               ]} />
+            </>
+          )}
 
+          {!isOutsource && hasOnsiteDev && (
+            <>
               <SectionHeader title="현재 개발 상태" />
               <InfoGrid items={[
                 { label: "개발 단계", value: view.dev_stage },
@@ -3467,11 +3495,18 @@ function useStreamChannel(client, type, myDbId, contact, contractId) {
           return;
         }
         if (type === "project_meeting") {
-          const me = String(myDbId);
-          const other = String(contact.targetUserId);
+          const other = contact.targetUserId;
           if (!other) return;
-          const [a, b] = me < other ? [me, other] : [other, me];
-          ch = client.channel("messaging", `pm-${a}-${b}`, { members: [me, other] });
+          const res = await fetch(`/api/chat/rooms/ensure-meeting?userId=${myDbId}`, {
+            method: "POST", headers,
+            body: JSON.stringify({ targetUserId: other, mode: "project" }),
+          });
+          if (!res.ok) {
+            console.error("[Stream] ensure-meeting(project) failed", res.status, await res.text());
+            return;
+          }
+          const data = await res.json();
+          ch = client.channel(data.streamChannelType, data.streamChannelId);
           await ch.watch();
           try {
             const existing = ch.state?.messages || [];
@@ -3493,6 +3528,20 @@ function useStreamChannel(client, type, myDbId, contact, contractId) {
           });
           if (!res.ok) return;
           room = await res.json();
+        } else if (type === "negotiation") {
+          const res = await fetch(`/api/chat/rooms/ensure-meeting?userId=${myDbId}`, {
+            method: "POST", headers,
+            body: JSON.stringify({ targetUserId: contact.targetUserId, mode: "contract" }),
+          });
+          if (!res.ok) {
+            console.error("[Stream] ensure-meeting(contract) failed", res.status, await res.text());
+            return;
+          }
+          const data = await res.json();
+          ch = client.channel(data.streamChannelType, data.streamChannelId);
+          await ch.watch();
+          setChannel(ch);
+          return;
         } else {
           const res = await fetch(`/api/chat/rooms/dm?userId=${myDbId}`, {
             method: "POST", headers,
@@ -4101,7 +4150,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
     <div style={{ display: "flex", height: "100%", minHeight: 600, gap: 0, overflow: "hidden" }}>
 
       {/* ── 왼쪽: 연락처 목록 ── */}
-      <div style={{ width: 280, flexShrink: 0, background: "white", borderRight: "1.5px solid #F1F5F9", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: 340, flexShrink: 0, background: "white", borderRight: "1.5px solid #F1F5F9", display: "flex", flexDirection: "column" }}>
         {/* 검색 */}
         <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid #F1F5F9" }}>
           <div style={{ display: "flex", alignItems: "center", background: "#F8FAFC", borderRadius: 10, border: "1.5px solid #E2E8F0", padding: "8px 12px", gap: 8 }}>
@@ -4136,7 +4185,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
               <AvatarCircle initials={contact.initials} size={42} avatar={contact.isSelfChat ? myHeroImage : contact.avatar} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
                   {!contact.isSelfChat && (
                     <button
                       type="button"
@@ -4197,7 +4246,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
           <div style={{ padding: "14px 20px", borderBottom: "1.5px solid #F1F5F9", display: "flex", alignItems: "center", gap: 12, background: "white" }}>
             <AvatarCircle initials={activeContact.initials} size={38} avatar={activeContact.isSelfChat ? myHeroImage : activeContact.avatar} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
               <div style={{ fontSize: 11, color: "#64748B", fontFamily: F }}>Project: {activeContact.project}</div>
             </div>
             {/* 햄버거 버튼 */}
@@ -4316,7 +4365,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
                         </div>
                       )}
                       <div style={{ maxWidth: "68%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-                        {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
+                        {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
                         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
                           <MeetingProjectCard project={msg.project} onDetail={setSelectedProject} />
                           <span style={{ fontSize: 10.4, color: "#94A3B8", fontFamily: F, flexShrink: 0, marginBottom: 2 }}>{msg.time}</span>
@@ -4384,7 +4433,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
                       </div>
                     )}
                     <div style={{ maxWidth: "60%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-                      {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
+                      {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
                       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
                         {(!msg.file && isOnlyEmoji(msg.text)) ? (
                         <div style={{ background: "transparent", padding: 0, fontSize: 56, lineHeight: 1.1, fontFamily: F }}>
@@ -4395,7 +4444,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
                           background: isMe ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#F8FAFC",
                           color: isMe ? "white" : "#1E293B",
                           borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                          padding: "12px 18px", fontSize: 13.4, fontFamily: F, lineHeight: 1.6,
+                          padding: "12px 18px", fontSize: 14.4, fontFamily: F, lineHeight: 1.6,
                           boxShadow: isMe ? "0 2px 8px rgba(99,102,241,0.25)" : "0 1px 4px rgba(0,0,0,0.05)",
                           border: isMe ? "none" : "1px solid #F1F5F9",
                         }}>
@@ -4920,16 +4969,22 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
     return () => { cancelled = true; };
   }, [projectId]);
   // activeContact 변경 시 해당 client 와 진행중인 내 프로젝트 후보 fetch
+  // meetingMode 에 따라 드롭다운 후보를 구분:
+  //   - 'project' (진행 프로젝트 미팅) → IN_PROGRESS 만
+  //   - 'contract' (계약 세부 협의 미팅) → ACCEPTED, CONTRACTED 만
   useEffect(() => {
     if (projectId || !activeId) return;
     let cancelled = false;
+    const allowedAppStatuses = meetingMode === "project"
+      ? ["IN_PROGRESS"]
+      : ["ACCEPTED", "CONTRACTED"];
     applicationsApi.myList()
       .then(list => {
         if (cancelled) return;
         const counterpartId = Number(activeId);
         const matched = (list || []).filter(a =>
           Number(a.projectOwnerUserId) === counterpartId &&
-          ["ACCEPTED", "IN_PROGRESS", "CONTRACTED"].includes(a.status)
+          allowedAppStatuses.includes(a.status)
         );
         const dedup = [];
         const seen = new Set();
@@ -4948,7 +5003,7 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
       })
       .catch(() => { if (!cancelled) { setContactProjects([]); setSelectedContractProjectId(null); } });
     return () => { cancelled = true; };
-  }, [activeId, projectId]);
+  }, [activeId, projectId, meetingMode]);
   // contact-specific 매칭만 사용. autoProjectId fallback 제거 (다른 contact 의 데이터가 잘못 노출되는 문제 방지).
   const effectiveProjectId = projectId || selectedContractProjectId;
   const [modules, setModules] = useState({});
@@ -5466,7 +5521,7 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
           </div>
         )}
         <div style={{ maxWidth: "68%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-          {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
+          {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
             <MeetingProjectCard project={msg.project} onDetail={setSelectedProject} />
             <span style={{ fontSize: 10.4, color: "#94A3B8", fontFamily: F, flexShrink: 0, marginBottom: 2 }}>{msg.time}</span>
@@ -5507,7 +5562,7 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
           </div>
         )}
         <div style={{ maxWidth: "60%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-          {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
+          {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
             {(!msg.file && isOnlyEmoji(msg.text)) ? (
             <div style={{ background: "transparent", padding: 0, fontSize: 56, lineHeight: 1.1, fontFamily: F }}>
@@ -5518,7 +5573,7 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
               background: isMe ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#F8FAFC",
               color: isMe ? "white" : "#1E293B",
               borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-              padding: "12px 18px", fontSize: 13.4, fontFamily: F, lineHeight: 1.6,
+              padding: "12px 18px", fontSize: 14.4, fontFamily: F, lineHeight: 1.6,
               boxShadow: isMe ? "0 2px 8px rgba(99,102,241,0.25)" : "0 1px 4px rgba(0,0,0,0.05)",
               border: isMe ? "none" : "1px solid #F1F5F9",
             }}>
@@ -5587,7 +5642,7 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
               <AvatarCircle initials={contact.initials} size={42} avatar={contact.isSelfChat ? myHeroImage : contact.avatar} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -5686,7 +5741,7 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
           <div style={{ padding: "14px 20px", borderBottom: "1.5px solid #F1F5F9", display: "flex", alignItems: "center", gap: 12, background: "white" }}>
             <AvatarCircle initials={activeContact.initials} size={38} avatar={activeContact.isSelfChat ? myHeroImage : activeContact.avatar} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
               <div style={{ fontSize: 11, color: "#64748B", fontFamily: F }}>Project: {activeContact.project}</div>
             </div>
             <div ref={menuRef} style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
@@ -6404,12 +6459,6 @@ export default function PartnerDashboard() {
   const [syncedPanelMinHeight, setSyncedPanelMinHeight] = useState(0);
   const [chatClient, setChatClient] = useState(null);
   const { dbId, username } = useStore();
-  const currentMilestones = MOCK_MANAGE_PROJECTS.flatMap(p =>
-    p.milestones
-      .filter(m => m.status === "IN_PROGRESS" || m.status === "PENDING")
-      .slice(0, 1)
-      .map(m => ({ projectId: p.id, projectTitle: p.title, milestoneTitle: m.title, status: m.status }))
-  );
 
   // 콘텐츠 패널 — 스케줄 탭은 패딩 0 (FullCalendar가 영역 전체 사용)
   const isScheduleTab = activeTab === "schedule";
@@ -6437,7 +6486,7 @@ export default function PartnerDashboard() {
     const observer = new ResizeObserver(() => updateHeight());
     observer.observe(node);
     return () => observer.disconnect();
-  }, [activeTab, currentMilestones.length]);
+  }, [activeTab]);
 
   // ── Stream Chat: connect global client ───────────────────────
   useEffect(() => {
@@ -6577,38 +6626,6 @@ export default function PartnerDashboard() {
                   ))}
                 </div>
               ))}
-            </div>
-
-            {/* 진행 중 마일스톤 카드 */}
-            <div style={{ background: "white", borderRadius: 16, padding: "12px 10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.06em", padding: "2px 8px 8px", fontFamily: F }}>
-                진행 중 마일스톤
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {currentMilestones.map((item, i) => {
-                  const projectColor = MOCK_MANAGE_PROJECTS.find(p => p.id === item.projectId)?.progressColor || "#3B82F6";
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => setActiveTab("project_manage")}
-                      style={{
-                        borderRadius: 10, padding: "9px 10px", cursor: "pointer",
-                        border: `1.5px solid ${projectColor}28`,
-                        background: `${projectColor}0D`,
-                        transition: "all 0.15s",
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = `${projectColor}1A`; e.currentTarget.style.borderColor = `${projectColor}55`; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = `${projectColor}0D`; e.currentTarget.style.borderColor = `${projectColor}28`; }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: projectColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.milestoneTitle}</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 11, color: "#64748B", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 12 }}>{item.projectTitle}</p>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
           </div>

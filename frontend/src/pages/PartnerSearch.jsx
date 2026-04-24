@@ -144,11 +144,13 @@ export default function PartnerSearch() {
 
     setAiLoading(true);
     setAiError(null);
-    matchApi.partners(trimmed, candidateIds)
-      .then((arr) => {
+    const minDelay = new Promise(resolve => setTimeout(resolve, 5000));
+    Promise.all([matchApi.partners(trimmed, candidateIds), minDelay])
+      .then(([arr]) => {
         const map = {};
         arr.forEach(s => { map[s.id] = { matchScore: s.matchScore, reasons: s.reasons || [] }; });
         setAiScores(map);
+        if (Object.keys(map).length > 0) setSort("AI 추천순");
       })
       .catch((err) => {
         console.error("[PartnerSearch] AI 매칭 실패:", err);
@@ -227,7 +229,7 @@ export default function PartnerSearch() {
 
   /* 정렬 */
   const sorted = [...filtered].sort((a, b) => {
-    if (sort === "AI 매칭순") return effectiveMatch(b) - effectiveMatch(a);
+    if (sort === "AI 추천순") return effectiveMatch(b) - effectiveMatch(a);
     if (sort === "최신순") return b.id - a.id;
     return effectiveMatch(b) - effectiveMatch(a);
   });
@@ -453,10 +455,12 @@ export default function PartnerSearch() {
               <span style={{ fontSize: 21.3, fontWeight: 900, fontFamily: F, background: PRIMARY_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>모든 파트너 탐색 </span>
               <span style={{ fontSize: 14, color: "#94A3B8", fontFamily: F }}>총 {sorted.length.toLocaleString()}개의 프로 파트너스 분들이 있습니다</span>
               {aiLoading && (
-                <span style={{ marginLeft: 12, fontSize: 13, fontWeight: 700, color: PRIMARY, fontFamily: F }}>✨ 행운이가 딱맞는 파트너를 찾는 중...</span>
+                <span style={{ marginLeft: 12, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#3B82F6", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 999, padding: "4px 12px", fontFamily: F }}>
+                  <Loader2 size={12} className="animate-spin" /> 행운이 AI가 찾는 중...
+                </span>
               )}
               {!aiLoading && Object.keys(aiScores).length > 0 && (
-                <span style={{ marginLeft: 12, fontSize: 12, fontWeight: 700, color: "#10B981", background: "#DCFCE7", borderRadius: 999, padding: "3px 10px", fontFamily: F }}>AI 맞춤 정렬 적용됨</span>
+                <span style={{ marginLeft: 12, fontSize: 12, fontWeight: 700, color: "#0F766E", background: "#CCFBF1", border: "1px solid #5EEAD4", borderRadius: 999, padding: "4px 12px", fontFamily: F }}>✨ 행운이 AI 매칭 완료!</span>
               )}
               {aiError && (
                 <span style={{ marginLeft: 12, fontSize: 12, color: "#EF4444", fontFamily: F }}>{aiError}</span>
@@ -497,7 +501,7 @@ export default function PartnerSearch() {
                 </button>
                 {sortOpen && (
                   <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, background: "white", border: "1.5px solid #E2E8F0", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50, minWidth: 140 }}>
-                    {["AI 매칭순", "최신순", "필터 추천순"].map(s => (
+                    {["AI 추천순", "최신순", "필터 추천순"].map(s => (
                       <div
                         key={s}
                         onClick={() => { setSort(s); setSortOpen(false); }}
@@ -515,7 +519,7 @@ export default function PartnerSearch() {
           </div>
 
           {/* 파트너 카드 목록 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {loading ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: "#94A3B8", fontSize: 16, fontFamily: F }}>
                 파트너 정보를 불러오는 중...
@@ -584,7 +588,7 @@ function PartnerCard({ data }) {
         border: `1.5px solid ${hovered ? "#BFDBFE" : "#E2E8F0"}`,
         padding: "22px 26px",
         boxShadow: hovered ? "0 6px 24px rgba(59,130,246,0.10)" : "0 2px 8px rgba(0,0,0,0.04)",
-        transition: "all 0.2s", display: "flex", gap: 20, alignItems: "center",
+        transition: "all 0.2s", display: "flex", gap: 20, alignItems: "flex-start",
         position: "relative",
       }}
     >
@@ -624,24 +628,34 @@ function PartnerCard({ data }) {
         </div>
 
         {/* 부제목 - 한줄 자기소개 */}
-        <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, margin: "0 0 12px", fontFamily: F }}>
+        <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, margin: "0 0 24px", fontFamily: F }}>
           {data.shortBio || data.sloganSub}
         </p>
 
-        {/* AI 매칭 이유 (자연어 검색 했을 때만) */}
-        {Array.isArray(data.aiReasons) && data.aiReasons.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-            {data.aiReasons.map((r, i) => (
-              <span key={i} style={{
-                fontSize: 11, fontWeight: 700, color: "#0F766E",
-                background: "#CCFBF1", border: "1px solid #5EEAD4",
-                borderRadius: 999, padding: "3px 10px", fontFamily: F,
-              }}>
-                ✨ {r}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* AI 매칭 이유 (AI 검색 실제 수행될 때만) */}
+        {Array.isArray(data.aiReasons) && (() => {
+          const reasons = data.aiReasons.length > 0
+            ? data.aiReasons
+            : [
+                `AI 매칭 점수 ${data.match}%`,
+                ...(Array.isArray(data.tags) && data.tags.length > 0 ? [`핵심 기술: ${data.tags.slice(0, 2).join(", ")}`] : []),
+                ...(data.serviceField ? [`${data.serviceField} 분야 적합`] : []),
+              ].slice(0, 3);
+          if (reasons.length === 0) return null;
+          return (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+              {reasons.map((r, i) => (
+                <span key={i} style={{
+                  fontSize: 11, fontWeight: 700, color: "#0F766E",
+                  background: "#CCFBF1", border: "1px solid #5EEAD4",
+                  borderRadius: 999, padding: "3px 10px", fontFamily: F,
+                }}>
+                  ✨ {r}
+                </span>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* 기술 태그 */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
@@ -654,8 +668,8 @@ function PartnerCard({ data }) {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {[data.serviceField, data.partnerType, data.workPref].map((chip, i) => (
             <span key={i} style={{
-              fontSize: 11, fontWeight: 600, color: "#6366F1",
-              background: "#EEF2FF", borderRadius: 999, padding: "3px 10px", fontFamily: F,
+              fontSize: 12, fontWeight: 600, color: "#6366F1",
+              background: "#EEF2FF", borderRadius: 999, padding: "4px 10px", fontFamily: F,
             }}>{chip}</span>
           ))}
         </div>
@@ -679,7 +693,7 @@ function PartnerCard({ data }) {
         {/* 상세보기 */}
         <button
           onClick={() => navigate("/partner_profile_view", { state: { partner: data } })}
-          style={{ width: "100%", padding: "9px 0", borderRadius: 10, border: "none", background: "#EFF6FF", color: "#3B82F6", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F, transition: "background 0.15s" }}
+          style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "none", background: "#EFF6FF", color: "#3B82F6", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: F, transition: "background 0.15s" }}
           onMouseEnter={e => e.currentTarget.style.background = "#DBEAFE"}
           onMouseLeave={e => e.currentTarget.style.background = "#EFF6FF"}
         >

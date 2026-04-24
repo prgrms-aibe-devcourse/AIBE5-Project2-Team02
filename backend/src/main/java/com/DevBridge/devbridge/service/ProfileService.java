@@ -34,6 +34,8 @@ public class ProfileService {
     private final ClientProfileRepository clientProfileRepository;
     private final PartnerSkillRepository partnerSkillRepository;
     private final SkillMasterRepository skillMasterRepository;
+    private final PartnerProfileStatsRepository partnerProfileStatsRepository;
+    private final ClientProfileStatsRepository clientProfileStatsRepository;
 
     private static final ObjectMapper OM = new ObjectMapper();
 
@@ -144,8 +146,11 @@ public class ProfileService {
             }
         }
 
-        // PARTNER인 경우 PartnerProfile에서 serviceField, slogan 가져오기
+        // PARTNER인 경우 PartnerProfile에서 serviceField, slogan, grade 가져오기
         String serviceField = null;
+        String grade = null;
+        Integer completedProjects = null;
+        Double rating = null;
         if (user.getUserType() == User.UserType.PARTNER) {
             PartnerProfile partnerProfile = partnerProfileRepository.findByUser(user).orElse(null);
             if (partnerProfile != null) {
@@ -153,6 +158,27 @@ public class ProfileService {
                 slogan = partnerProfile.getSlogan();  // 파트너도 slogan 가져오기
                 if (shortBio == null) shortBio = partnerProfile.getShortBio();  // fallback
                 strengthDescFromProfile = partnerProfile.getStrengthDesc();
+                grade = partnerProfile.getGrade() != null ? partnerProfile.getGrade().name() : null;
+                // PartnerProfileStats에서 completedProjects, rating 가져오기
+                var statsOpt = partnerProfileStatsRepository.findByPartnerProfile(partnerProfile);
+                if (statsOpt.isPresent()) {
+                    var stats = statsOpt.get();
+                    completedProjects = stats.getCompletedProjects();
+                    rating = stats.getRating();
+                }
+            }
+        } else {
+            // CLIENT인 경우 ClientProfile에서 grade 가져오기
+            ClientProfile clientProfile = clientProfileRepository.findByUser(user).orElse(null);
+            if (clientProfile != null) {
+                grade = clientProfile.getGrade() != null ? clientProfile.getGrade().name() : null;
+                // ClientProfileStats에서 completedProjects, rating 가져오기  
+                var statsOpt = clientProfileStatsRepository.findByClientProfile(clientProfile);
+                if (statsOpt.isPresent()) {
+                    var stats = statsOpt.get();
+                    completedProjects = stats.getCompletedProjects();
+                    rating = stats.getRating();
+                }
             }
         }
 
@@ -167,6 +193,10 @@ public class ProfileService {
                 .contactEmail(user.getContactEmail())
                 .profileImageUrl(user.getProfileImageUrl())
                 .serviceField(serviceField)
+                // PartnerProfile/ClientProfile 등급 정보
+                .grade(grade)
+                .completedProjects(completedProjects)
+                .rating(rating)
                 // UserProfileDetail 정보
                 .bio(detail != null ? detail.getBio() : null)
                 .strengthDesc(detail != null ? detail.getStrengthDesc() : null)

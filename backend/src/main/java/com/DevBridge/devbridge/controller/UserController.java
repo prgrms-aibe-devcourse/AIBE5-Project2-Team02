@@ -57,4 +57,26 @@ public class UserController {
                 )))
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    /**
+     * GET /api/users/{id}
+     *
+     * Lightweight public profile lookup used by dashboard meeting tabs to
+     * fetch counterpart's display name, avatar, and userType for the
+     * chat sidebar. Never returns email or sensitive fields.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> findById(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    java.util.Map<String, Object> body = new java.util.HashMap<>();
+                    body.put("id", user.getId());
+                    body.put("username", user.getUsername());
+                    body.put("userType", user.getUserType() != null ? user.getUserType().name() : null);
+                    body.put("profileImageUrl", user.getProfileImageUrl());
+                    body.put("streamUserId", streamChatService.streamUserId(user));
+                    return ResponseEntity.ok(body);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

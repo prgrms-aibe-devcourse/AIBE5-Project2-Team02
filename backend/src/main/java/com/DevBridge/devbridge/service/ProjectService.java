@@ -23,6 +23,7 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final SkillMasterRepository skillMasterRepository;
     private final ContractModuleSeeder contractModuleSeeder;
+    private final ProjectModuleRepository projectModuleRepository;
 
     private static final ObjectMapper OM = new ObjectMapper();
 
@@ -41,10 +42,14 @@ public class ProjectService {
                 .findAllByProjects(all).stream()
                 .collect(Collectors.groupingBy(m -> m.getProject().getId()));
 
+        Map<Long, Map<String, Object>> modulesByProject = loadModulesGrouped(
+                all.stream().map(Project::getId).collect(Collectors.toList()));
+
         return all.stream()
                 .map(p -> toSummary(p,
                         tagsByProject.getOrDefault(p.getId(), Collections.emptyList()),
-                        mappingsByProject.getOrDefault(p.getId(), Collections.emptyList())))
+                        mappingsByProject.getOrDefault(p.getId(), Collections.emptyList()),
+                        modulesByProject.get(p.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -64,10 +69,14 @@ public class ProjectService {
                 .findAllByProjects(all).stream()
                 .collect(Collectors.groupingBy(m -> m.getProject().getId()));
 
+        Map<Long, Map<String, Object>> modulesByProject = loadModulesGrouped(
+                all.stream().map(Project::getId).collect(Collectors.toList()));
+
         return all.stream()
                 .map(p -> toSummary(p,
                         tagsByProject.getOrDefault(p.getId(), Collections.emptyList()),
-                        mappingsByProject.getOrDefault(p.getId(), Collections.emptyList())))
+                        mappingsByProject.getOrDefault(p.getId(), Collections.emptyList()),
+                        modulesByProject.get(p.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -87,7 +96,8 @@ public class ProjectService {
                 .map(ProjectTag::getTag)
                 .collect(Collectors.toList());
         List<ProjectSkillMapping> mappings = projectSkillMappingRepository.findByProject(p);
-        return toSummary(p, tags, mappings);
+        Map<String, Object> modulesMap = loadModulesGrouped(List.of(p.getId())).get(p.getId());
+        return toSummary(p, tags, mappings, modulesMap);
     }
 
     /**
@@ -183,7 +193,7 @@ public class ProjectService {
                 .map(ProjectTag::getTag)
                 .collect(Collectors.toList());
         List<ProjectSkillMapping> savedMappings = projectSkillMappingRepository.findByProject(saved);
-        return toSummary(saved, savedTags, savedMappings);
+        return toSummary(saved, savedTags, savedMappings, null);
     }
 
     /** 프로젝트 삭제 (작성자 본인만 가능). */
@@ -219,7 +229,7 @@ public class ProjectService {
         List<String> tags = projectTagRepository.findByProject(saved).stream()
                 .map(t -> t.getTag()).toList();
         List<ProjectSkillMapping> mappings = projectSkillMappingRepository.findByProject(saved);
-        return toSummary(saved, tags, mappings);
+        return toSummary(saved, tags, mappings, null);
     }
 
     /** 프로젝트 수정 (작성자 본인만 가능). 태그/스킬은 delete-then-insert 방식. */
@@ -298,7 +308,7 @@ public class ProjectService {
                 .map(ProjectTag::getTag)
                 .collect(Collectors.toList());
         List<ProjectSkillMapping> savedMappings = projectSkillMappingRepository.findByProject(saved);
-        return toSummary(saved, savedTags, savedMappings);
+        return toSummary(saved, savedTags, savedMappings, null);
     }
 
     private void saveSkills(Project project, List<String> skillNames, boolean isRequired) {
@@ -349,7 +359,39 @@ public class ProjectService {
         }
     }
 
-    private ProjectSummaryResponse toSummary(Project p, List<String> tags, List<ProjectSkillMapping> mappings) {
+    /**
+     * project_modules 테이블의 7개 row 를 projectId → {moduleKey: data(JSON parsed)} 형태로 묶어 반환.
+     * findAll() / findAllByUserId() 에서 N+1 방지용으로 한 번에 fetch.
+     */
+    private Map<Long, Map<String, Object>> loadModulesGrouped(List<Long> projectIds) {
+        if (projectIds == null || projectIds.isEmpty()) return Collections.emptyMap();
+        Map<Long, Map<String, Object>> result = new HashMap<>();
+        for (Long pid : projectIds) {
+            List<ProjectModule> mods = projectModuleRepository.findByProjectId(pid);
+            if (mods.isEmpty()) continue;
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (ProjectModule m : mods) {
+                Object parsed = fromJsonMap(m.getData());
+                if (parsed == null) continue;
+                map.put(m.getModuleKey(), parsed);
+            }
+            if (!map.isEmpty()) result.put(pid, map);
+        }
+        return result;
+    }
+
+    /**
+     * contractTerms 응답 결정:
+     *   1) projects.contract_terms 컬럼이 있으면 그대로 사용 (기존 등록 흐름 호환)
+     *   2) 없으면 project_modules 7개 row 로 합성한 map 반환
+     */
+    private Map<String, Object> resolveContractTerms(Project p, Map<String, Object> moduleMap) {
+        Map<String, Object> fromColumn = fromJsonMap(p.getContractTerms());
+        if (fromColumn != null && !fromColumn.isEmpty()) return fromColumn;
+        return moduleMap;
+    }
+
+    private ProjectSummaryResponse toSummary(Project p, List<String> tags, List<ProjectSkillMapping> mappings, Map<String, Object> moduleMap) {
         User author = p.getUser();
 
         List<String> required = mappings.stream()
@@ -397,7 +439,7 @@ public class ProjectService {
                 .requiredSkills(required)
                 .preferredSkills(preferred)
                 .skillSet(all)
-                .contractTerms(fromJsonMap(p.getContractTerms()))
+                .contractTerms(resolveContractTerms(p, moduleMap))
                 .build();
     }
 

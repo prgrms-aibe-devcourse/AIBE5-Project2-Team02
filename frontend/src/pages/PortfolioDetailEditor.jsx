@@ -570,10 +570,15 @@ export default function PortfolioDetailEditor() {
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
               }}>
                 <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 900, color: "#1E293B", fontFamily: F, margin: "0 0 5px" }}>
+                  <h1 style={{
+                    fontSize: 34, fontWeight: 900, margin: "0 0 8px", fontFamily: F,
+                    background: PRIMARY_GRAD, WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent", backgroundClip: "text",
+                    letterSpacing: "-0.5px", lineHeight: 1.2,
+                  }}>
                     포트폴리오 상세 내용 작성
-                  </h2>
-                  <p style={{ fontSize: 13, color: "#94A3B8", fontFamily: F, margin: 0 }}>
+                  </h1>
+                  <p style={{ fontSize: 14, color: "#64748B", margin: 0, fontFamily: F, lineHeight: 1.6 }}>
                     {portfolioProjects.find(p => p.id === selectedProjId)?.title || "Curate your project narrative and showcase your technical expertise."}
                   </p>
                 </div>

@@ -51,11 +51,15 @@ public class StreamChatService {
     public void upsertStreamUser(User user) {
         try {
             String displayName = user.getUsername() != null ? user.getUsername() : user.getEmail().split("@")[0];
-            io.getstream.chat.java.models.User.upsert()
-                    .user(io.getstream.chat.java.models.User.UserRequestObject.builder()
+            io.getstream.chat.java.models.User.UserRequestObject.UserRequestObjectBuilder builder =
+                    io.getstream.chat.java.models.User.UserRequestObject.builder()
                             .id(streamUserId(user))
-                            .name(displayName)
-                            .build())
+                            .name(displayName);
+            if (user.getProfileImageUrl() != null && !user.getProfileImageUrl().isBlank()) {
+                builder.additionalField("image", user.getProfileImageUrl());
+            }
+            io.getstream.chat.java.models.User.upsert()
+                    .user(builder.build())
                     .request();
         } catch (StreamException e) {
             throw new RuntimeException("Failed to upsert Stream user for user " + user.getId(), e);
@@ -89,6 +93,18 @@ public class StreamChatService {
 
         Optional<ChatRoom> existing = chatRoomRepository.findByParticipants(user1, user2);
         if (existing.isPresent()) {
+            // Re-ensure both users are Stream channel members in case the initial
+            // createStreamChannel call failed (e.g., Stream API was unavailable).
+            try {
+                upsertStreamUser(user1);
+                upsertStreamUser(user2);
+                Channel.update(CHANNEL_TYPE, channelId)
+                        .addMembers(List.of(streamUserId(user1), streamUserId(user2)))
+                        .request();
+            } catch (Exception e) {
+                System.err.println("[StreamChat] Warning: addMembers on existing room failed for ["
+                        + channelId + "]: " + e.getMessage());
+            }
             return existing.get();
         }
 
@@ -104,6 +120,48 @@ public class StreamChatService {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // Per-pair meeting rooms (NOT persisted as ChatRoom rows).
+    // Used by the dashboard meeting tabs to keep each meeting mode
+    // (free DM / contract negotiation / project meeting) on its own
+    // Stream channel even between the same two users.
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Server-side ensure of a meeting Stream channel between the requester and
+     * the target user. Returns the channelId; caller can then call channel.watch()
+     * from the frontend without needing channel-create permission.
+     *
+     * mode = "contract" -> channelId "cm-{a}-{b}"
+     * mode = "project"  -> channelId "pm-{a}-{b}"
+     */
+    public String ensureMeetingChannel(User requester, User target, String mode) {
+        if (requester == null || target == null) {
+            throw new IllegalArgumentException("requester and target are required");
+        }
+        if (requester.getId().equals(target.getId())) {
+            throw new IllegalArgumentException("Cannot start a meeting with yourself");
+        }
+        String prefix;
+        if ("contract".equalsIgnoreCase(mode)) {
+            prefix = "cm";
+        } else if ("project".equalsIgnoreCase(mode)) {
+            prefix = "pm";
+        } else {
+            throw new IllegalArgumentException("mode must be 'contract' or 'project'");
+        }
+        User a = requester.getId() < target.getId() ? requester : target;
+        User b = requester.getId() < target.getId() ? target : requester;
+        String channelId = prefix + "-" + a.getId() + "-" + b.getId();
+        try {
+            createStreamChannel(channelId, a, b);
+        } catch (RuntimeException e) {
+            System.err.println("[StreamChat] Warning: ensureMeetingChannel failed for ["
+                    + channelId + "]: " + e.getMessage());
+        }
+        return channelId;
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // Contract Negotiation room
     // ─────────────────────────────────────────────────────────────
 
@@ -111,8 +169,7 @@ public class StreamChatService {
      * Gets or creates the chat room tied to a CONTRACT_NEGOTIATION record.
      */
     @Transactional
-    public ChatRoom getOrCreateNegotiationRoom(Long negotiationId, User client, User partner) {
-        Optional<ChatRoom> existing = chatRoomRepository.findByContractNegotiationId(negotiationId);
+    public ChatRoom getOrCreateNegotiationRoom(Long negotiationId, User client, User partner) {        Optional<ChatRoom> existing = chatRoomRepository.findByContractNegotiationId(negotiationId);
         if (existing.isPresent()) {
             return existing.get();
         }

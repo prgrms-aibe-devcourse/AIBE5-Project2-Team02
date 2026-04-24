@@ -2,7 +2,9 @@ package com.DevBridge.devbridge.dto;
 
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProjectApplicationResponse {
@@ -10,6 +12,14 @@ public class ProjectApplicationResponse {
     private Long projectId;
     private String projectTitle;
     private String projectDesc;
+    private String projectSlogan;
+    private String projectServiceField;
+    private List<String> projectSkills;
+    private LocalDate projectStartDate;
+    private LocalDate projectDeadline;
+    private Integer projectDurationMonths;
+    private Integer projectBudgetMin;
+    private Integer projectBudgetMax;
     private String projectStatus; // Project.status (RECRUITING/IN_PROGRESS/...)
     private Long projectOwnerUserId;
     private String projectOwnerUsername;

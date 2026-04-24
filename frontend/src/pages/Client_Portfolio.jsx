@@ -500,6 +500,7 @@ function NewSteps() {
 
 /* ── 메인 페이지 ─────────────────────────────────────────── */
 export default function Client_Portfolio() {
+  const navigate = useNavigate();
   const githubUrl = useStore(s => s.clientProfileDetail?.githubUrl) || "";
   const { setClientProfileDetail } = useStore();
   const { contribData, skills, totalCount, username } = useGithubData(githubUrl);
@@ -583,7 +584,7 @@ export default function Client_Portfolio() {
           </div>
             </>
           ) : (
-            <GithubEmptyState onConnect={() => navigate("/ai_chat_profile", { state: { startAt: "github" } })} />
+            <GithubEmptyState onConnect={() => navigate("/aichat_portfolio")} />
           )}
         </div>
 

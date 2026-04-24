@@ -176,15 +176,123 @@ const EXTRACT_SYSTEM = `너는 CV/이력서 PDF 텍스트를 구조화된 JSON�
 }`;
 
 function safeParseJson(str) {
-  try {
-    return JSON.parse(str);
-  } catch {
-    const m = str.match(/\{[\s\S]*\}/);
-    if (m) {
-      try { return JSON.parse(m[0]); } catch { /* ignore */ }
+  if (!str || typeof str !== "string") return null;
+
+  // 1) 코드펜스 제거: ```json ... ``` / ``` ... ```
+  let s = str.trim()
+    .replace(/^```(?:json|JSON)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+
+  // 2) 그대로 시도
+  try { return JSON.parse(s); } catch { /* continue */ }
+
+  // 3) 첫 { 부터 균형 맞는 } 까지 잘라서 시도 (문자열 내부 중괄호 무시)
+  const start = s.indexOf("{");
+  if (start !== -1) {
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < s.length; i++) {
+      const ch = s[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === "\\") esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          const candidate = s.slice(start, i + 1);
+          try { return JSON.parse(candidate); } catch { /* fall through */ }
+          break;
+        }
+      }
     }
-    return null;
   }
+
+  // 4) greedy 매치 시도
+  const m = s.match(/\{[\s\S]*\}/);
+  if (m) {
+    try { return JSON.parse(m[0]); } catch { /* ignore */ }
+  }
+
+  // 5) 잘린 JSON 복구 시도: 미닫힌 문자열/배열/객체를 닫아준다.
+  //    Gemini가 maxOutputTokens 한도로 응답이 끊긴 케이스 (예: "graduationDate": "2018 에서 끊김)
+  const recovered = tryRecoverTruncatedJson(s.slice(s.indexOf("{")));
+  if (recovered) {
+    try { return JSON.parse(recovered); } catch { /* ignore */ }
+  }
+  return null;
+}
+
+/**
+ * 잘린 JSON 문자열을 닫아 파싱 가능한 형태로 복구 시도.
+ * - 마지막 미완성 토큰(콤마 뒤 공백, 미닫힌 문자열 등)을 잘라내고
+ * - 열린 [ { 와 문자열을 역순으로 닫는다.
+ */
+function tryRecoverTruncatedJson(input) {
+  if (!input || input[0] !== "{") return null;
+  let s = input;
+
+  // 5-1) 일단 열린/닫힌 따옴표·괄호 상태를 추적
+  const stack = []; // '{' or '['
+  let inStr = false, esc = false;
+  let lastCommaIdx = -1, lastSafeEnd = -1;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") {
+      stack.pop();
+      lastSafeEnd = i;
+    } else if (ch === ",") {
+      lastCommaIdx = i;
+    }
+  }
+
+  // 5-2) 문자열 안에서 끊긴 경우: 마지막 콤마(또는 안전한 닫힘) 직후까지만 잘라낸다.
+  if (inStr) {
+    const cut = Math.max(lastCommaIdx, lastSafeEnd);
+    if (cut <= 0) return null;
+    s = s.slice(0, cut); // 콤마 자체는 자르지 않음 → 곧 콤마 정리
+  }
+
+  // 5-3) 후행 콤마/공백 정리
+  s = s.replace(/[,\s]+$/g, "");
+  // "key": 처럼 값 없이 끝난 경우 그 키도 잘라냄
+  s = s.replace(/,\s*"[^"\\]*"\s*:\s*$/g, "");
+  s = s.replace(/\{\s*"[^"\\]*"\s*:\s*$/g, "{");
+
+  // 5-4) 남은 스택 역순으로 닫기
+  // 위에서 s를 잘라냈으므로 stack을 다시 계산
+  const stack2 = [];
+  let inStr2 = false, esc2 = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr2) {
+      if (esc2) esc2 = false;
+      else if (ch === "\\") esc2 = true;
+      else if (ch === '"') inStr2 = false;
+      continue;
+    }
+    if (ch === '"') { inStr2 = true; continue; }
+    if (ch === "{" || ch === "[") stack2.push(ch);
+    else if (ch === "}" || ch === "]") stack2.pop();
+  }
+  if (inStr2) s += '"'; // 안전망
+  while (stack2.length) {
+    const open = stack2.pop();
+    s += open === "{" ? "}" : "]";
+  }
+  return s;
 }
 
 async function extractProfileFromPdf(text) {
@@ -202,7 +310,10 @@ async function extractProfileFromPdf(text) {
   }
   const data = await res.json();
   const parsed = safeParseJson(data.reply);
-  if (!parsed) throw new Error("AI 응답을 JSON으로 파싱하지 못했어요");
+  if (!parsed) {
+    console.error("[extractProfileFromPdf] AI 원본 응답:", data.reply);
+    throw new Error("AI 응답을 JSON으로 파싱하지 못했어요 (콘솔에서 원본 응답 확인)");
+  }
   return parsed;
 }
 
@@ -240,6 +351,7 @@ export default function AIchatProfile() {
     partnerProfileDetail, updatePartnerProfileDetail,
     clientProfileDetail, updateClientProfileDetail,
     userRole,
+    syncProfileDetailToServer,
   } = useStore();
   const isClient = userRole === "client";
   const updateProfileDetail = isClient ? updateClientProfileDetail : updatePartnerProfileDetail;
@@ -498,8 +610,8 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
     }
   };
 
-  /* ─── 적용하기: store에 병합 ─── */
-  const handleApply = () => {
+  /* ─── 적용하기: store에 병합 + 서버 DB 저장 ─── */
+  const handleApply = async () => {
     const patch = { ...profileDetail };
     const baseId = Date.now();
 
@@ -715,6 +827,22 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
     }
 
     updateProfileDetail(patch);
+
+    // ── 백엔드 DB 저장: PartnerProfile/Client_Profile 의 "전체 설정 저장하기"와 동일 경로 ──
+    try {
+      const result = await syncProfileDetailToServer(isClient ? "client" : "partner");
+      if (!result?.ok) {
+        console.warn("[AIchatProfile] 서버 저장 실패:", result?.reason, result?.error);
+        if (result?.reason === "unauthenticated") {
+          alert("로그인이 필요합니다. 로그인 후 다시 시도해주세요.");
+        } else {
+          alert("프로필을 서버에 저장하는 중 오류가 발생했어요. 프로필 관리 페이지에서 '전체 설정 저장하기'를 눌러주세요.");
+        }
+      }
+    } catch (e) {
+      console.error("[AIchatProfile] syncProfileDetailToServer 예외:", e);
+    }
+
     navigate(profileBackPath);
   };
 
@@ -904,11 +1032,6 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
                     background: "#EFF6FF",
                   }}
                 />
-                <div style={{
-                  position: "absolute", bottom: 3, right: 3,
-                  width: 14, height: 14, borderRadius: "50%",
-                  background: "#22C55E", border: "2.5px solid white",
-                }} />
               </div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#1E3A8A", fontFamily: F, lineHeight: 1.2 }}>AI 행운이</div>
@@ -944,7 +1067,7 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
                 gap: 10, alignItems: "flex-end",
               }}>
                 {msg.role === "bot" && (
-                  <img src={heroMeeting} alt="bot" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
+                  <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
                 )}
                 <div style={{
                   maxWidth: "75%", padding: "12px 16px",
@@ -952,7 +1075,7 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
                   background: msg.role === "user" ? PRIMARY_GRAD : "#F8FAFC",
                   border: msg.role === "bot" ? "1px solid #E5E7EB" : "none",
                   color: msg.role === "user" ? "white" : "#111827",
-                  fontSize: 16, fontFamily: F, lineHeight: 1.7,
+                  fontSize: 17, fontFamily: F, lineHeight: 1.7,
                   boxShadow: msg.role === "user" ? "0 2px 10px rgba(99,102,241,0.25)" : "none",
                   whiteSpace: "pre-wrap", wordBreak: "break-word",
                 }}>
@@ -965,12 +1088,19 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
                     {msg.time.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
+                {msg.role === "user" && (
+                  <img
+                    src={profileDetail?.heroImage || mascotIcon}
+                    alt="나"
+                    style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }}
+                  />
+                )}
               </div>
             ))}
 
             {busy && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <img src={heroMeeting} alt="bot" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: "50%" }} />
+                <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%" }} />
                 <div style={{
                   padding: "12px 18px", borderRadius: "4px 18px 18px 18px",
                   background: "#F8FAFC", border: "1px solid #E5E7EB",
@@ -1140,20 +1270,20 @@ function StepIndicator({ step, onStepClick }) {
 
   return (
     <div style={{
-      display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10,
-      flexWrap: "wrap", paddingLeft: 4,
+      display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8,
+      flexWrap: "wrap", paddingRight: 4,
     }}>
       {items.map((it, i) => {
         const done = stepIdx > i;
         const active = stepIdx === i;
         const clickable = onStepClick && (done || active);
         return (
-          <div key={it.n} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div key={it.n} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div
               onClick={() => clickable && onStepClick(i)}
               style={{
-                display: "flex", alignItems: "center", gap: 9,
-                padding: "9px 20px", borderRadius: 999,
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "6px 14px", borderRadius: 999,
                 background: done
                   ? "linear-gradient(135deg, #D1FAE5 0%, #FEF9C3 100%)"
                   : active
@@ -1168,27 +1298,27 @@ function StepIndicator({ step, onStepClick }) {
               onMouseLeave={e => { if (clickable) e.currentTarget.style.filter = "none"; }}
             >
               <div style={{
-                width: 28, height: 28, borderRadius: "50%",
+                width: 22, height: 22, borderRadius: "50%",
                 background: done
                   ? "linear-gradient(135deg, #34D399, #A3E635)"
                   : active
                   ? "linear-gradient(135deg, #6EE7B7, #BEF264)"
                   : "#CBD5E1",
                 color: "white", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, fontWeight: 800, fontFamily: F,
+                fontSize: 11, fontWeight: 800, fontFamily: F,
                 flexShrink: 0,
               }}>
                 {done ? "✓" : it.n}
               </div>
               <span style={{
-                fontSize: 14, fontWeight: 700, fontFamily: F,
+                fontSize: 12, fontWeight: 700, fontFamily: F,
                 color: done ? "#065F46" : active ? "#14532D" : "#64748B",
               }}>
                 {it.label}
               </span>
             </div>
             {i < items.length - 1 && (
-              <div style={{ width: 28, height: 2, background: stepIdx > i ? "#86EFAC" : "#E2E8F0", borderRadius: 2 }} />
+              <div style={{ width: 20, height: 2, background: stepIdx > i ? "#86EFAC" : "#E2E8F0", borderRadius: 2 }} />
             )}
           </div>
         );

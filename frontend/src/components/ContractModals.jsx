@@ -85,13 +85,20 @@ function InlineToggleButton({ isEditing, onEdit, onSave, onSubmit }) {
 }
 
 function ModuleTitle({ index, title, inline = false, required = false, description = null }) {
-  // inline 모드(오버레이): 제목 대신 설명 카드 표시
+  // inline 모드(ProjectRegister 등 페이지 안에 직접 박혀 들어가는 경우): 제목 + (있으면) 설명 카드
   if (inline) {
-    if (!description) return null;
     return (
-      <div style={{ background: "linear-gradient(135deg, #FEFCE8 0%, #ECFCCB 100%)", border: "1px solid #D9F99D", borderRadius: 10, padding: "8px 14px", display: "flex", gap: 8, alignItems: "flex-start", maxWidth: 420, marginRight: 24 }}>
-        <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.5 }}>💡</span>
-        <p style={{ margin: 0, fontSize: 12, color: "#3F6212", lineHeight: 1.55, fontFamily: F }}>{description}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0F172A", lineHeight: 1.3, fontFamily: F }}>
+          {index}. {title}
+          {required && <span style={{ color: "#EF4444", marginLeft: 6 }}>*</span>}
+        </h2>
+        {description && (
+          <div style={{ background: "linear-gradient(135deg, #FEFCE8 0%, #ECFCCB 100%)", border: "1px solid #D9F99D", borderRadius: 10, padding: "8px 14px", display: "flex", gap: 8, alignItems: "flex-start", maxWidth: 520 }}>
+            <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.5 }}>💡</span>
+            <p style={{ margin: 0, fontSize: 12, color: "#3F6212", lineHeight: 1.55, fontFamily: F }}>{description}</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -238,10 +245,31 @@ function ActionButtons({ isEditing, onEdit, onSave, onCancel, onSubmit, inline }
 /* ─── 버전 관리 훅 ───────────────────────────────────── */
 function useVersioned(initDate, initModifier, initData, startEditing = false, value = null, onChange = null) {
   // 외부에서 value 가 들어오면 그걸 초기값으로 사용 (등록/수정 페이지에서 사용).
-  // 단, value 에 누락된 키가 있으면 기본값으로 보완한다 (구버전 데이터 호환성).
-  const seedData = (value && typeof value === "object" && !Array.isArray(value))
-    ? { ...initData, ...value }
-    : (value ?? initData);
+  // initData 의 모든 키는 반드시 살아있어야 한다 (modal 내부 .map() 호출이 깨지지 않도록).
+  // - value 가 null/undefined → initData 통째 사용
+  // - value 가 객체 → value 의 non-null 키만 덮어쓰기
+  // - value 가 배열/원시값 → AI 가 잘못된 모양으로 넣은 케이스로 보고 initData 사용 (호환 보호)
+  const seedData = (() => {
+    if (value == null) return initData;
+    if (typeof value !== "object" || Array.isArray(value)) {
+      // 모양이 안 맞으면 초기값으로 폴백 (콘솔 경고)
+      // eslint-disable-next-line no-console
+      console.warn("[useVersioned] value 모양이 객체가 아님 → initData 로 폴백", value);
+      return initData;
+    }
+    const merged = { ...initData };
+    for (const k of Object.keys(value)) {
+      if (value[k] !== null && value[k] !== undefined) merged[k] = value[k];
+    }
+    // initData 에 있는데 merged 에 같은 형태(배열/객체) 가 아닌 키는 기본값으로 되돌림 (안전망)
+    for (const k of Object.keys(initData)) {
+      const def = initData[k];
+      const cur = merged[k];
+      if (Array.isArray(def) && !Array.isArray(cur)) merged[k] = def;
+      else if (def && typeof def === "object" && !Array.isArray(def) && (typeof cur !== "object" || Array.isArray(cur) || cur === null)) merged[k] = def;
+    }
+    return merged;
+  })();
   const [versions, setVersions] = useState([{ label: "v1", date: initDate, modifier: initModifier, data: seedData }]);
   const [vIdx, setVIdx] = useState(0);
   const [isEditing, setIsEditing] = useState(startEditing);
@@ -267,11 +295,11 @@ function useVersioned(initDate, initModifier, initData, startEditing = false, va
 /* ─────────────────────────────────────────────────────────
    Modal 1: 작업 범위
 ───────────────────────────────────────────────────────── */
-export function ScopeModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null }) {
+export function ScopeModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null, readOnly = false }) {
   const { content, draft, setDraft, versions, vIdx, isEditing, edit, cancel, save, changeVer } = useVersioned(
     "2026.03.24 14:20", "Eden",
     { included: ["GraphQL schema 설계", "API 구조 정리", "기존 REST API 일부 리팩토링"], excluded: ["프론트엔드 개발", "서버 배포", "운영 중 장애 대응"], memo: "레거시 시스템과의 연결을 고려한 설계 포함\n운영 환경 인프라 설정은 제외" },
-    inline, value, onChange
+    inline && !readOnly, value, onChange
   );
   return (
     <div style={inline ? { display: "contents" } : OVERLAY}>
@@ -279,11 +307,11 @@ export function ScopeModal({ onClose, onSubmit, showHeaderStatusBadge = true, mo
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={1} title="작업 범위" inline={inline} required description="프로젝트에서 어떤 작업이 포함되고 어떤 작업이 제외되는지를 명확히 정의합니다. 추후 분쟁을 막기 위한 핵심 항목입니다." />
+              <ModuleTitle index={1} title="작업 범위" inline={inline} required description={readOnly ? null : "프로젝트에서 어떤 작업이 포함되고 어떤 작업이 제외되는지를 명확히 정의합니다. 추후 분쟁을 막기 위한 핵심 항목입니다."} />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? (readOnly ? null : <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} />) : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -360,7 +388,7 @@ export function ScopeModal({ onClose, onSubmit, showHeaderStatusBadge = true, mo
 /* ─────────────────────────────────────────────────────────
    Modal 2: 최종 전달 결과물 정의
 ───────────────────────────────────────────────────────── */
-export function DeliverablesModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null }) {
+export function DeliverablesModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null, readOnly = false }) {
   const { content, draft, setDraft, versions, vIdx, isEditing, edit, cancel, save, changeVer } = useVersioned(
     "2026.03.24 14:40", "Eden",
     {
@@ -370,7 +398,7 @@ export function DeliverablesModal({ onClose, onSubmit, showHeaderStatusBadge = t
       notes: ["전달물은 한글 설명 문서 포함", "배포본은 포함되지 않음"],
     }
   ,
-    inline, value, onChange
+    inline && !readOnly, value, onChange
   );
   return (
     <div style={inline ? { display: "contents" } : OVERLAY}>
@@ -378,11 +406,11 @@ export function DeliverablesModal({ onClose, onSubmit, showHeaderStatusBadge = t
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={2} title="최종 전달 결과물 정의" inline={inline} required description="작업이 완료되었을 때 클라이언트에게 인도되는 산출물의 종류·형식·전달 방법을 구체적으로 정합니다." />
+              <ModuleTitle index={2} title="최종 전달 결과물 정의" inline={inline} required description={readOnly ? null : "작업이 완료되었을 때 클라이언트에게 인도되는 산출물의 종류·형식·전달 방법을 구체적으로 정합니다."} />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? (readOnly ? null : <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} />) : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -468,7 +496,7 @@ export function DeliverablesModal({ onClose, onSubmit, showHeaderStatusBadge = t
 /* ─────────────────────────────────────────────────────────
    Modal 3: 일정 및 마감일
 ───────────────────────────────────────────────────────── */
-export function ScheduleModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null }) {
+export function ScheduleModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null, readOnly = false }) {
   const { content, draft, setDraft, versions, vIdx, isEditing, edit, cancel, save, changeVer } = useVersioned(
     "2026.03.24 15:00", "Eden",
     {
@@ -485,7 +513,7 @@ export function ScheduleModal({ onClose, onSubmit, showHeaderStatusBadge = true,
         { label: "피드백 지연 대응", value: "지연 일수만큼 자동 연장" },
       ],
     },
-    inline, value, onChange
+    inline && !readOnly, value, onChange
   );
   return (
     <div style={inline ? { display: "contents" } : OVERLAY}>
@@ -493,11 +521,11 @@ export function ScheduleModal({ onClose, onSubmit, showHeaderStatusBadge = true,
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={3} title="마감 일정 및 마일스톤" inline={inline} required description="전체 일정과 단계별 마일스톤, 각 단계의 시작·종료일을 정합니다. 일정 지연 시 책임 기준이 됩니다." />
+              <ModuleTitle index={3} title="마감 일정 및 마일스톤" inline={inline} required description={readOnly ? null : "전체 일정과 단계별 마일스톤, 각 단계의 시작·종료일을 정합니다. 일정 지연 시 책임 기준이 됩니다."} />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? (readOnly ? null : <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} />) : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -592,7 +620,7 @@ export function ScheduleModal({ onClose, onSubmit, showHeaderStatusBadge = true,
 /* ─────────────────────────────────────────────────────────
    Modal 4: 총 금액 및 정산 방식
 ───────────────────────────────────────────────────────── */
-export function PaymentModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null }) {
+export function PaymentModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null, readOnly = false }) {
   const { content, draft, setDraft, versions, vIdx, isEditing, edit, cancel, save, changeVer } = useVersioned(
     "2026.03.24 15:30", "Eden",
     {
@@ -607,7 +635,7 @@ export function PaymentModal({ onClose, onSubmit, showHeaderStatusBadge = true, 
       bankNote: "계좌 이체 · 일반 과세",
       extraPolicies: ["범위 외 요청: Man-month 실비 정산", "긴급 수정: 일괄 20% 할증 적용"],
     },
-    inline, value, onChange
+    inline && !readOnly, value, onChange
   );
 
   return (
@@ -616,11 +644,11 @@ export function PaymentModal({ onClose, onSubmit, showHeaderStatusBadge = true, 
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={4} title="총 금액 및 정산 방식" inline={inline} required description="계약 총액과 지급 방식(계약금·중도금·잔금 등)을 명확히 합니다. 단위와 부가세 포함 여부도 확인하세요." />
+              <ModuleTitle index={4} title="총 금액 및 정산 방식" inline={inline} required description={readOnly ? null : "계약 총액과 지급 방식(계약금·중도금·잔금 등)을 명확히 합니다. 단위와 부가세 포함 여부도 확인하세요."} />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? (readOnly ? null : <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} />) : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -720,7 +748,7 @@ export function PaymentModal({ onClose, onSubmit, showHeaderStatusBadge = true, 
 /* ─────────────────────────────────────────────────────────
    Modal 5: 수정 가능 범위
 ───────────────────────────────────────────────────────── */
-export function RevisionModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null }) {
+export function RevisionModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null, readOnly = false }) {
   const { content, draft, setDraft, versions, vIdx, isEditing, edit, cancel, save, changeVer } = useVersioned(
     "2026.03.24 15:40", "Eden",
     {
@@ -736,7 +764,7 @@ export function RevisionModal({ onClose, onSubmit, showHeaderStatusBadge = true,
       ],
       memo: "무상 수정 횟수는 총 3회로 제한됩니다. 횟수 초과 시 또는 유상 수정 기준에 해당하는 요청의 경우, 작업량 산정 후 별도의 추가 비용이 발생할 수 있습니다.",
     },
-    inline, value, onChange
+    inline && !readOnly, value, onChange
   );
 
   return (
@@ -745,11 +773,11 @@ export function RevisionModal({ onClose, onSubmit, showHeaderStatusBadge = true,
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={5} title="수정 가능 범위" inline={inline} required description="작업 완료 후 가능한 수정 횟수와 추가 수정에 대한 비용·범위를 명시합니다." />
+              <ModuleTitle index={5} title="수정 가능 범위" inline={inline} required description={readOnly ? null : "작업 완료 후 가능한 수정 횟수와 추가 수정에 대한 비용·범위를 명시합니다."} />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? (readOnly ? null : <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} />) : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8 }}>
@@ -811,7 +839,7 @@ export function RevisionModal({ onClose, onSubmit, showHeaderStatusBadge = true,
 /* ─────────────────────────────────────────────────────────
    Modal 6: 완료 기준
 ───────────────────────────────────────────────────────── */
-export function CompletionModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null }) {
+export function CompletionModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null, readOnly = false }) {
   const { content, draft, setDraft, versions, vIdx, isEditing, edit, cancel, save, changeVer } = useVersioned(
     "2026.03.24 15:50", "Eden",
     {
@@ -832,7 +860,7 @@ export function CompletionModal({ onClose, onSubmit, showHeaderStatusBadge = tru
         { n: 4, title: "운영 환경 테스트 완료", desc: "합의된 테스트 시나리오에 따른 QA 및 베타 테스터 결과 보고서 제출 및 버그 수정 완료." },
       ],
     },
-    inline, value, onChange
+    inline && !readOnly, value, onChange
   );
 
   return (
@@ -841,11 +869,11 @@ export function CompletionModal({ onClose, onSubmit, showHeaderStatusBadge = tru
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={6} title="완료 기준" inline={inline} required description="어떤 조건이 충족되어야 '완료'로 인정할지 객관적인 기준을 정합니다." />
+              <ModuleTitle index={6} title="완료 기준" inline={inline} required description={readOnly ? null : "어떤 조건이 충족되어야 '완료'로 인정할지 객관적인 기준을 정합니다."} />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? (readOnly ? null : <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} />) : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8 }}>
@@ -945,7 +973,7 @@ export function CompletionModal({ onClose, onSubmit, showHeaderStatusBadge = tru
 /* ─────────────────────────────────────────────────────────
    Modal 7: 추가 특약 (선택)
 ───────────────────────────────────────────────────────── */
-export function SpecialTermsModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null }) {
+export function SpecialTermsModal({ onClose, onSubmit, showHeaderStatusBadge = true, moduleStatus = "논의 중", inline = false, value = null, onChange = null, readOnly = false }) {
   const { content, draft, setDraft, versions, vIdx, isEditing, edit, cancel, save, changeVer } = useVersioned(
     "2026.03.24 16:00", "Eden",
     {
@@ -981,7 +1009,7 @@ export function SpecialTermsModal({ onClose, onSubmit, showHeaderStatusBadge = t
       ],
     }
   ,
-    inline, value, onChange
+    inline && !readOnly, value, onChange
   );
 
   const toggleEnabled = (i) => setDraft(d => {
@@ -996,11 +1024,11 @@ export function SpecialTermsModal({ onClose, onSubmit, showHeaderStatusBadge = t
         <div style={inline ? { ...HEADER, border: "none", padding: "0 0 10px", position: "static", borderRadius: 0 } : HEADER}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ModuleTitle index={7} title="추가 특약 (선택)" inline={inline} description="위 항목 외에 추가로 합의할 특약 사항을 자유롭게 적습니다. (선택 사항)" />
+              <ModuleTitle index={7} title="추가 특약 (선택)" inline={inline} description={readOnly ? null : "위 항목 외에 추가로 합의할 특약 사항을 자유롭게 적습니다. (선택 사항)"} />
               {!inline && showHeaderStatusBadge && <ModuleStatusBadge status={moduleStatus} />}
               {!inline && isEditing && <Badge color="#EFF6FF" text="#2563EB" icon="✏">수정 중</Badge>}
             </div>
-            {inline ? <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} /> : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
+            {inline ? (readOnly ? null : <InlineToggleButton isEditing={isEditing} onEdit={edit} onSave={save} onSubmit={onSubmit} />) : <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", padding: 0 }}>✕</button>}
           </div>
           {!inline && moduleStatus !== "협의완료" && (
             <div style={{ display: "flex", gap: 8 }}>
@@ -1118,3 +1146,18 @@ export function ContractModalLauncher() {
     </>
   );
 }
+
+/* ─────────────────────────────────────────────────────────
+   외부에서 키로 모달 컴포넌트를 가져갈 수 있도록 매핑 export
+   (read-only inline 뷰 등에서 사용)
+───────────────────────────────────────────────────────── */
+export const CONTRACT_MODAL_BY_KEY = {
+  scope:       ScopeModal,
+  deliverable: DeliverablesModal,
+  schedule:    ScheduleModal,
+  payment:     PaymentModal,
+  revision:    RevisionModal,
+  completion:  CompletionModal,
+  terms:       SpecialTermsModal,
+};
+

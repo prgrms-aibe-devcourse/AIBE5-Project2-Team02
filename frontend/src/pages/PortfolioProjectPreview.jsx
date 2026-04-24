@@ -371,7 +371,7 @@ function StandardProjectSection({ project }) {
       {/* 프로젝트 제목 */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
         <span style={{ fontSize: 22, lineHeight: 1 }}>{safeProject.emoji}</span>
-        <h2 style={{ fontSize: 26, fontWeight: 900, color: "#1E293B", fontFamily: F, margin: 0, lineHeight: 1.3 }}>
+        <h2 style={{ fontSize: 26, fontWeight: 900, fontFamily: F, margin: 0, lineHeight: 1.3, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
           {safeProject.title}
         </h2>
       </div>
@@ -399,7 +399,7 @@ function StandardProjectSection({ project }) {
       {/* 핵심 기능 */}
       {sections.coreFeatures !== false && safeProject.coreFeatures.length > 0 && (
         <div id={`${anchorId}-core`} style={{ marginBottom: 28 }}>
-          <h3 style={{ fontSize: 19, fontWeight: 800, color: "#1E293B", fontFamily: F, margin: "0 0 16px" }}>
+          <h3 style={{ fontSize: 19, fontWeight: 800, fontFamily: F, margin: "0 0 16px", background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             Core Features
           </h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 32px" }}>
@@ -418,7 +418,7 @@ function StandardProjectSection({ project }) {
       {/* 주요 페이지 */}
       {sections.keyPages !== false && safeProject.keyPages.length > 0 && (
         <div id={`${anchorId}-pages`} style={{ marginBottom: 28 }}>
-          <h3 style={{ fontSize: 19, fontWeight: 800, color: "#1E293B", fontFamily: F, margin: "0 0 16px" }}>
+          <h3 style={{ fontSize: 19, fontWeight: 800, fontFamily: F, margin: "0 0 16px", background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             Key Pages &amp; Features
           </h3>
           <div style={{
@@ -443,7 +443,7 @@ function StandardProjectSection({ project }) {
       {/* 개발 하이라이트 */}
       {sections.devHighlights !== false && safeProject.devHighlights.length > 0 && (
         <div id={`${anchorId}-dev`} style={{ marginBottom: 28 }}>
-          <h3 style={{ fontSize: 19, fontWeight: 800, color: "#1E293B", fontFamily: F, margin: "0 0 16px" }}>
+          <h3 style={{ fontSize: 19, fontWeight: 800, fontFamily: F, margin: "0 0 16px", background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             Development Highlights
           </h3>
           <div style={{ background: "#F8FAFC", borderRadius: 16, padding: "20px 24px", border: "1px solid #E2E8F0" }}>
@@ -462,7 +462,7 @@ function StandardProjectSection({ project }) {
       {/* 기술 구현 상세 */}
       {sections.techDetails !== false && safeProject.techDetails.length > 0 && (
         <div id={`${anchorId}-tech`} style={{ marginBottom: 28 }}>
-          <h3 style={{ fontSize: 19, fontWeight: 800, color: "#1E293B", fontFamily: F, margin: "0 0 16px" }}>
+          <h3 style={{ fontSize: 19, fontWeight: 800, fontFamily: F, margin: "0 0 16px", background: "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             Technical Implementation Details
           </h3>
           <div style={{ background: "#F8FAFC", borderRadius: 16, padding: "20px 24px", border: "1px solid #E2E8F0" }}>
@@ -471,13 +471,21 @@ function StandardProjectSection({ project }) {
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F, marginBottom: 8 }}>
                   {td.title}:
                 </div>
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
-                  {td.items.map((item, j) => (
-                    <li key={j} style={{ fontSize: 13, color: "#3B82F6", fontFamily: F, marginBottom: 4, lineHeight: 1.6 }}>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                {td.title === "Tech Stack" ? (
+                  <div style={{ fontSize: 13, color: "#3B82F6", fontFamily: F, lineHeight: 2, flexWrap: "wrap", display: "flex", gap: "0 12px" }}>
+                    {td.items.map((item, j) => (
+                      <span key={j}>{item}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {td.items.map((item, j) => (
+                      <li key={j} style={{ fontSize: 13, color: "#3B82F6", fontFamily: F, marginBottom: 4, lineHeight: 1.6 }}>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ))}
           </div>
@@ -500,7 +508,7 @@ function ModularProjectSection({ project }) {
       {/* 프로젝트 제목 */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
         <span style={{ fontSize: 22, lineHeight: 1 }}>{project.emoji}</span>
-        <h2 style={{ fontSize: 26, fontWeight: 900, color: "#1E293B", fontFamily: F, margin: 0, lineHeight: 1.3 }}>
+        <h2 style={{ fontSize: 26, fontWeight: 900, fontFamily: F, margin: 0, lineHeight: 1.3, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
           {project.title}
         </h2>
       </div>
@@ -581,6 +589,9 @@ export default function PortfolioProjectPreview() {
   const multiProjects = location.state?.projects;
   const sourceKey = location.state?.sourceKey;
   const sourceKeys = Array.isArray(location.state?.sourceKeys) ? location.state.sourceKeys : null;
+  // 타인 프로필에서 넘어온 경우: 해당 유저의 portfolioItems(원본 DTO 배열)과 username을 받는다
+  const passedItems = Array.isArray(location.state?.portfolioItems) ? location.state.portfolioItems : null;
+  const targetUsername = location.state?.username || null;
 
   const [fetchedProject, setFetchedProject] = useState(null);
   const [fetchedProjects, setFetchedProjects] = useState(null);
@@ -588,6 +599,58 @@ export default function PortfolioProjectPreview() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // 1) 타인 프로필에서 원본 items를 받은 경우: 네트워크 없이 그대로 사용
+    if (passedItems && passedItems.length > 0) {
+      const keyMatch = (it, k) => String(it.sourceKey ?? it.id) === String(k);
+      if (sourceKeys && sourceKeys.length > 0) {
+        const ordered = sourceKeys
+          .map((k) => passedItems.find((it) => keyMatch(it, k)))
+          .filter(Boolean)
+          .map((it) => toPortfolioPreviewProject(it));
+        setFetchedProjects(ordered.length > 0 ? ordered : passedItems.map(toPortfolioPreviewProject));
+      } else if (sourceKey) {
+        const found = passedItems.find((it) => keyMatch(it, sourceKey));
+        setFetchedProject(toPortfolioPreviewProject(found || passedItems[0]));
+      } else {
+        setFetchedProjects(passedItems.map(toPortfolioPreviewProject));
+      }
+      setLoading(false);
+      return;
+    }
+
+    // 2) username이 있으면 해당 유저의 공개 포트폴리오를 fetch 후 sourceKey(s)로 필터
+    if (targetUsername) {
+      let alive = true;
+      setLoading(true);
+      setError(null);
+      portfolioApi.byUsername(targetUsername)
+        .then((items) => {
+          if (!alive) return;
+          const list = Array.isArray(items) ? items : [];
+          if (list.length === 0) { setFetchedProjects([]); return; }
+          const keyMatch = (it, k) => String(it.sourceKey ?? it.id) === String(k);
+          if (sourceKeys && sourceKeys.length > 0) {
+            const ordered = sourceKeys
+              .map((k) => list.find((it) => keyMatch(it, k)))
+              .filter(Boolean)
+              .map((it) => toPortfolioPreviewProject(it));
+            setFetchedProjects(ordered.length > 0 ? ordered : list.map(toPortfolioPreviewProject));
+          } else if (sourceKey) {
+            const found = list.find((it) => keyMatch(it, sourceKey));
+            setFetchedProject(toPortfolioPreviewProject(found || list[0]));
+          } else {
+            setFetchedProjects(list.map(toPortfolioPreviewProject));
+          }
+        })
+        .catch((e) => {
+          if (!alive) return;
+          setError(e?.response?.data?.message || e?.message || "포트폴리오를 불러오지 못했습니다.");
+        })
+        .finally(() => { if (alive) setLoading(false); });
+      return () => { alive = false; };
+    }
+
+    // 3) 본인 포트폴리오(기존 동작): /me/by-source — targetUsername이 없을 때만 실행
     // 다중 프로젝트 fetch (Selected Projects에서 카드 클릭한 케이스)
     if (sourceKeys && sourceKeys.length > 0) {
       let alive = true;
@@ -626,7 +689,7 @@ export default function PortfolioProjectPreview() {
       })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [sourceKey, sourceKeys?.join(",")]);
+  }, [sourceKey, sourceKeys?.join(","), targetUsername, passedItems?.length]);
 
   const projects = fetchedProjects && fetchedProjects.length > 0
     ? fetchedProjects
@@ -634,13 +697,13 @@ export default function PortfolioProjectPreview() {
       ? [fetchedProject]
       : singleProject
         ? [singleProject]
-        : (multiProjects || DEFAULT_PROJECTS);
+        : (multiProjects || (targetUsername ? [] : DEFAULT_PROJECTS));
 
   const visibleProjects = projects.filter(p => p.visible !== false);
 
-  const scrollToProject = (projectId, subId) => {
-    const targetId = subId
-      ? `project-${projectId}-${subId}`
+  const scrollToProject = (projectId, anchor) => {
+    const targetId = anchor
+      ? `project-${projectId}-${anchor}`
       : `project-${projectId}`;
     const el = document.getElementById(targetId);
     if (el) {
@@ -652,7 +715,7 @@ export default function PortfolioProjectPreview() {
     <div style={{ minHeight: "100vh", background: "white", fontFamily: F }}>
       <Header_partner />
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 24px 80px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "36px 12px 80px" }}>
 
         {/* 뒤로가기 (에디터에서 온 경우) */}
         {fromEditor && (
@@ -684,7 +747,7 @@ export default function PortfolioProjectPreview() {
 
           {/* 왼쪽: QUICK LINKS 사이드바 */}
           <div style={{
-            width: 260, flexShrink: 0,
+            width: 300, flexShrink: 0,
             background: "white", borderRadius: 18,
             border: "1.5px solid #E2E8F0",
             padding: "20px 0",
@@ -692,7 +755,7 @@ export default function PortfolioProjectPreview() {
             position: "sticky", top: 88,
             maxHeight: "calc(100vh - 100px)", overflowY: "auto",
           }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#94A3B8", letterSpacing: "0.12em", padding: "0 20px 12px", fontFamily: F }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#94A3B8", letterSpacing: "0.12em", padding: "0 24px 12px", fontFamily: F }}>
               QUICK LINKS
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
@@ -703,7 +766,7 @@ export default function PortfolioProjectPreview() {
                     onClick={() => scrollToProject(proj.id)}
                     style={{
                       width: "100%", textAlign: "left",
-                      padding: pi === 0 ? "8px 20px 4px" : "14px 20px 4px",
+                      padding: pi === 0 ? "8px 24px 4px" : "14px 24px 4px",
                       background: "none", border: "none", cursor: "pointer",
                       fontFamily: F,
                     }}
@@ -713,7 +776,7 @@ export default function PortfolioProjectPreview() {
                         {proj.emoji?.split(" ")[0]}
                       </span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", lineHeight: 1.4 }}>
-                        {pi + 1}. {proj.title.length > 28 ? proj.title.substring(0, 28) + "…" : proj.title}
+                        {pi + 1}. {proj.title.length > 34 ? proj.title.substring(0, 34) + "…" : proj.title}
                       </span>
                     </div>
                     <div style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, marginTop: 2, paddingLeft: 22 }}>
@@ -721,25 +784,31 @@ export default function PortfolioProjectPreview() {
                     </div>
                   </button>
                   {/* 서브 링크 */}
-                  <div style={{ paddingLeft: 42, paddingBottom: 8 }}>
-                    {proj.quickLinkSubs?.map((sub, si) => (
-                      <button
-                        key={si}
-                        onClick={() => scrollToProject(proj.id, sub.toLowerCase().replace(/ /g, "-").replace(/[&]/g, "").replace(/--/g, "-"))}
-                        style={{
-                          display: "block", width: "100%", textAlign: "left",
-                          background: "none", border: "none", cursor: "pointer",
-                          padding: "4px 0",
-                          fontSize: 12, color: "#64748B", fontFamily: F,
-                          fontWeight: 500,
-                          transition: "color 0.1s",
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.color = "#3B82F6"}
-                        onMouseLeave={e => e.currentTarget.style.color = "#64748B"}
-                      >
-                        {sub}
-                      </button>
-                    ))}
+                  <div style={{ paddingLeft: 48, paddingBottom: 8 }}>
+                    {proj.quickLinkSubs?.map((sub, si) => {
+                      const label = typeof sub === "string" ? sub : sub.label;
+                      const anchor = typeof sub === "string"
+                        ? sub.toLowerCase().replace(/ /g, "-").replace(/[&]/g, "").replace(/--/g, "-")
+                        : sub.anchor;
+                      return (
+                        <button
+                          key={si}
+                          onClick={() => scrollToProject(proj.id, anchor)}
+                          style={{
+                            display: "block", width: "100%", textAlign: "left",
+                            background: "none", border: "none", cursor: "pointer",
+                            padding: "4px 0",
+                            fontSize: 12, color: "#60A5FA", fontFamily: F,
+                            fontWeight: 500,
+                            transition: "color 0.1s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.color = "#3B82F6"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#60A5FA"}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

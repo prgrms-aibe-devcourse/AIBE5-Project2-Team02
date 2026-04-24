@@ -60,29 +60,29 @@ public class PartnerPortfolio {
     private String thumbnailUrl;
 
     @Lob
-    @Column(name = "work_content", columnDefinition = "CLOB")
+    @Column(name = "work_content", columnDefinition = "LONGTEXT")
     private String workContent;
 
     @Lob
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "LONGTEXT")
     private String vision;
 
     /** JSON 문자열: [{title, desc}] */
     @Lob
-    @Column(name = "core_features", columnDefinition = "CLOB")
+    @Column(name = "core_features", columnDefinition = "LONGTEXT")
     private String coreFeaturesJson;
 
     @Lob
-    @Column(name = "technical_challenge", columnDefinition = "CLOB")
+    @Column(name = "technical_challenge", columnDefinition = "LONGTEXT")
     private String technicalChallenge;
 
     @Lob
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "LONGTEXT")
     private String solution;
 
     /** JSON 문자열: ["React","Node.js",...] */
     @Lob
-    @Column(name = "tech_tags", columnDefinition = "CLOB")
+    @Column(name = "tech_tags", columnDefinition = "LONGTEXT")
     private String techTagsJson;
 
     @Column(name = "github_url", length = 500)
@@ -96,7 +96,7 @@ public class PartnerPortfolio {
 
     /** JSON 문자열: 섹션 토글 객체 */
     @Lob
-    @Column(name = "sections_json", columnDefinition = "CLOB")
+    @Column(name = "sections_json", columnDefinition = "LONGTEXT")
     private String sectionsJson;
 
     /** PortfolioAddTab 의 "포트폴리오에 추가" 토글 상태. */

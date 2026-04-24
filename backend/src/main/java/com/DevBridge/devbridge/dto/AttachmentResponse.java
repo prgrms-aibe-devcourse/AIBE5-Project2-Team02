@@ -20,6 +20,7 @@ public class AttachmentResponse {
     private Long sizeBytes;
     private String notes;
     private Long uploaderUserId;
+    private String uploaderName;
     private LocalDateTime createdAt;
 
     public static AttachmentResponse from(ProjectAttachment a) {
@@ -33,6 +34,22 @@ public class AttachmentResponse {
                 .sizeBytes(a.getSizeBytes())
                 .notes(a.getNotes())
                 .uploaderUserId(a.getUploaderUserId())
+                .createdAt(a.getCreatedAt())
+                .build();
+    }
+
+    public static AttachmentResponse from(ProjectAttachment a, String uploaderName) {
+        return AttachmentResponse.builder()
+                .id(a.getId())
+                .projectId(a.getProjectId())
+                .kind(a.getKind() == null ? null : a.getKind().name())
+                .name(a.getName())
+                .url(a.getUrl())
+                .mimeType(a.getMimeType())
+                .sizeBytes(a.getSizeBytes())
+                .notes(a.getNotes())
+                .uploaderUserId(a.getUploaderUserId())
+                .uploaderName(uploaderName)
                 .createdAt(a.getCreatedAt())
                 .build();
     }

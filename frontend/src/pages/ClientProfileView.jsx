@@ -65,7 +65,7 @@ function SectionTitle({ icon, title }) {
       <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: icon === "</>" ? 12 : 20, fontWeight: 800, color: "#3B82F6", flexShrink: 0, fontFamily: F }}>
         {icon}
       </div>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1E293B", margin: 0, fontFamily: F }}>{title}</h2>
+      <h2 style={{ fontSize: 23, fontWeight: 900, background: PRIMARY_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: 0, fontFamily: F }}>{title}</h2>
     </div>
   );
 }
@@ -188,7 +188,7 @@ function HomeSection({ partner }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <div>
-          <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 6px", fontFamily: F }}>
+          <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 6px", fontFamily: F }}>
             파트너스 평가
           </h2>
           <p style={{ fontSize: 14, color: "#64748B", margin: 0, fontFamily: F, lineHeight: 1.7 }}>
@@ -590,23 +590,45 @@ const MOCK_PORTFOLIO = [
 ];
 
 function PortfolioSection({ partner }) {
+  const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
+
   const sourceItems = Array.isArray(partner?.portfolioItems) && partner.portfolioItems.length > 0
     ? partner.portfolioItems.map((item) => ({
+        sourceKey: item.sourceKey || item.id,
         title: item.title,
         category: item.role || item.period || "포트폴리오",
         tags: Array.isArray(item.techTags) ? item.techTags : [],
-        rep: false,
+        thumbnailUrl: item.thumbnailUrl || null,
+        rep: !!item.isRepresentative,
       }))
-    : MOCK_PORTFOLIO;
+    : MOCK_PORTFOLIO.map((p, i) => ({ ...p, sourceKey: `mock-${i}`, thumbnailUrl: null }));
+
   const items = showAll ? sourceItems : sourceItems.slice(0, 3);
+
+  const handleCardClick = (item) => {
+    if (item.sourceKey && !String(item.sourceKey).startsWith("mock-")) {
+      const rawItems = Array.isArray(partner?.portfolioItems) ? partner.portfolioItems : [];
+      navigate("/portfolio_project_preview", {
+        state: {
+          sourceKey: item.sourceKey,
+          sourceKeys: sourceItems
+            .filter(s => !String(s.sourceKey).startsWith("mock-"))
+            .map(s => s.sourceKey),
+          portfolioItems: rawItems,
+          username: partner?.username,
+        },
+      });
+    }
+  };
+
   return (
     <div>
       {/* 헤더 행: 제목 + 전체보기 버튼 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "#3B82F6", flexShrink: 0, fontFamily: F }}>📋</div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1E293B", margin: 0, fontFamily: F }}>포트폴리오</h2>
+          <h2 style={{ fontSize: 23, fontWeight: 900, background: PRIMARY_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: 0, fontFamily: F }}>포트폴리오</h2>
           <span style={{ fontSize: 13, color: "#94A3B8", fontFamily: F, fontWeight: 500 }}>{sourceItems.length}건</span>
         </div>
         <button
@@ -624,10 +646,37 @@ function PortfolioSection({ partner }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         {items.map((p, i) => (
-          <div key={i} style={{ borderRadius: 16, overflow: "hidden", border: "1.5px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-            {/* 썬네일 */}
-            <div style={{ height: 120, background: PORTFOLIO_BG[i % PORTFOLIO_BG.length], position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src={PORTFOLIO_IMGS[i % PORTFOLIO_IMGS.length]} alt="thumbnail" style={{ height: 90, objectFit: "contain", opacity: 0.92 }} />
+          <div
+            key={i}
+            onClick={() => handleCardClick(p)}
+            style={{
+              borderRadius: 16, overflow: "hidden",
+              border: "1.5px solid #E2E8F0",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              cursor: p.sourceKey && !String(p.sourceKey).startsWith("mock-") ? "pointer" : "default",
+              transition: "transform 0.15s, box-shadow 0.15s",
+            }}
+            onMouseEnter={e => {
+              if (p.sourceKey && !String(p.sourceKey).startsWith("mock-")) {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 24px rgba(59,130,246,0.12)";
+              }
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+            }}
+          >
+            {/* 썸네일 */}
+            <div style={{
+              height: 120,
+              background: p.thumbnailUrl ? "#F8FAFC" : PORTFOLIO_BG[i % PORTFOLIO_BG.length],
+              position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {p.thumbnailUrl
+                ? <img src={p.thumbnailUrl} alt="thumbnail" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <img src={PORTFOLIO_IMGS[i % PORTFOLIO_IMGS.length]} alt="thumbnail" style={{ height: 90, objectFit: "contain", opacity: 0.92 }} />
+              }
               {p.rep && (
                 <span style={{ position: "absolute", top: 10, left: 10, fontSize: 11, fontWeight: 800, color: "#1D4ED8", background: "white", borderRadius: 6, padding: "2px 8px", fontFamily: F }}>대표</span>
               )}

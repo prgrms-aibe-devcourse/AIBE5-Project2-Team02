@@ -560,12 +560,38 @@ function PartnerTag({ label }) {
 function ProjectDetailPopup({ proj, onClose }) {
   const aiMatch = proj.id === 1 ? "93%" : "87%";
   const [showAgreementModal, setShowAgreementModal] = useState(false);
-  
-  const requirements = [
-    proj.tags.slice(0, 2).join("/") + " 등 관련 기술 실무 경험 " + (proj.level === "시니어" ? "3년 이상" : proj.level === "미들" ? "2년 이상" : "1년 이상"),
-    proj.title + " 도메인 프로젝트 수행 경험 우대",
-    "원활한 커뮤니케이션 능력 보유자",
-  ];
+
+  // 실 BE (/api/projects/{id}) 에서 상세 fetch — mock 의존 제거.
+  const [beDetail, setBeDetail] = useState(null);
+  useEffect(() => {
+    if (!proj?.id) return;
+    let active = true;
+    projectsApi.detail(proj.id)
+      .then(d => { if (active) setBeDetail(d); })
+      .catch(err => console.warn("[ClientDashboard ProjectDetailPopup] BE detail 실패:", err?.message));
+    return () => { active = false; };
+  }, [proj?.id]);
+
+  // BE 우선, 없으면 카드 정보(proj) 사용.
+  const src = beDetail || proj || {};
+  const view = {
+    id: src.id ?? proj?.id,
+    title: src.title || proj?.title,
+    desc: src.desc || proj?.desc,
+    tags: src.tags || proj?.tags || [],
+    badge: src.priceType || proj?.badge || "유료",
+    workPref: src.workPref || proj?.workPref,
+    budget: src.price || proj?.budget,
+    period: src.period || proj?.period,
+    deadline: src.deadline || (proj?.deadline || "").replace("마감 ", "").replace("마감 임박 ", ""),
+    requiredSkills: src.requiredSkills || proj?.tags || [],
+    preferredSkills: src.preferredSkills || [],
+    clientId: src.clientId || proj?.clientId,
+    avatarColor: src.avatarColor || proj?.avatarColor,
+    verifications: src.verifications || proj?.verifications || [],
+    level: src.level || proj?.level,
+  };
+
 
   return (
     <div
@@ -592,20 +618,20 @@ function ProjectDetailPopup({ proj, onClose }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
             <span style={{
               padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700,
-              background: proj.badge === "유료" ? "#EFF6FF" : "#F0FFF4",
-              color: proj.badge === "유료" ? "#3B82F6" : "#16A34A", fontFamily: F,
-            }}>{proj.badge}</span>
+              background: view.badge === "유료" ? "#EFF6FF" : "#F0FFF4",
+              color: view.badge === "유료" ? "#3B82F6" : "#16A34A", fontFamily: F,
+            }}>{view.badge}</span>
             <span style={{
               padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700,
-              background: (proj.workPref === "외주" || proj.workPref === "상주") ? "#FEF2F2" : "#FEF7ED",
-              color: (proj.workPref === "외주" || proj.workPref === "상주") ? "#DC2626" : "#7C2D12", fontFamily: F,
-            }}>{proj.workPref || "상주"}</span>
+              background: (view.workPref === "외주" || view.workPref === "상주") ? "#FEF2F2" : "#FEF7ED",
+              color: (view.workPref === "외주" || view.workPref === "상주") ? "#DC2626" : "#7C2D12", fontFamily: F,
+            }}>{view.workPref || "상주"}</span>
             <span style={{
               padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700,
               background: "#F0FDF4", color: "#16A34A", fontFamily: F,
             }}>AI Match {aiMatch}</span>
           </div>
-          <h2 style={{ fontSize: 25, fontWeight: 900, color: "#0F172A", margin: 0, fontFamily: F, paddingRight: 36, lineHeight: 1.2 }}>{proj.title}</h2>
+          <h2 style={{ fontSize: 25, fontWeight: 900, color: "#0F172A", margin: 0, fontFamily: F, paddingRight: 36, lineHeight: 1.2 }}>{view.title}</h2>
           <button
             onClick={onClose}
             style={{
@@ -618,11 +644,11 @@ function ProjectDetailPopup({ proj, onClose }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
             <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 18px", border: "1.5px solid #E2E8F0" }}>
               <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, fontFamily: F, marginBottom: 4 }}>예상 견적</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#1E293B", fontFamily: F }}>{proj.budget}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#1E293B", fontFamily: F }}>{view.budget || "협의"}</div>
             </div>
             <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 18px", border: "1.5px solid #E2E8F0" }}>
               <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, fontFamily: F, marginBottom: 4 }}>예상 기간</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#1E293B", fontFamily: F }}>{proj.period}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#1E293B", fontFamily: F }}>{view.period || "협의"}</div>
             </div>
           </div>
 
@@ -631,81 +657,51 @@ function ProjectDetailPopup({ proj, onClose }) {
             <div style={{ width: 4, height: 18, borderRadius: 2, background: "#3B82F6" }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>프로젝트 개요</span>
           </div>
-          <p style={{ fontSize: 14, color: "#475569", margin: "0 0 20px", fontFamily: F, lineHeight: 1.8 }}>{proj.desc}</p>
+          <p style={{ fontSize: 14, color: "#475569", margin: "0 0 20px", fontFamily: F, lineHeight: 1.8 }}>{view.desc || "—"}</p>
 
-          <div style={{ borderTop: "1px solid #F1F5F9", margin: "16px 0 18px" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#3B82F6" }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>필요 기술 스택</span>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-            {proj.tags.map(t => (
-              <span key={t} style={{
-                fontSize: 13, fontWeight: 700, color: "#1D4ED8", background: "#EFF6FF", 
-                border: "1px solid #BFDBFE", borderRadius: 8, padding: "5px 14px", fontFamily: F,
-              }}>{t.replace("#", "")}</span>
-            ))}
-          </div>
+          {view.tags.length > 0 && (
+            <>
+              <div style={{ borderTop: "1px solid #F1F5F9", margin: "16px 0 18px" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div style={{ width: 4, height: 18, borderRadius: 2, background: "#3B82F6" }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>필요 기술 스택</span>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+                {view.tags.map(t => (
+                  <span key={t} style={{
+                    fontSize: 13, fontWeight: 700, color: "#1D4ED8", background: "#EFF6FF",
+                    border: "1px solid #BFDBFE", borderRadius: 8, padding: "5px 14px", fontFamily: F,
+                  }}>{String(t).replace(/^#/, "")}</span>
+                ))}
+              </div>
+            </>
+          )}
 
-          <div style={{ borderTop: "1px solid #F1F5F9", margin: "16px 0 18px" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#3B82F6" }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>근무 환경 및 팀 구성</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-            {[
-              "팀 협업 도구(Slack, Notion, Jira) 사용 환경",
-              "주간 스프린트 리뷰 및 회고 참여", 
-              "계약 만료 후 연장 협의 가능",
-            ].map((item, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <span style={{ color: "#3B82F6", fontWeight: 900, marginTop: 1 }}>✔</span>
-                <span style={{ fontSize: 14, color: "#475569", lineHeight: 1.6, fontFamily: F }}>{item}</span>
+          {view.deadline && (
+            <>
+              <div style={{ borderTop: "1px solid #F1F5F9", margin: "16px 0 18px" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div style={{ width: 4, height: 18, borderRadius: 2, background: "#3B82F6" }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>모집 마감</span>
               </div>
-            ))}
-          </div>
-
-          <div style={{ borderTop: "1px solid #F1F5F9", margin: "16px 0 18px" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#3B82F6" }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>근무 환경 및 모집 요건</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 12 }}>
-            {[
-              { label: "모집 인원", value: "2명 (프론트엔드 1, 백엔드 1)" },
-              { label: "근무 형태", value: proj.workPref === "외주" ? "원격 외주 (주 1회 오프라인 미팅 권장)" : "원격 근무 (주 1회 오프라인 미팅 권장)" },
-              { label: "계약 기간", value: proj.period },
-              { label: "모집 마감", value: <span style={{ color: "#EF4444", fontWeight: 700 }}>{(proj.deadline || "").replace("마감 ", "").replace("마감 임박 ", "") || "2026.04.30"}</span> },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, marginBottom: 4, fontFamily: F }}>{label}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{value}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 10, fontFamily: F }}>자격 요건</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-            {requirements.map((r, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <span style={{ color: "#94A3B8", flexShrink: 0 }}>·</span>
-                <span style={{ fontSize: 14, color: "#475569", lineHeight: 1.6, fontFamily: F }}>{r}</span>
-              </div>
-            ))}
-          </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#EF4444", fontFamily: F, marginBottom: 20 }}>{view.deadline}</div>
+            </>
+          )}
 
           <div style={{ borderTop: "1px solid #F1F5F9", margin: "16px 0 18px" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: proj.avatarColor || "#4BAA7B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 900, color: "white", fontFamily: F, flexShrink: 0 }}>
-              {(proj.clientId || "CL").slice(0, 2).toUpperCase()}
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: view.avatarColor || "#4BAA7B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 900, color: "white", fontFamily: F, flexShrink: 0 }}>
+              {(view.clientId || "CL").slice(0, 2).toUpperCase()}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#1E293B", fontFamily: F }}>@{proj.clientId || "client_00000"}</div>
-              <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, marginTop: 2 }}>클라이언트 신뢰도 4.9/5.0</div>
-              <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                {(proj.verifications || ["본인인증", "사업자등록증"]).map((v, i) => (
-                  <span key={i} style={{ fontSize: 11, fontWeight: 600, color: "#059669", background: "#ECFDF5", borderRadius: 999, padding: "3px 10px", fontFamily: F }}>{v}</span>
-                ))}
-              </div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#1E293B", fontFamily: F }}>@{view.clientId || "익명"}</div>
+              {view.verifications.length > 0 && (
+                <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                  {view.verifications.map((v, i) => (
+                    <span key={i} style={{ fontSize: 11, fontWeight: 600, color: "#059669", background: "#ECFDF5", borderRadius: 999, padding: "3px 10px", fontFamily: F }}>{v}</span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -3436,12 +3432,20 @@ function useStreamChannel(client, type, myDbId, contact, contractId) {
           return;
         }
         if (type === "project_meeting") {
-          // 진행 프로젝트 미팅은 계약·자유미팅 DM 과 분리된 새 stream 채널 사용.
-          const me = String(myDbId);
-          const other = String(contact.targetUserId);
+          // 진행 프로젝트 미팅: 백엔드에서 server-side 로 채널을 ensure 해야
+          // role=user 도 ReadChannel/Watch 가능. (client.channel().watch() 는 403)
+          const other = contact.targetUserId;
           if (!other) return;
-          const [a, b] = me < other ? [me, other] : [other, me];
-          ch = client.channel("messaging", `pm-${a}-${b}`, { members: [me, other] });
+          const res = await fetch(`/api/chat/rooms/ensure-meeting?userId=${myDbId}`, {
+            method: "POST", headers,
+            body: JSON.stringify({ targetUserId: other, mode: "project" }),
+          });
+          if (!res.ok) {
+            console.error("[Stream] ensure-meeting(project) failed", res.status, await res.text());
+            return;
+          }
+          const data = await res.json();
+          ch = client.channel(data.streamChannelType, data.streamChannelId);
           await ch.watch();
           // 첫 진입 시 시스템 안내 자동 게시 (이미 있으면 skip)
           try {
@@ -3464,6 +3468,22 @@ function useStreamChannel(client, type, myDbId, contact, contractId) {
           });
           if (!res.ok) return;
           room = await res.json();
+        } else if (type === "negotiation") {
+          // 계약 세부 협의 미팅 (특정 계약에 묶이지 않은 일반 협의 채널).
+          // 자유미팅(DM) 과 별도의 cm-{a}-{b} 채널을 server-side ensure.
+          const res = await fetch(`/api/chat/rooms/ensure-meeting?userId=${myDbId}`, {
+            method: "POST", headers,
+            body: JSON.stringify({ targetUserId: contact.targetUserId, mode: "contract" }),
+          });
+          if (!res.ok) {
+            console.error("[Stream] ensure-meeting(contract) failed", res.status, await res.text());
+            return;
+          }
+          const data = await res.json();
+          ch = client.channel(data.streamChannelType, data.streamChannelId);
+          await ch.watch();
+          setChannel(ch);
+          return;
         } else {
           const res = await fetch(`/api/chat/rooms/dm?userId=${myDbId}`, {
             method: "POST", headers,
@@ -4103,7 +4123,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
     <div style={{ display: "flex", height: "100%", minHeight: 580, gap: 0, overflow: "hidden" }}>
 
       {/* ── 왼쪽: 연락처 목록 ── */}
-      <div style={{ width: 280, flexShrink: 0, background: "white", borderRight: "1.5px solid #F1F5F9", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: 340, flexShrink: 0, background: "white", borderRight: "1.5px solid #F1F5F9", display: "flex", flexDirection: "column" }}>
         {/* 검색 */}
         <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid #F1F5F9" }}>
           <div style={{ display: "flex", alignItems: "center", background: "#F8FAFC", borderRadius: 10, border: "1.5px solid #E2E8F0", padding: "8px 12px", gap: 8 }}>
@@ -4138,7 +4158,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
               <AvatarCircle initials={contact.initials} size={42} avatar={contact.isSelfChat ? myHeroImage : contact.avatar} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
                   {!contact.isSelfChat && (
                     <button
                       type="button"
@@ -4199,7 +4219,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
           <div style={{ padding: "14px 20px", borderBottom: "1.5px solid #F1F5F9", display: "flex", alignItems: "center", gap: 12, background: "white" }}>
             <AvatarCircle initials={activeContact.initials} size={38} avatar={activeContact.isSelfChat ? myHeroImage : activeContact.avatar} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
               <div style={{ fontSize: 11, color: "#64748B", fontFamily: F }}>Project: {activeContact.project}</div>
             </div>
             {/* 햄버거 버튼 */}
@@ -4318,7 +4338,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
                         </div>
                       )}
                       <div style={{ maxWidth: "68%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-                        {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
+                        {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
                         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
                           <MeetingProjectCard project={msg.project} onDetail={setSelectedProject} />
                           <span style={{ fontSize: 10.4, color: "#94A3B8", fontFamily: F, flexShrink: 0, marginBottom: 2 }}>{msg.time}</span>
@@ -4393,7 +4413,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
                       </div>
                     )}
                     <div style={{ maxWidth: "60%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-                      {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
+                      {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
                       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
                         {(!msg.file && isOnlyEmoji(msg.text)) ? (
                         <div style={{ background: "transparent", padding: 0, fontSize: 56, lineHeight: 1.1, fontFamily: F }}>
@@ -4404,7 +4424,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
                           background: isMe ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#F8FAFC",
                           color: isMe ? "white" : "#1E293B",
                           borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                          padding: "12px 18px", fontSize: 13.4, fontFamily: F, lineHeight: 1.6,
+                          padding: "12px 18px", fontSize: 14.4, fontFamily: F, lineHeight: 1.6,
                           boxShadow: isMe ? "0 2px 8px rgba(99,102,241,0.25)" : "0 1px 4px rgba(0,0,0,0.05)",
                           border: isMe ? "none" : "1px solid #F1F5F9",
                         }}>
@@ -4850,16 +4870,22 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
     return () => { cancelled = true; };
   }, [projectId]);
   // activeContact 변경 시 해당 partner 와 진행중인 내 프로젝트 후보 fetch
+  // meetingMode 에 따라 드롭다운 후보를 구분:
+  //   - 'project' (진행 프로젝트 미팅) → IN_PROGRESS 만
+  //   - 'contract' (계약 세부 협의 미팅) → ACCEPTED, CONTRACTED 만
   useEffect(() => {
     if (projectId || !activeId) return;
     let cancelled = false;
+    const allowedAppStatuses = meetingMode === "project"
+      ? ["IN_PROGRESS"]
+      : ["ACCEPTED", "CONTRACTED"];
     applicationsApi.receivedList()
       .then(list => {
         if (cancelled) return;
         const counterpartId = Number(activeId);
         const matched = (list || []).filter(a =>
           Number(a.partnerUserId) === counterpartId &&
-          ["ACCEPTED", "IN_PROGRESS", "CONTRACTED"].includes(a.status)
+          allowedAppStatuses.includes(a.status)
         );
         const dedup = [];
         const seen = new Set();
@@ -4879,7 +4905,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
       })
       .catch(() => { if (!cancelled) { setContactProjects([]); setSelectedContractProjectId(null); } });
     return () => { cancelled = true; };
-  }, [activeId, projectId]);
+  }, [activeId, projectId, meetingMode]);
   // contact-specific 매칭만 사용. autoProjectId fallback 제거 (다른 contact 의 데이터가 잘못 노출되는 문제 방지).
   const effectiveProjectId = projectId || selectedContractProjectId;
   // modules[moduleKey] = { status, data, lastModifierId, lastModifierName, updatedAt }
@@ -5397,7 +5423,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           </div>
         )}
         <div style={{ maxWidth: "68%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-          {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
+          {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 4 }}>{activeContact.name}</span>}
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
             <MeetingProjectCard project={msg.project} onDetail={setSelectedProject} />
             <span style={{ fontSize: 10.4, color: "#94A3B8", fontFamily: F, flexShrink: 0, marginBottom: 2 }}>{msg.time}</span>
@@ -5431,7 +5457,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           </div>
         )}
         <div style={{ maxWidth: "60%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-          {!isMe && <span style={{ fontSize: 11.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
+          {!isMe && <span style={{ fontSize: 12.4, fontWeight: 700, color: "#64748B", fontFamily: F, marginBottom: 3 }}>{activeContact.name}</span>}
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
             {(!msg.file && isOnlyEmoji(msg.text)) ? (
             <div style={{ background: "transparent", padding: 0, fontSize: 56, lineHeight: 1.1, fontFamily: F }}>
@@ -5439,11 +5465,11 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
             </div>
             ) : (
             <div style={{
-              background: isMe ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "white",
+              background: isMe ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" : "#F8FAFC",
               color: isMe ? "white" : "#1E293B",
               borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-              padding: "12px 18px", fontSize: 13.4, fontFamily: F, lineHeight: 1.6,
-              boxShadow: isMe ? "0 2px 8px rgba(99,102,241,0.25)" : "0 1px 4px rgba(0,0,0,0.06)",
+              padding: "12px 18px", fontSize: 14.4, fontFamily: F, lineHeight: 1.6,
+              boxShadow: isMe ? "0 2px 8px rgba(99,102,241,0.25)" : "0 1px 4px rgba(0,0,0,0.05)",
               border: isMe ? "none" : "1px solid #F1F5F9",
             }}>
               {renderTextWithLinks(msg.text)}
@@ -5496,9 +5522,6 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
         </div>
         <div style={{ flex: 1, overflowY: "auto" }}>
           {filtered.map(contact => {
-            const statuses = itemStatusesByContact[contact.id] || {};
-            const done = Object.values(statuses).filter(isAgreementCompleted).length;
-            const total = Object.keys(statuses).length || 7;
             return (
               <div
                 key={contact.id}
@@ -5515,7 +5538,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
                 <AvatarCircle initials={contact.initials} size={42} avatar={contact.isSelfChat ? myHeroImage : contact.avatar} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{contact.name}</span>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -5541,13 +5564,6 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
                     {contact.unread > 0 && (
                       <span style={{ minWidth: 18, height: 18, borderRadius: 99, background: "#3B82F6", color: "white", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: "0 4px" }}>{contact.unread}</span>
                     )}
-                  </div>
-                  {/* 협의 진행도 미니바 */}
-                  <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ flex: 1, height: 4, borderRadius: 99, background: "#F1F5F9", overflow: "hidden" }}>
-                      <div style={{ width: `${Math.round((done / total) * 100)}%`, height: "100%", borderRadius: 99, background: "linear-gradient(90deg, #60a5fa, #3b82f6)" }} />
-                    </div>
-                    <span style={{ fontSize: 10, color: "#94A3B8", fontFamily: F, flexShrink: 0 }}>{done}/{total}</span>
                   </div>
                 </div>
               </div>
@@ -5621,14 +5637,14 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
 
       {/* ── 오른쪽: 채팅 영역 ── */}
       {activeContact && (
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: "#FAFBFC" }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: "white" }}>
 
           {/* 채팅 헤더 */}
           <div style={{ padding: "14px 18px", background: "white", borderBottom: "1.5px solid #F1F5F9", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <AvatarCircle initials={activeContact.initials} size={38} avatar={activeContact.isSelfChat ? myHeroImage : activeContact.avatar} />
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{activeContact.name}</div>
                 <div style={{ fontSize: 11, color: "#64748B", fontFamily: F }}>Project: {activeContact.project}</div>
               </div>
             </div>
@@ -5720,23 +5736,16 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
             <div ref={msgContainerRef} style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 0 }}>
 
-              {/* 시스템 메시지 (채팅 시작점, 스크롤과 함께 올라감) */}
-              <div style={{ background: "#F0F9FF", border: "1.5px solid #BAE6FD", borderRadius: 14, padding: "14px 18px", marginBottom: 12, textAlign: "center" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6", fontFamily: F, marginBottom: 6 }}>시스템 메시지</div>
-                <p style={{ margin: 0, fontSize: 13, color: "#475569", fontFamily: F, lineHeight: 1.75 }}>
-                  계약 세부 협의 미팅이 시작되었어요. 자유 미팅에서 상호 수락이 완료되어,<br />
-                  이제 작업 범위·일정·금액을 구체적으로 정리하는 단계예요.
-                </p>
-              </div>
-
-              {/* 날짜 구분선 */}
-              <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 16px" }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", fontFamily: F, background: "#F1F5F9", borderRadius: 99, padding: "4px 14px", letterSpacing: "0.05em" }}>
-                  TODAY, OCT 24
-                </span>
-              </div>
-
               {(displayMessages.messages || displayMessages || []).map(msg => {
+                if (msg.type === "date_divider") {
+                  return (
+                    <div key={msg.id} style={{ display: "flex", alignItems: "center", gap: 12, margin: "10px 0 16px" }}>
+                      <div style={{ flex: 1, height: 1, background: "#F1F5F9" }} />
+                      <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, fontWeight: 600 }}>{msg.label}</span>
+                      <div style={{ flex: 1, height: 1, background: "#F1F5F9" }} />
+                    </div>
+                  );
+                }
                 if (msg.type === "project_card") return renderProjectCardMessage(msg);
                 if (msg.type === "proposal_request") return renderProposalRequest(msg);
                 if (msg.type === "system_notice") return renderSystemNotice(msg);
@@ -6358,13 +6367,6 @@ export default function ClientDashboard() {
     return () => { if (client) { client.disconnectUser(); setChatClient(null); } };
   }, [dbId, username]);
 
-  const currentMilestones = MOCK_MANAGE_PROJECTS.flatMap(p =>
-    p.milestones
-      .filter(m => m.status === "IN_PROGRESS" || m.status === "PENDING")
-      .slice(0, 1)
-      .map(m => ({ projectId: p.id, projectTitle: p.title, milestoneTitle: m.title, status: m.status }))
-  );
-
   // 콘텐츠 패널 — 스케줄 탭은 패딩 0 (FullCalendar가 영역 전체 사용)
   const isScheduleTab = activeTab === "schedule";
   const isMeetingTab = activeTab === "free_meeting" || activeTab === "contract_meeting" || activeTab === "project_meeting";
@@ -6390,7 +6392,7 @@ export default function ClientDashboard() {
     const observer = new ResizeObserver(() => updateHeight());
     observer.observe(node);
     return () => observer.disconnect();
-  }, [activeTab, currentMilestones.length]);
+  }, [activeTab]);
 
   const renderContent = () => {
     if (isScheduleTab) return <ScheduleTab />;
@@ -6490,38 +6492,6 @@ export default function ClientDashboard() {
                   ))}
                 </div>
               ))}
-            </div>
-
-            {/* 진행 중 마일스톤 카드 */}
-            <div style={{ background: "white", borderRadius: 16, padding: "12px 10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.06em", padding: "2px 8px 8px", fontFamily: F }}>
-                진행 중 마일스톤
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {currentMilestones.map((item, i) => {
-                  const projectColor = MOCK_MANAGE_PROJECTS.find(p => p.id === item.projectId)?.progressColor || "#3B82F6";
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => { setProjectManageTarget(item.projectId); setActiveTab("project_manage"); }}
-                      style={{
-                        borderRadius: 10, padding: "9px 10px", cursor: "pointer",
-                        border: `1.5px solid ${projectColor}28`,
-                        background: `${projectColor}0D`,
-                        transition: "all 0.15s",
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = `${projectColor}1A`; e.currentTarget.style.borderColor = `${projectColor}55`; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = `${projectColor}0D`; e.currentTarget.style.borderColor = `${projectColor}28`; }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: projectColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.milestoneTitle}</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 11, color: "#64748B", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 12 }}>{item.projectTitle}</p>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
           </div>

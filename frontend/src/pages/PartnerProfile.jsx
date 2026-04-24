@@ -6,6 +6,8 @@ import aiBird from "../assets/hero_check.png";
 import PartnerBannerCard from "../components/PartnerBannerCard";
 import useStore from "../store/useStore";
 import { profileApi } from "../api/profile.api";
+import { projectsApi } from "../api/projects.api";
+import { applicationsApi } from "../api/applications.api";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -18,7 +20,6 @@ const TABS = [
   { key: "education",     label: "학력" },
   { key: "certificates",  label: "자격증" },
   { key: "awards",        label: "수상이력" },
-  { key: "portfolio_edit",label: "포트폴리오 수정 이동" },
   { key: "reviews",       label: "클라이언트 평가" },
   { key: "projects",      label: "진행하는 프로젝트" },
 ];
@@ -80,7 +81,7 @@ function ProfileMenuTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", fontFamily: F }}>
+      <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 8px", fontFamily: F }}>
         프로필 메뉴 관리
       </h2>
       <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 32px", fontFamily: F, lineHeight: 1.7 }}>
@@ -267,7 +268,7 @@ function IntroTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", fontFamily: F }}>
+      <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 8px", fontFamily: F }}>
         파트너로서 자기소개
       </h2>
       <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 32px", fontFamily: F, lineHeight: 1.7 }}>
@@ -576,7 +577,7 @@ function SkillsTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", fontFamily: F }}>
+      <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 8px", fontFamily: F }}>
         보유 기술 관리
       </h2>
       <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 28px", fontFamily: F, lineHeight: 1.7 }}>
@@ -1070,7 +1071,7 @@ function CareerTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", fontFamily: F }}>
+      <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 8px", fontFamily: F }}>
         경력 관리
       </h2>
       <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 28px", fontFamily: F, lineHeight: 1.7 }}>
@@ -1502,7 +1503,7 @@ function EducationTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize:26, fontWeight:800, color:"#1E293B", margin:"0 0 8px", fontFamily:F }}>학력 관리</h2>
+      <h2 style={{ fontSize:27, fontWeight:900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin:"0 0 8px", fontFamily:F }}>학력 관리</h2>
       <p style={{ fontSize:14, color:"#64748B", margin:"0 0 24px", fontFamily:F, lineHeight:1.7 }}>
         귀하의 학술적 배경을 입력하여 신뢰도를 높여보세요. 학교, 전공 및 학위 정보를 추가할 수 있습니다.
       </p>
@@ -1911,7 +1912,7 @@ function CertificatesTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", fontFamily: F }}>
+      <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 8px", fontFamily: F }}>
         자격증 관리
       </h2>
       <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 24px", fontFamily: F, lineHeight: 1.7 }}>
@@ -2437,7 +2438,7 @@ function AwardsTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", fontFamily: F }}>
+      <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 8px", fontFamily: F }}>
         수상이력 관리
       </h2>
       <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 24px", fontFamily: F, lineHeight: 1.7 }}>
@@ -2521,7 +2522,7 @@ function ReviewsTab() {
       {/* 타이틀 + 전체 보기 */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <div>
-          <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 6px", fontFamily: F }}>
+          <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 6px", fontFamily: F }}>
             클라이언트 평가
           </h2>
           <p style={{ fontSize: 14, color: "#64748B", margin: 0, fontFamily: F, lineHeight: 1.7 }}>
@@ -2613,80 +2614,131 @@ function ReviewsTab() {
 
 /* ── 준비 중 탭 ──────────────────────────────────────────── */
 /* ── 진행하는 프로젝트 탭 ────────────────────────────────── */
-const PROJECT_HISTORY = [
-  {
-    id: 1,
-    status: "In Progress", statusColor: "#3B82F6", statusBg: "#DBEAFE",
-    category: "#AI/ML Project",
-    title: "AI 기반 실시간 데이터 분석 시스템 구축",
-    desc: "대규모 트래픽 처리를 위한 분산 AI 추론 엔진 및 대시보드 개발 프로젝트",
-    tags: ["#Python", "#PyTorch", "#FastAPI", "#React"],
-    period: "2024.01 - 2024.06",
-    budget: "12,000,000 KRW",
-    progress: 75,
-    done: false,
-  },
-  {
-    id: 2,
-    status: "Developing", statusColor: "#D97706", statusBg: "#FEF3C7",
-    category: "#Mobile App",
-    title: "글로벌 패션 이커머스 하이브리드 앱 개발",
-    desc: "다국어 지원 및 맞춤형 큐레이션 알고리즘이 적용된 쇼핑 플랫폼 개발",
-    tags: ["#React Native", "#Node.js", "#PostgreSQL"],
-    period: "2024.02 - 2024.08",
-    budget: "25,500,000 KRW",
-    progress: 40,
-    done: false,
-  },
-  {
-    id: 3,
-    status: "Planning", statusColor: "#7C3AED", statusBg: "#EDE9FE",
-    category: "#Web3 Project",
-    title: "블록체인 기반 투명 공급망 관리 시스템",
-    desc: "이더리움 스마트 컨트랙트를 활용한 물류 유통 데이터 신뢰 모델링",
-    tags: ["#Solidity", "#Hardhat", "#Web3.js"],
-    period: "2024.03 - 2024.11",
-    budget: "48,000,000 KRW",
-    progress: 12,
-    done: false,
-  },
-  {
-    id: 4,
-    status: "Completed", statusColor: "#16A34A", statusBg: "#DCFCE7",
-    category: "#Fintech Service",
-    title: "차세대 자산 관리 플랫폼 고도화 및 리뉴얼",
-    desc: "사용자 경험 중심의 인터페이스 개선 및 마이데이터 연동 보안 모듈 강화",
-    tags: ["#Spring Boot", "#Vue.js", "#Docker", "#Redis"],
-    period: "2023.06 - 2023.12",
-    budget: "38,000,000 KRW",
-    progress: 100,
-    done: true,
-  },
-  {
-    id: 5,
-    status: "Completed", statusColor: "#16A34A", statusBg: "#DCFCE7",
-    category: "#Education Platform",
-    title: "기업 교육용 LMS(Learning Management System) 개발",
-    desc: "사내 교육 영상 스트리밍 및 성취도 평가 시스템 풀스택 개발",
-    tags: ["#Next.js", "#AWS S3", "#MongoDB"],
-    period: "2023.01 - 2023.05",
-    budget: "15,000,000 KRW",
-    progress: 100,
-    done: true,
-  },
-  {
-    id: 6,
-    status: "In Progress", statusColor: "#3B82F6", statusBg: "#DBEAFE",
-    category: "#Healthcare App",
-    title: "AI 스마트 워치 연동 개인 맞춤형 헬스케어 앱",
-    desc: "심박수 및 활동 데이터 분석을 통한 실시간 건강 리포트 생성 및 알림 서비스",
-    tags: ["#Flutter", "#Firebase", "#TensorFlow Lite"],
-    period: "2024.04 - 2024.10",
-    budget: "32,000,000 KRW",
-    progress: 25,
-    done: false,
-  },
-];
+/* 진행하는 프로젝트 탭 — 실제 DB 데이터 매핑 */
+const STATUS_STYLE = {
+  RECRUITING:  { label: "Planning",    color: "#7C3AED", bg: "#EDE9FE", progress: 10, done: false },
+  IN_PROGRESS: { label: "In Progress", color: "#3B82F6", bg: "#DBEAFE", progress: 50, done: false },
+  COMPLETED:   { label: "Completed",   color: "#16A34A", bg: "#DCFCE7", progress: 100, done: true  },
+  CLOSED:      { label: "Closed",      color: "#EF4444", bg: "#FEE2E2", progress: 100, done: true  },
+};
+const APP_STATUS_STYLE = {
+  APPLIED:     { label: "Applied",     color: "#0EA5E9", bg: "#E0F2FE", progress: 5,   done: false },
+  ACCEPTED:    { label: "Accepted",    color: "#3B82F6", bg: "#DBEAFE", progress: 25,  done: false },
+  CONTRACTED:  { label: "Contracted",  color: "#6366F1", bg: "#E0E7FF", progress: 35,  done: false },
+  IN_PROGRESS: { label: "In Progress", color: "#3B82F6", bg: "#DBEAFE", progress: 60,  done: false },
+  COMPLETED:   { label: "Completed",   color: "#16A34A", bg: "#DCFCE7", progress: 100, done: true  },
+  REJECTED:    { label: "Rejected",    color: "#EF4444", bg: "#FEE2E2", progress: 0,   done: true  },
+  WITHDRAWN:   { label: "Withdrawn",   color: "#94A3B8", bg: "#F1F5F9", progress: 0,   done: true  },
+};
+function fmtDate(d) {
+  if (!d) return "";
+  const s = String(d);
+  if (s.length >= 10) return s.slice(0, 7).replace("-", ".");
+  return s;
+}
+function fmtPeriod(start, end, durationMonths) {
+  const a = fmtDate(start);
+  const b = fmtDate(end);
+  if (a && b) return a + " ~ " + b;
+  if (a) return a + " 시작";
+  if (durationMonths) return durationMonths + "개월";
+  return "기간 미정";
+}
+function fmtBudget(p) {
+  const v = p.budgetAmount ?? p.price ?? p.budgetMax ?? p.budgetMin;
+  if (v == null) return "협의";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return String(v);
+  return n.toLocaleString() + " 만원";
+}
+function extractTags(p) {
+  const tags = [];
+  if (Array.isArray(p.requiredSkills)) tags.push(...p.requiredSkills);
+  else if (Array.isArray(p.skills)) tags.push(...p.skills);
+  if (p.serviceField) tags.unshift(p.serviceField);
+  return tags.filter(Boolean).slice(0, 6).map((t) => (String(t).startsWith("#") ? String(t) : "#" + t));
+}
+function normalizeProjectStatus(s) {
+  if (!s) return "RECRUITING";
+  const u = String(s).toUpperCase();
+  if (STATUS_STYLE[u]) return u;
+  // 한글 레이블 → ENUM
+  const map = {
+    "모집중": "RECRUITING",
+    "진행중": "IN_PROGRESS",
+    "완료": "COMPLETED",
+    "마감": "CLOSED",
+  };
+  return map[s] || "RECRUITING";
+}
+function mapProjectToHistory(p) {
+  const key = normalizeProjectStatus(p.status);
+  const style = STATUS_STYLE[key] || STATUS_STYLE.RECRUITING;
+  return {
+    id: "prj-" + p.id,
+    realProjectId: p.id,
+    status: style.label, statusColor: style.color, statusBg: style.bg,
+    category: p.serviceField ? "#" + p.serviceField : "#Project",
+    title: p.title || "제목 없음",
+    desc: p.description || p.slogan || "",
+    tags: extractTags(p),
+    period: fmtPeriod(p.startDate, p.deadline || p.endDate, p.durationMonths),
+    budget: fmtBudget(p),
+    progress: style.progress,
+    done: style.done,
+  };
+}
+function mapApplicationToHistory(app) {
+  // 백엔드 응답은 flat 구조 (projectTitle, projectDesc, ...) → project 객체로 합성
+  const p = app.project || {
+    id: app.projectId,
+    title: app.projectTitle,
+    description: app.projectDesc,
+    slogan: app.projectSlogan,
+    serviceField: app.projectServiceField,
+    requiredSkills: app.projectSkills,
+    startDate: app.projectStartDate,
+    deadline: app.projectDeadline,
+    durationMonths: app.projectDurationMonths,
+    budgetMin: app.projectBudgetMin,
+    budgetMax: app.projectBudgetMax,
+    status: app.projectStatus,
+  };
+  const key = (app.status || "APPLIED").toUpperCase();
+  const style = APP_STATUS_STYLE[key] || APP_STATUS_STYLE.APPLIED;
+  return {
+    id: "app-" + app.id,
+    realProjectId: p.id,
+    status: style.label, statusColor: style.color, statusBg: style.bg,
+    category: p.serviceField ? "#" + p.serviceField : "#Project",
+    title: p.title || "제목 없음",
+    desc: p.description || p.slogan || "",
+    tags: extractTags(p),
+    period: fmtPeriod(p.startDate, p.deadline || p.endDate, p.durationMonths),
+    budget: fmtBudget(p),
+    progress: style.progress,
+    done: style.done,
+  };
+}
+function mapProjectsToHistory(list) {
+  const items = (list || []).map(mapProjectToHistory);
+  items.sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+  return items;
+}
+function mergeHistoryItems(applications, myProjects) {
+  const apps = (applications || []).map(mapApplicationToHistory);
+  const owned = (myProjects || []).map(mapProjectToHistory);
+  const seen = new Set();
+  const merged = [];
+  for (const it of [...apps, ...owned]) {
+    const k = String(it.realProjectId || it.id);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    merged.push(it);
+  }
+  merged.sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+  return merged;
+}
 
 function ProjectDetailModal({ project, onClose }) {
   return (
@@ -2831,7 +2883,7 @@ function ProjectHistoryCard({ project, onDetail, onDashboard }) {
         <button
           onMouseEnter={() => setBtnHov(true)}
           onMouseLeave={() => setBtnHov(false)}
-          onClick={() => project.done ? onDetail(project) : onDashboard(project)}
+          onClick={() => onDashboard(project)}
           style={{
             width: "100%", padding: "11px 0", borderRadius: 10, border: "none",
             background: btnHov ? btnHovStyle.bg : btnBase.bg,
@@ -2850,10 +2902,27 @@ function ProjectHistoryCard({ project, onDetail, onDashboard }) {
 function ProjectsTab() {
   const navigate = useNavigate();
   const [detailProject, setDetailProject] = useState(null);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 파트너: 내가 지원/계약/진행/완료한 프로젝트 목록 (applications) +
+  //         내가 등록한 프로젝트 목록 (projectsApi.myList - 파트너도 등록 가능)
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([applicationsApi.myList(), projectsApi.myList()])
+      .then((results) => {
+        if (!mounted) return;
+        const apps = results[0].status === "fulfilled" ? (results[0].value || []) : [];
+        const myProjects = results[1].status === "fulfilled" ? (results[1].value || []) : [];
+        const merged = mergeHistoryItems(apps, myProjects);
+        setItems(merged);
+      })
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
+  }, []);
 
   const handleDashboard = (project) => {
-    const dashId = project.id <= 3 ? project.id : 1;
-    navigate("/partner_dashboard?tab=project_manage", { state: { projectId: dashId } });
+    navigate("/partner_dashboard?tab=project_manage", { state: { projectId: project.realProjectId || project.id } });
   };
 
   return (
@@ -2861,9 +2930,9 @@ function ProjectsTab() {
       {detailProject && <ProjectDetailModal project={detailProject} onClose={() => setDetailProject(null)} />}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <div>
-          <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 6px", fontFamily: F }}>프로젝트 히스토리</h2>
+          <h2 style={{ fontSize: 27, fontWeight: 900, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "0 0 6px", fontFamily: F }}>프로젝트 히스토리</h2>
           <p style={{ fontSize: 14, color: "#64748B", margin: 0, fontFamily: F, lineHeight: 1.7 }}>
-            현재 진행 중이거나 완료된 프로젝트의 히스토리를 확인하고 관리할 수 있습니다.
+            지원·계약·진행·완료한 프로젝트와 내가 등록한 프로젝트가 모두 표시됩니다.
           </p>
         </div>
         <span style={{
@@ -2874,7 +2943,13 @@ function ProjectsTab() {
       </div>
 
       <div style={{ marginTop: 20 }}>
-        {PROJECT_HISTORY.map(project => (
+        {loading && <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontFamily: F }}>로딩 중…</div>}
+        {!loading && items.length === 0 && (
+          <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontFamily: F }}>
+            아직 진행한 프로젝트가 없습니다.
+          </div>
+        )}
+        {!loading && items.map(project => (
           <ProjectHistoryCard key={project.id} project={project} onDetail={setDetailProject} onDashboard={handleDashboard} />
         ))}
       </div>

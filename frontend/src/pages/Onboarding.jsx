@@ -256,7 +256,7 @@ function TutorialVideo() {
       borderRadius: 20,
       overflow: "hidden",
       position: "relative",
-      aspectRatio: "16/9",
+      aspectRatio: "15/9",
       boxShadow: "0 12px 40px rgba(15,23,42,0.25)",
     }}>
       {playing ? (

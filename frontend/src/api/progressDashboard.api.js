@@ -38,6 +38,25 @@ export const projectAttachmentsApi = {
     api.get(`/projects/${projectId}/attachments`).then((r) => r.data),
   create: (projectId, payload) =>
     api.post(`/projects/${projectId}/attachments`, payload).then((r) => r.data),
+  /**
+   * 실제 파일 업로드 (multipart/form-data).
+   * @param {number|string} projectId
+   * @param {File} file - 브라우저 File 객체
+   * @param {{name?: string, notes?: string}} [meta]
+   */
+  upload: (projectId, file, meta = {}) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (meta.name) fd.append('name', meta.name);
+    if (meta.notes) fd.append('notes', meta.notes);
+    // axios 기본 Content-Type(application/json)을 undefined로 덮어써야
+    // FormData boundary가 자동으로 설정됨
+    return api
+      .post(`/projects/${projectId}/attachments/upload`, fd, {
+        headers: { 'Content-Type': undefined },
+      })
+      .then((r) => r.data);
+  },
   remove: (projectId, attachmentId) =>
     api.delete(`/projects/${projectId}/attachments/${attachmentId}`).then((r) => r.data),
 };

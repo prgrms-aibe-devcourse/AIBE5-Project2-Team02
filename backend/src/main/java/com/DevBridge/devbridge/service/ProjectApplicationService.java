@@ -9,6 +9,7 @@ import com.DevBridge.devbridge.entity.User;
 import com.DevBridge.devbridge.repository.PartnerProfileRepository;
 import com.DevBridge.devbridge.repository.ProjectApplicationRepository;
 import com.DevBridge.devbridge.repository.ProjectRepository;
+import com.DevBridge.devbridge.repository.ProjectSkillMappingRepository;
 import com.DevBridge.devbridge.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class ProjectApplicationService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final PartnerProfileRepository partnerProfileRepository;
+    private final ProjectSkillMappingRepository projectSkillMappingRepository;
 
     /** 파트너가 프로젝트에 지원. */
     @Transactional
@@ -200,11 +202,27 @@ public class ProjectApplicationService {
                 ? partnerProfileRepository.findByUser(partner).orElse(null)
                 : null;
 
+        java.util.List<String> skills = java.util.Collections.emptyList();
+        if (p != null) {
+            skills = projectSkillMappingRepository.findByProject(p).stream()
+                    .map(m -> m.getSkill() != null ? m.getSkill().getName() : null)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        }
+
         return ProjectApplicationResponse.builder()
                 .id(a.getId())
                 .projectId(p != null ? p.getId() : null)
                 .projectTitle(p != null ? p.getTitle() : null)
                 .projectDesc(p != null ? p.getDesc() : null)
+                .projectSlogan(p != null ? p.getSlogan() : null)
+                .projectServiceField(p != null ? p.getServiceField() : null)
+                .projectSkills(skills)
+                .projectStartDate(p != null ? p.getStartDate() : null)
+                .projectDeadline(p != null ? p.getDeadline() : null)
+                .projectDurationMonths(p != null ? p.getDurationMonths() : null)
+                .projectBudgetMin(p != null ? p.getBudgetMin() : null)
+                .projectBudgetMax(p != null ? p.getBudgetMax() : null)
                 .projectStatus(p != null && p.getStatus() != null ? p.getStatus().name() : null)
                 .projectOwnerUserId(p != null && p.getUser() != null ? p.getUser().getId() : null)
                 .projectOwnerUsername(p != null && p.getUser() != null ? p.getUser().getUsername() : null)

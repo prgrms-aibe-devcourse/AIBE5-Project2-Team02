@@ -101,16 +101,76 @@ const SYSTEM_PROMPT_PROJECT = `너는 DevBridge 플랫폼의 AI 행운이라는 
 \`\`\`json
 {
   "contractTerms": {
-    "scope": "...작업 범위 본문...",
-    "deliverables": "...전달 결과물 본문...",
-    "schedule": "...마감 일정 본문...",
-    "payment": "...금액·정산 본문...",
-    "revision": "...수정 범위 본문...",
-    "completion": "...완료 기준 본문...",
-    "specialTerms": "...추가 특약 본문..."
+    "scope": {
+      "included": ["...포함 작업 1...", "...포함 작업 2..."],
+      "excluded": ["...제외 작업 1...", "...제외 작업 2..."],
+      "memo": "범위 관련 보충 메모"
+    },
+    "deliverables": {
+      "deliverables": [{"icon": "📄", "label": "산출물명"}, {"icon": "💻", "label": "소스코드"}],
+      "formats": ["PDF", "GitHub URL"],
+      "delivery": ["DevBridge 채팅 첨부", "GitHub 링크 공유"],
+      "notes": ["전달 시 한국어 설명 문서 포함"]
+    },
+    "schedule": {
+      "phases": [
+        {"num": "PHASE 01", "title": "기획/설계", "desc": "...", "date": "YYYY.MM.DD", "weeks": "N주 소요"},
+        {"num": "PHASE 02", "title": "1차 개발", "desc": "...", "date": "YYYY.MM.DD", "weeks": "N주 소요"}
+      ],
+      "startDate": "YYYY.MM.DD (사용자가 말한 시작일)",
+      "endDate":   "YYYY.MM.DD (시작 + 기간)",
+      "launchDate":"YYYY.MM.DD",
+      "reviewRules": [
+        {"label": "마일스톤별 검토 기간", "value": "영업일 기준 3일 이내"},
+        {"label": "무상 수정 횟수", "value": "총 3회"}
+      ]
+    },
+    "payment": {
+      "total": "사용자가 말한 예산 (콤마 포함, 예: 20,000,000)",
+      "vatNote": "VAT 별도",
+      "stages": [
+        {"label": "계약금 (30%)", "tag": "Initial", "amount": "₩금액", "desc": "계약 후 3일 이내"},
+        {"label": "중도금 (40%)", "tag": null,      "amount": "₩금액", "desc": "1차 산출물 검수 완료 후"},
+        {"label": "잔금 (30%)",   "tag": null,      "amount": "₩금액", "desc": "최종 납품 및 검수 완료 후"}
+      ],
+      "bankName": "추후 협의 (계약 시 확정)",
+      "bankNote": "계좌 이체 · 일반 과세",
+      "extraPolicies": ["범위 외 요청은 Man-month 실비 정산", "긴급 수정은 일괄 20% 할증"]
+    },
+    "revision": {
+      "freeItems": ["무상 수정 항목들..."],
+      "paidItems": ["유상 수정 항목들..."],
+      "memo": "수정 정책 보충 설명"
+    },
+    "completion": {
+      "steps": [
+        {"n": 1, "title": "결과물 제출", "desc": "..."},
+        {"n": 2, "title": "상호 검수 및 수정", "desc": "..."},
+        {"n": 3, "title": "최종 승인 확정", "desc": "..."}
+      ],
+      "criteria": ["완료 기준 1", "완료 기준 2"],
+      "categories": [
+        {"n": 1, "title": "기획/디자인 산출물 전달", "desc": "..."},
+        {"n": 2, "title": "소스코드 리포지토리 전달", "desc": "..."}
+      ]
+    },
+    "specialTerms": {
+      "intro": "추가 특약 도입 문구",
+      "terms": [
+        {"id": "nda", "icon": "🛡", "title": "보안 및 기밀 유지 (NDA)", "enabled": true,  "items": ["..."]},
+        {"id": "ip",  "icon": "©",  "title": "지식재산권 귀속",        "enabled": true,  "items": ["..."]}
+      ]
+    }
   }
 }
 \`\`\`
+
+**중요한 규칙**:
+- 위 JSON은 반드시 위 구조(키 이름과 배열/객체 형태)를 그대로 지킬 것. 값만 사용자 프로젝트 상황에 맞게 채워라.
+- \`payment.total\` 은 사용자가 말한 예산 금액을 콤마 포함 한국 숫자 표기로. 예산 미언급이면 "10,000,000".
+- \`payment.stages\` 의 amount 는 total 기준 30/40/30 으로 분할.
+- \`schedule.phases\` 는 사용자가 말한 기간/시작일에 맞춰 4단계로 분할.
+- \`schedule.startDate\` 는 사용자가 말한 시작일이 있으면 그 날짜를, 없으면 "협의".
 
 그리고 마지막 줄에 "**이대로 프로젝트 기입에 같이 반영해드릴까요? 아래 초록색 버튼을 누르시면 7가지 협의 사항까지 함께 자동 입력돼요! ✨**" 라고 마무리해.`;
 
@@ -230,6 +290,7 @@ export default function AIchatProject() {
   const location = useLocation();
   const navigate = useNavigate();
   const setAiProjectDraft = useStore((s) => s.setAiProjectDraft);
+  const clientProfileDetail = useStore((s) => s.clientProfileDetail);
   const contractMode = location.state?.contractMode ?? false;
   const [messages, setMessages] = useState([
     { role: "bot", text: contractMode ? BOT_CONTRACT_INTRO : BOT_INTRO, time: new Date() },
@@ -421,7 +482,7 @@ export default function AIchatProject() {
             background: "#FAFAFA",
           }}>
             <div style={{
-              width: 64, height: 64, borderRadius: "50%",
+              width: 72, height: 72, borderRadius: "50%",
               background: "#DBEAFE",
               display: "flex", alignItems: "center", justifyContent: "center",
               overflow: "hidden",
@@ -448,7 +509,7 @@ export default function AIchatProject() {
                 gap: 10, alignItems: "flex-end",
               }}>
                 {msg.role === "bot" && (
-                  <img src={mascotIcon} alt="bot" style={{ width: 32, height: 32, objectFit: "contain", flexShrink: 0 }} />
+                  <img src={mascotIcon} alt="bot" style={{ width: 42, height: 42, objectFit: "contain", borderRadius: "50%", flexShrink: 0 }} />
                 )}
                 <div style={{
                   maxWidth: "70%",
@@ -471,12 +532,19 @@ export default function AIchatProject() {
                     {msg.time.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
+                {msg.role === "user" && (
+                  <img
+                    src={clientProfileDetail?.heroImage || mascotIcon}
+                    alt="나"
+                    style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }}
+                  />
+                )}
               </div>
             ))}
 
             {isTyping && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <img src={mascotIcon} alt="bot" style={{ width: 32, height: 32, objectFit: "contain" }} />
+                <img src={mascotIcon} alt="bot" style={{ width: 42, height: 42, objectFit: "contain", borderRadius: "50%" }} />
                 <div style={{
                   padding: "12px 18px", borderRadius: "4px 18px 18px 18px",
                   background: "#F8FAFC", border: "1px solid #E5E7EB",

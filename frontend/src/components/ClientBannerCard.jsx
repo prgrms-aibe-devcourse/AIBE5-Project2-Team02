@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import useStore from "../store/useStore";
 import { profileApi } from "../api/profile.api";
 import heroCheck from "../assets/hero_check.png";
+import mainLogo from "../assets/main_logo.png";
+import { openResumePrintWindow } from "../lib/generateResumeHtml";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -56,12 +58,12 @@ function DropdownChip({ options, value, onChange }) {
 
 /* ── 티어 프로그레스 헬퍼 ─────────────────────────────────── */
 const TIER_THRESHOLDS = { silver: 25, gold: 45, platinum: 70 };
-const TIER_NEXT_LABEL = { silver: "TO GOLD", gold: "TO PLATINUM", platinum: "TO DIAMOND", diamond: "MAX TIER" };
+const TIER_NEXT_LABEL = { silver: "TO GOLD", gold: "TO PLATINUM", platinum: "TO DIAMOND", diamond: "DIAMOND" };
 const TIER_COLOR = { silver: "#64748B", gold: "#F59E0B", platinum: "#8B5CF6", diamond: "#3B82F6" };
 const CIRCUMFERENCE = 107;
 function computeTierProgress(grade, completedProjects = 0, rating = 0) {
   const tier = (grade || "silver").toLowerCase();
-  if (tier === "diamond") return { pct: 100, dashLen: CIRCUMFERENCE, label: "MAX TIER", color: TIER_COLOR.diamond };
+  if (tier === "diamond") return { pct: 100, dashLen: CIRCUMFERENCE, label: "DIAMOND", color: TIER_COLOR.diamond };
   const threshold = TIER_THRESHOLDS[tier] || 25;
   const pct = Math.min(99, Math.round((completedProjects / threshold) * 60 + (rating / 5) * 40));
   return { pct, dashLen: Math.round((pct / 100) * CIRCUMFERENCE * 10) / 10, label: TIER_NEXT_LABEL[tier] || "TO GOLD", color: TIER_COLOR[tier] || TIER_COLOR.silver };
@@ -87,18 +89,26 @@ export default function ClientBannerCard({ activePage }) {
   const storedUsername = typeof window !== 'undefined' ? localStorage.getItem('username') : null;
   const displayName = user?.username ? `@${user.username}` : (storedUsername ? `@${storedUsername}` : (loginUser ? `@${loginUser.split("@")[0]}` : "@Yeon_Eden"));
 
-  /* 티어 프로그레스 계산 */
-  const tierProgress = computeTierProgress(
-    partnerProfile?.grade,
-    partnerProfile?.completedProjects ?? 0,
-    partnerProfile?.rating ?? 0,
-  );
-
   const [editingSlogan, setEditingSlogan] = useState(false);
   const [sloganDraft, setSloganDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [dbData, setDbData] = useState(null);
   const bannerFileRef = useRef(null);
+
+  // 이력서 다운로드 모달
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const handleGenerateResume = (lang) => {
+    setShowResumeModal(false);
+    const logoUrl = window.location.origin + mainLogo;
+    openResumePrintWindow(dbData || {}, lang, logoUrl);
+  };
+
+  /* 티어 프로그레스 계산 (dbData 선언 이후에 계산해야 함) */
+  const tierProgress = computeTierProgress(
+    dbData?.grade,
+    dbData?.completedProjects ?? 0,
+    dbData?.rating ?? 0,
+  );
 
   // DB에서 최신 데이터 가져오기
   useEffect(() => {
@@ -143,7 +153,7 @@ export default function ClientBannerCard({ activePage }) {
     }}>
       {/* 프로필 아바타 */}
       <div style={{
-        width: 160, height: 160, borderRadius: "50%",
+        width: 180, height: 180, borderRadius: "50%",
         background: "white",
         border: "4px solid white",
         boxShadow: "0 6px 24px rgba(59,130,246,0.20)",
@@ -295,7 +305,7 @@ export default function ClientBannerCard({ activePage }) {
       </div>
 
       {/* 우측 버튼 그룹 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, minWidth: 196, alignSelf: "flex-start", paddingTop: 4 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, minWidth: 196, alignSelf: "stretch", paddingTop: 4, paddingBottom: 4 }}>
         {navButtons.map(btn => {
           const isActive = btn.key === activePage;
           return (
@@ -339,7 +349,67 @@ export default function ClientBannerCard({ activePage }) {
             >{btn.label}</button>
           );
         })}
+        {/* 이력서 다운로드 버튼 - navButtons 아래 (TIER PROGRESS 아래끝에 맞춰 하단 정렬) */}
+        <div style={{ marginTop: "auto" }}>
+          <div style={{ fontSize: 10, color: "#94A3B8", fontFamily: F, fontWeight: 500, textAlign: "center", marginBottom: 4 }}>이력서+포트폴리오가 합쳐진</div>
+          <button
+            onClick={() => setShowResumeModal(true)}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              padding: "10px 14px", borderRadius: 99, border: "none",
+              background: "linear-gradient(135deg, #BAE6FD 0%, #C4B5FD 100%)",
+              color: "#1e3a5f", fontSize: 13, fontWeight: 700,
+              cursor: "pointer", fontFamily: F,
+              boxShadow: "0 3px 10px rgba(167,139,250,0.28)",
+              transition: "opacity 0.15s",
+              whiteSpace: "nowrap",
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            DevBridge 이력서 다운로드
+          </button>
+        </div>
       </div>
+
+      {/* 언어 선택 모달 */}
+      {showResumeModal && (
+        <div
+          onClick={() => setShowResumeModal(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "white", borderRadius: 20, padding: "32px 36px", width: 340, boxShadow: "0 24px 80px rgba(0,0,0,0.22)", position: "relative" }}
+          >
+            <button onClick={() => setShowResumeModal(false)} style={{ position: "absolute", top: 14, right: 16, background: "none", border: "none", fontSize: 20, color: "#94A3B8", cursor: "pointer", lineHeight: 1 }}>✕</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <img src={mainLogo} alt="DevBridge" style={{ height: 28, objectFit: "contain" }} />
+            </div>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: "#1E293B", fontFamily: F, marginBottom: 6 }}>이력서 언어 선택</h3>
+            <p style={{ fontSize: 13, color: "#64748B", fontFamily: F, marginBottom: 22, lineHeight: 1.6 }}>포트폴리오가 포함된 DevBridge 이력서를<br/>인쇄하거나 PDF로 저장할 수 있어요.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => handleGenerateResume("ko")}
+                style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #BAE6FD 0%, #C4B5FD 100%)", color: "#1e3a5f", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F, boxShadow: "0 2px 8px rgba(167,139,250,0.25)", transition: "opacity 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+              >🇰🇷 한국어</button>
+              <button
+                onClick={() => handleGenerateResume("en")}
+                style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #BAE6FD 0%, #C4B5FD 100%)", color: "#1e3a5f", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F, boxShadow: "0 2px 8px rgba(167,139,250,0.25)", transition: "opacity 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+              >🇺🇸 English</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

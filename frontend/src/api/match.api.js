@@ -6,6 +6,9 @@
  */
 import api from './axios';
 
+// AI 매칭은 Gemini 호출이 후보 수에 따라 오래 걸릴 수 있어 별도 타임아웃을 길게 둔다.
+const MATCH_TIMEOUT_MS = 180000; // 3분
+
 export const matchApi = {
   /**
    * 파트너 매칭 점수.
@@ -13,13 +16,13 @@ export const matchApi = {
    * @param {number[]} candidateIds
    */
   partners: (query, candidateIds) =>
-    api.post('/match/partners', { query, candidateIds }).then((r) => r.data),
+    api.post('/match/partners', { query, candidateIds }, { timeout: MATCH_TIMEOUT_MS }).then((r) => r.data),
 
   /** 클라이언트 매칭 점수. */
   clients: (query, candidateIds) =>
-    api.post('/match/clients', { query, candidateIds }).then((r) => r.data),
+    api.post('/match/clients', { query, candidateIds }, { timeout: MATCH_TIMEOUT_MS }).then((r) => r.data),
 
   /** 프로젝트 매칭 점수. */
   projects: (query, candidateIds) =>
-    api.post('/match/projects', { query, candidateIds }).then((r) => r.data),
+    api.post('/match/projects', { query, candidateIds }, { timeout: MATCH_TIMEOUT_MS }).then((r) => r.data),
 };

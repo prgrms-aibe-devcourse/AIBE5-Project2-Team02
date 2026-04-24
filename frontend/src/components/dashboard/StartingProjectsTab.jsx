@@ -36,7 +36,8 @@ export default function StartingProjectsTab({ role = "partner" }) {
 
         const isInProgress = (s) => {
           const x = (s || "").toString();
-          return x === "IN_PROGRESS" || x === "진행중" || x === "진행 중" || x === "계약 진행 중";
+          // CLOSED = 모집 종료 후 계약 세부 협의 미팅 단계 → "계약 진행 중" 섹션에 노출
+          return x === "IN_PROGRESS" || x === "진행중" || x === "진행 중" || x === "계약 진행 중" || x === "CLOSED";
         };
         const isRecruiting = (s) => {
           const x = (s || "").toString();
@@ -56,8 +57,17 @@ export default function StartingProjectsTab({ role = "partner" }) {
                 const st = (a.status || "").toString();
                 return st === "ACCEPTED" || st === "CONTRACTED" || st === "IN_PROGRESS";
               })
-              .map((a) => a.project || a)
-              .filter(Boolean);
+              .map((a) => ({
+                id: a.projectId,
+                title: a.projectTitle,
+                status: a.projectStatus,
+                desc: a.projectDesc,
+                ownerUserId: a.projectOwnerUserId,
+                ownerUsername: a.projectOwnerUsername,
+                applicationStatus: a.status,
+                applicationId: a.id,
+              }))
+              .filter((p) => p.id);
             // 중복 제거
             const seenIds = new Set(myInProgress.map((p) => p.id));
             acceptedInProgress = acceptedAppProjects.filter((p) => p && !seenIds.has(p.id));

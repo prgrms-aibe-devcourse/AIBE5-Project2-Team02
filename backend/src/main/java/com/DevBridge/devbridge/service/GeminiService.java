@@ -97,11 +97,28 @@ public class GeminiService {
     private String extractText(Map<String, Object> response) {
         try {
             List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
-            if (candidates == null || candidates.isEmpty()) return "(응답이 비어 있습니다)";
-            Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
-            List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+            if (candidates == null || candidates.isEmpty()) {
+                log.warn("Gemini 응답에 candidates 없음. raw={}", response);
+                return "(응답이 비어 있습니다)";
+            }
+            Map<String, Object> cand0 = candidates.get(0);
+            Object finishReason = cand0.get("finishReason");
+            Map<String, Object> content = (Map<String, Object>) cand0.get("content");
+            List<Map<String, Object>> parts = content == null ? null : (List<Map<String, Object>>) content.get("parts");
+
+            if (parts == null || parts.isEmpty()) {
+                log.warn("Gemini 응답 parts 비어있음. finishReason={}, candidate={}", finishReason, cand0);
+                if ("MAX_TOKENS".equals(String.valueOf(finishReason))) {
+                    return "(응답이 비어 있습니다: MAX_TOKENS - 출력 토큰 한도 초과)";
+                }
+                if ("SAFETY".equals(String.valueOf(finishReason))) {
+                    return "(응답이 비어 있습니다: SAFETY - 안전 필터 차단)";
+                }
+                return "(응답이 비어 있습니다: finishReason=" + finishReason + ")";
+            }
             return (String) parts.get(0).get("text");
         } catch (Exception e) {
+            log.error("Gemini 응답 파싱 실패. raw={}", response, e);
             return "(응답 파싱 실패)";
         }
     }
@@ -130,8 +147,11 @@ public class GeminiService {
 
         body.put("generationConfig", Map.of(
                 "temperature", 0.3,
-                "maxOutputTokens", 8000,
+                // gemini-2.5 시리즈 출력 한도 최대치(약 65k). 긴 CV도 끝까지 받기 위해 풀로 사용.
+                "maxOutputTokens", 65536,
                 "responseMimeType", "application/json"
+                // 주의: gemini-2.5-pro 는 thinking 모드가 강제이므로 thinkingBudget=0 을 주면 400.
+                // flash는 0 허용이지만, pro 폴백/메인 동시 지원을 위해 thinkingConfig 자체를 보내지 않는다.
         ));
 
         Map<String, Object> response = generateContent(body);
