@@ -449,8 +449,52 @@ function ApplicationsTab({ activeTab }) {
   const [selectedProj, setSelectedProj] = useState(null);
   const [selectedPartner, setSelectedPartner] = useState(null); // { partner, onAccept?, onReject? }
   const [appStatuses, setAppStatuses] = useState({});
-  const accept = (id) => setAppStatuses(prev => ({ ...prev, [id]: "합격" }));
-  const reject = (id) => setAppStatuses(prev => ({ ...prev, [id]: "불합격" }));
+  const myDbId = useStore(s => s.dbId);
+
+  /**
+   * 지원 수락 → ProjectApplication 상태 ACCEPTED + 협의용 채팅방(negotiation) 자동 생성/확보.
+   * contractNegotiationId 는 application.id 사용 (멱등 — 같은 지원당 1방).
+   * 이미 채팅 중이라도 같은 endpoint 가 get-or-create 라 안전하며,
+   * 협의 미팅 페이지의 '협의할 프로젝트 선택' 드롭다운에도 자동 반영됨.
+   */
+  const accept = async (app) => {
+    const id = app.applicationId || app.id;
+    const partnerUserId = app.partnerUserId;
+    setAppStatuses(prev => ({ ...prev, [id]: "합격" }));
+    try {
+      await applicationsApi.updateStatus(id, "ACCEPTED");
+      if (myDbId && partnerUserId) {
+        const res = await fetch(`/api/chat/rooms/negotiation?userId=${myDbId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            contractNegotiationId: id,
+            clientUserId: myDbId,
+            partnerUserId,
+          }),
+        });
+        if (!res.ok) console.warn("[ApplicationsTab] negotiation room 생성 실패:", res.status);
+      }
+      alert("지원을 수락했습니다. 계약 세부협의 미팅 채팅방이 생성되었어요.");
+    } catch (e) {
+      console.error("[ApplicationsTab] 수락 실패:", e);
+      alert(e?.response?.data?.message || "수락 처리 중 오류가 발생했습니다.");
+      setAppStatuses(prev => { const next = { ...prev }; delete next[id]; return next; });
+    }
+  };
+  const reject = async (app) => {
+    const id = app.applicationId || app.id;
+    setAppStatuses(prev => ({ ...prev, [id]: "불합격" }));
+    try {
+      await applicationsApi.updateStatus(id, "REJECTED");
+      alert("지원을 거절했습니다.");
+    } catch (e) {
+      console.error("[ApplicationsTab] 거절 실패:", e);
+      alert(e?.response?.data?.message || "거절 처리 중 오류가 발생했습니다.");
+      setAppStatuses(prev => { const next = { ...prev }; delete next[id]; return next; });
+    }
+  };
   const getStatus = (id) => appStatuses[id];
 
   // 실제 백엔드 데이터 — 본인 RECRUITING 프로젝트 + 받은 지원자
@@ -508,8 +552,8 @@ function ApplicationsTab({ activeTab }) {
   }, []);
   const openApplicantModal = (app) => setSelectedPartner({
     partner: app,
-    onAccept: () => accept(app.id),
-    onReject: () => reject(app.id),
+    onAccept: () => { accept(app); setSelectedPartner(null); },
+    onReject: () => { reject(app); setSelectedPartner(null); },
   });
 
   return (

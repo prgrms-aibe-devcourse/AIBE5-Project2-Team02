@@ -63,6 +63,29 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("intro");
   const scrollRef = useRef(null);
+
+  // 실제 백엔드 데이터로 prop 보강 (mock fallback 우선순위 낮춤)
+  // partner.partnerUsername 또는 partner.username 으로 GET /api/profile/{username}/detail 호출
+  const [fetched, setFetched] = useState(null);
+  useEffect(() => {
+    const username = partner?.partnerUsername || partner?.username || partner?.name;
+    if (!username) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { profileApi } = await import("../api/profile.api");
+        const data = await profileApi.getDetailByUsername(username);
+        if (!cancelled) setFetched(data);
+      } catch (e) {
+        // 조용히 실패 — partner prop 만으로 렌더 fallback
+        if (!cancelled) setFetched(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [partner?.partnerUsername, partner?.username, partner?.name]);
+
+  // partner prop + 실제 fetch 데이터 병합 (실제 데이터가 우선)
+  const merged = { ...partner, ...(fetched || {}) };
   const sectionRefs = {
     intro:     useRef(null),
     skills:    useRef(null),
@@ -92,12 +115,13 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const grade = partner.grade ? GRADE_BADGE[partner.grade] : null;
-  const careers = (partner.careers || []).length > 0 ? partner.careers : MOCK_CAREERS_FALLBACK;
-  const educations = (partner.educations || []).length > 0 ? partner.educations : MOCK_EDU_FALLBACK;
-  const portfolioItems = (partner.portfolioItems || []).length > 0 ? partner.portfolioItems : MOCK_PORTFOLIO_FALLBACK;
-  const reviews = (partner.reviews || []).length > 0 ? partner.reviews : MOCK_REVIEWS_FALLBACK;
-  const rating = partner.rating ?? 4.9;
+  const grade = merged.grade ? GRADE_BADGE[merged.grade] : null;
+  // 실제 데이터(merged.careers 등)가 있으면 그걸 사용, 없으면 mock fallback
+  const careers = (merged.careers || []).length > 0 ? merged.careers : MOCK_CAREERS_FALLBACK;
+  const educations = (merged.educations || []).length > 0 ? merged.educations : MOCK_EDU_FALLBACK;
+  const portfolioItems = (merged.portfolioItems || []).length > 0 ? merged.portfolioItems : MOCK_PORTFOLIO_FALLBACK;
+  const reviews = (merged.reviews || []).length > 0 ? merged.reviews : MOCK_REVIEWS_FALLBACK;
+  const rating = merged.rating ?? 4.9;
 
   return (
     <div
@@ -446,7 +470,7 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
               onMouseEnter={e => e.currentTarget.style.background = "#FEE2E2"}
               onMouseLeave={e => e.currentTarget.style.background = "#FEF2F2"}
             >
-              제안 거절하기
+              {partner?.applicationId ? "지원 거절하기" : "제안 거절하기"}
             </button>
           ) : (
             <button
@@ -468,7 +492,7 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
             background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)",
             color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F,
           }} onClick={() => { onClose(); onPropose?.(partner); }}>
-            협업 제안하기
+            {partner?.applicationId ? "지원 수락하기" : "협업 제안하기"}
           </button>
         </div>
       </div>
