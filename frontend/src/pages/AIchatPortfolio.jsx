@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header_partner from "../components/Header_partner";
 import Header_client from "../components/Header_client";
 import mascotIcon from "../assets/hero_check.png";
-import heroMeeting from "../assets/hero_meeting.png";
 import heroStudent from "../assets/hero_student.png";
 import { applicationsApi, portfolioApi, projectsApi } from "../api";
 import { extractWithAI } from "../lib/aiClient";
@@ -105,6 +104,27 @@ export default function AIchatPortfolio() {
   const [currentPayload, setCurrentPayload] = useState(null);
   const fileInputRef = useRef(null);
   const bottomRef = useRef(null);
+
+  // 헤더와 동일한 hero 이미지 source: profileApi.getMyDetail() → profileImageUrl
+  const [dbHero, setDbHero] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { profileApi } = await import("../api/profile.api");
+        const data = await profileApi.getMyDetail();
+        if (!cancelled) setDbHero(data?.profileImageUrl || null);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const isPartnerView = (userRole || "partner") === "partner";
+  const userHero = (() => {
+    const raw = dbHero
+      || (isPartnerView ? partnerProfileDetail?.heroImage : clientProfileDetail?.heroImage);
+    if (raw && /cdn\.devbridge\.com/i.test(raw)) return heroStudent;
+    return raw || heroStudent;
+  })();
 
   // 마운트 시: 이미 GitHub URL 등록한 사용자는 게이트 단계 스킵하고 바로 ASK_SOURCE로
   useEffect(() => {
@@ -906,7 +926,7 @@ export default function AIchatPortfolio() {
                 gap: 10, alignItems: "flex-end",
               }}>
                 {msg.role === "bot" && (
-                  <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
+                  <img src={heroStudent} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
                 )}
                 <div style={{
                   maxWidth: "70%", padding: "12px 16px",
@@ -929,7 +949,7 @@ export default function AIchatPortfolio() {
                 </div>
                 {msg.role === "user" && (
                   <img
-                    src={(isPartner ? partnerProfileDetail?.heroImage : clientProfileDetail?.heroImage) || heroStudent}
+                    src={userHero}
                     alt="\ub098"
                     style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }}
                   />
@@ -939,7 +959,7 @@ export default function AIchatPortfolio() {
 
             {busy && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%" }} />
+                <img src={heroStudent} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%" }} />
                 <div style={{
                   padding: "10px 16px", borderRadius: "4px 18px 18px 18px",
                   background: "#F8FAFC", border: "1px solid #E5E7EB",

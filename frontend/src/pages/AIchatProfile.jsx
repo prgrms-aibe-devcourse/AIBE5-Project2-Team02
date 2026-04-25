@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header_partner from "../components/Header_partner";
 import mascotIcon from "../assets/hero_check.png";
-import heroMeeting from "../assets/hero_meeting.png";
 import heroStudent from "../assets/hero_student.png";
 import { chatWithAI } from "../lib/aiClient";
 import useStore from "../store/useStore";
@@ -357,6 +356,25 @@ export default function AIchatProfile() {
   const updateProfileDetail = isClient ? updateClientProfileDetail : updatePartnerProfileDetail;
   const profileDetail = isClient ? clientProfileDetail : partnerProfileDetail;
   const profileBackPath = isClient ? "/client_profile" : "/partner_profile";
+
+  // 헤더와 동일한 hero 이미지 source
+  const [dbHero, setDbHero] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { profileApi } = await import("../api/profile.api");
+        const data = await profileApi.getMyDetail();
+        if (!cancelled) setDbHero(data?.profileImageUrl || null);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const userHero = (() => {
+    const raw = dbHero || profileDetail?.heroImage;
+    if (raw && /cdn\.devbridge\.com/i.test(raw)) return heroStudent;
+    return raw || heroStudent;
+  })();
 
   const [messages, setMessages] = useState([
     { role: "bot", text: Q1_INTRO, time: new Date() },
@@ -1067,7 +1085,7 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
                 gap: 10, alignItems: "flex-end",
               }}>
                 {msg.role === "bot" && (
-                  <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
+                  <img src={heroStudent} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
                 )}
                 <div style={{
                   maxWidth: "75%", padding: "12px 16px",
@@ -1090,7 +1108,7 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
                 </div>
                 {msg.role === "user" && (
                   <img
-                    src={profileDetail?.heroImage || mascotIcon}
+                    src={userHero}
                     alt="나"
                     style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }}
                   />
@@ -1100,7 +1118,7 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
 
             {busy && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <img src={heroMeeting} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%" }} />
+                <img src={heroStudent} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%" }} />
                 <div style={{
                   padding: "12px 18px", borderRadius: "4px 18px 18px 18px",
                   background: "#F8FAFC", border: "1px solid #E5E7EB",
