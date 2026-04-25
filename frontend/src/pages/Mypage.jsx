@@ -264,13 +264,15 @@ function BankCard({ onToast }) {
     if (!bank || !accountNum || !owner) {
       onToast("은행, 계좌번호, 예금주를 모두 입력해 주세요."); return;
     }
-    if (!localStorage.getItem("accessToken")) {
+    // JWT는 HttpOnly 쿠키로 이전됐기 때문에 localStorage.accessToken 가드는 더이상 무효.
+    // 로그인 여부는 dbId(비민감 식별자)로 확인하고, 토큰 만료 등 실제 인증 실패는 백엔드 401로 잡는다.
+    if (!localStorage.getItem("dbId")) {
       onToast("로그인이 필요합니다. 로그인 후 다시 시도해 주세요."); return;
     }
     setLoading(true);
     try {
       const res = await bankApi.sendCode();
-      onToast(`[개발모드] 입금자명 코드: ${res.mockCode}`);
+      onToast(`가입 이메일로 3자리 인증코드가 발송되었어요. (개발모드 코드: ${res.mockCode})`);
       setAuthShown(true);
     } catch (err) {
       if (err?.response?.status === 401) {
