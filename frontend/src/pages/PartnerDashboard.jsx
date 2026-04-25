@@ -440,9 +440,62 @@ function ApplicationsTab({ activeTab, onGoContractMeeting }) {
   const showActive = activeTab === "apply_active";
   const [selectedProject, setSelectedProject] = useState(null);
   const [contractPopupProj, setContractPopupProj] = useState(null);
-  const [meetingReady, setMeetingReady] = useState(() =>
-    Object.fromEntries(MOCK_ACCEPTED_PROJS.map(p => [p.id, p.btnLabel === "상세 계약 미팅 이동"]))
-  );
+  const [meetingReady, setMeetingReady] = useState({});
+
+  // 본인이 보낸 지원(application) 실시간 로드. 상태별 분기:
+  //  active = APPLIED (검토 중) → "프로젝트 지원 중"
+  //  accepted = ACCEPTED / CONTRACTED / IN_PROGRESS → "합격 프로젝트"
+  //  closed = REJECTED / WITHDRAWN / COMPLETED → "지원 종료"
+  const [liveActive, setLiveActive] = useState(null);
+  const [liveAccepted, setLiveAccepted] = useState(null);
+  const [liveClosed, setLiveClosed] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const apps = await applicationsApi.myList().catch(() => []);
+        if (cancelled) return;
+        const toCard = (a) => {
+          const tags = Array.isArray(a.projectSkills) ? a.projectSkills.map(t => t.startsWith("#") ? t : `#${t}`) : [];
+          const period = a.projectDurationMonths ? `${a.projectDurationMonths}개월` : "협의";
+          const budget = (a.projectBudgetMin || a.projectBudgetMax)
+            ? `${(a.projectBudgetMin ?? "").toLocaleString?.() || a.projectBudgetMin || ""}${a.projectBudgetMin && a.projectBudgetMax ? "~" : ""}${(a.projectBudgetMax ?? "").toLocaleString?.() || a.projectBudgetMax || ""}만원`
+            : "협의";
+          return {
+            id: a.projectId,
+            applicationId: a.id,
+            badge: "유료",
+            title: a.projectTitle || "프로젝트",
+            desc: a.projectDesc || a.projectSlogan || "",
+            tags,
+            period,
+            budget,
+            deadline: a.projectDeadline ? `마감 ${a.projectDeadline}` : "",
+            deadlineColor: "#64748B",
+            statusBadge: a.status === "ACCEPTED" ? "지원 합격"
+                       : a.status === "CONTRACTED" ? "계약 진행"
+                       : a.status === "IN_PROGRESS" ? "진행 중"
+                       : "검토 중",
+            statusBadgeBg: a.status === "ACCEPTED" ? "#FFF7ED"
+                         : a.status === "IN_PROGRESS" ? "#EFF6FF" : "#F1F5F9",
+            statusBadgeColor: a.status === "ACCEPTED" ? "#C2410C"
+                            : a.status === "IN_PROGRESS" ? "#1D4ED8" : "#475569",
+            applicants: [],
+          };
+        };
+        const active = (apps || []).filter(a => a.status === "APPLIED").map(toCard);
+        const accepted = (apps || []).filter(a => ["ACCEPTED","CONTRACTED","IN_PROGRESS"].includes(a.status)).map(toCard);
+        const closed = (apps || []).filter(a => ["REJECTED","WITHDRAWN","COMPLETED"].includes(a.status)).map(toCard);
+        setLiveActive(active);
+        setLiveAccepted(accepted);
+        setLiveClosed(closed);
+      } catch (e) {
+        console.error("[ApplicationsTab] 지원 목록 로드 실패:", e);
+        if (!cancelled) { setLiveActive([]); setLiveAccepted([]); setLiveClosed([]); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleAcceptedAction = (proj) => {
     if (meetingReady[proj.id]) {
@@ -474,7 +527,13 @@ function ApplicationsTab({ activeTab, onGoContractMeeting }) {
             <button style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#3B82F6", fontFamily: F, fontWeight: 600, whiteSpace: "nowrap", padding: 0 }}>전체 / AI 추천 프로젝트 보기 &gt;</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {MOCK_ACTIVE_PROJS.map(p => <ActiveProjCard key={p.id} proj={p} onViewDetail={setSelectedProject} />)}
+            {liveActive === null ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "#94A3B8", fontSize: 13, fontFamily: F }}>불러오는 중...</div>
+            ) : liveActive.length === 0 ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "#94A3B8", fontSize: 13, fontFamily: F }}>지원 중인 프로젝트가 없어요.</div>
+            ) : (
+              liveActive.map(p => <ActiveProjCard key={p.applicationId} proj={p} onViewDetail={setSelectedProject} />)
+            )}
           </div>
         </div>
       )}
@@ -490,15 +549,21 @@ function ApplicationsTab({ activeTab, onGoContractMeeting }) {
             <button style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#3B82F6", fontFamily: F, fontWeight: 600, whiteSpace: "nowrap", padding: 0 }}>전체 합격 프로젝트 보기 &gt;</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {MOCK_ACCEPTED_PROJS.map(p => (
-              <AcceptedProjCard
-                key={p.id}
-                proj={p}
-                isMeetingMove={!!meetingReady[p.id]}
-                onAction={handleAcceptedAction}
-                onViewDetail={setSelectedProject}
-              />
-            ))}
+            {liveAccepted === null ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "#94A3B8", fontSize: 13, fontFamily: F }}>불러오는 중...</div>
+            ) : liveAccepted.length === 0 ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "#94A3B8", fontSize: 13, fontFamily: F }}>합격한 프로젝트가 아직 없어요.</div>
+            ) : (
+              liveAccepted.map(p => (
+                <AcceptedProjCard
+                  key={p.applicationId}
+                  proj={p}
+                  isMeetingMove={!!meetingReady[p.id]}
+                  onAction={handleAcceptedAction}
+                  onViewDetail={setSelectedProject}
+                />
+              ))
+            )}
           </div>
         </div>
       )}
@@ -513,7 +578,13 @@ function ApplicationsTab({ activeTab, onGoContractMeeting }) {
           <button style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#3B82F6", fontFamily: F, fontWeight: 600, whiteSpace: "nowrap", padding: 0 }}>전체 종료 내역 보기 &gt;</button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {MOCK_CLOSED_PROJS.map(p => <ClosedProjCard key={p.id} proj={p} />)}
+          {liveClosed === null ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#94A3B8", fontSize: 13, fontFamily: F }}>불러오는 중...</div>
+          ) : liveClosed.length === 0 ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#94A3B8", fontSize: 13, fontFamily: F }}>종료된 지원 내역이 없어요.</div>
+          ) : (
+            liveClosed.map(p => <ClosedProjCard key={p.applicationId} proj={p} />)
+          )}
         </div>
       </div>}
     </div>
