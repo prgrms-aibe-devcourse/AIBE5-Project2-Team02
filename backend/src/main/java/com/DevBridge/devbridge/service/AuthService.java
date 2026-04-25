@@ -64,15 +64,21 @@ public class AuthService {
                 .user(user)
                 .clientType(mapClientType(request.getClientType()))
                 .slogan(request.getSlogan())
+                .industry(request.getIndustry())
                 .heroKey("hero_check.png")
                 .build();
         clientProfileRepository.save(clientProfile);
     }
 
     private void createPartnerProfile(User user, SignupRequest request) {
+        // 기본 회원가입에서 입력받은 industry를 PartnerProfile.serviceField로 매핑.
+        // PartnerRegister.jsx에서 별도로 workCategory를 입력하면 그것이 우선됨.
+        String resolvedServiceField = request.getIndustry();
+
         PartnerProfile partnerProfile = PartnerProfile.builder()
                 .user(user)
                 .heroKey("hero_default.png")
+                .serviceField(resolvedServiceField)
                 .workCategory(mapWorkCategory(request.getWorkCategory()))
                 .jobRoles(request.getJobRoles())
                 .partnerType(mapPartnerType(request.getPartnerType()))

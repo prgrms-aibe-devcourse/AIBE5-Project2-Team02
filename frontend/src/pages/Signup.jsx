@@ -66,9 +66,12 @@ function Signup() {
     pw: "",
     pwConfirm: "",
     memberType: "",   // "클라이언트" | "파트너"
+    industry: "",     // 업종/서비스 분야 (드롭다운 또는 직접 입력)
+    industryCustom: "", // 드롭다운에서 "직접 입력" 선택 시 텍스트
     skills: "",
     birthdate: "",     // "YYYY-MM-DD"
   });
+  const INDUSTRY_OPTIONS = ["AI", "커머스", "웹사이트", "디자인/기획", "유지보수", "핀테크", "SaaS", "모바일", "클라우드", "교육", "의료/헬스케어", "게임", "직접 입력"];
   const [showPw, setShowPw] = useState(false);
   const [showPwC, setShowPwC] = useState(false);
 
@@ -109,19 +112,26 @@ function Signup() {
     );
   };
 
+  // industry: 드롭다운에서 "직접 입력" 선택 시 industryCustom 값을 사용, 그 외엔 industry 값.
+  const resolvedIndustry = form.industry === "직접 입력"
+    ? (form.industryCustom || "").trim()
+    : (form.industry || "").trim();
+
   const isValid = !!(    form.idEmail.trim() &&
     form.phone.trim().length >= 9 &&
     form.username.trim() &&
     form.pw.length >= 8 &&
     form.pw === form.pwConfirm &&
     form.memberType &&
+    resolvedIndustry &&
     form.skills.trim()
   );
 
   const handleNext = () => {
     if (!isValid) return;
     setUsername(form.username);
-    setSignupFormData(form);
+    // industry는 드롭다운/직접입력 둘 중 실제로 입력된 값(resolvedIndustry)을 저장.
+    setSignupFormData({ ...form, industry: resolvedIndustry });
     if (form.memberType === "클라이언트") {
       navigate("/client_register");
     } else {
@@ -311,6 +321,36 @@ function Signup() {
                   selected={form.memberType === "파트너"}
                   onClick={() => set("memberType", "파트너")} />
               </div>
+            </div>
+
+            {/* 업종/서비스 분야 (industry) — 드롭다운에서 선택 또는 직접 입력 */}
+            <div>
+              <LBL>업종/서비스 분야 *</LBL>
+              <select
+                value={form.industry}
+                onChange={e => set("industry", e.target.value)}
+                style={{
+                  width: "100%", padding: "12px 14px", borderRadius: 12,
+                  border: "1.5px solid #E5E7EB", fontSize: 14, fontFamily: F,
+                  outline: "none", background: "white",
+                  color: form.industry ? "#111827" : "#9CA3AF",
+                }}
+              >
+                <option value="">업종을 선택해 주세요</option>
+                {INDUSTRY_OPTIONS.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+              {form.industry === "직접 입력" && (
+                <div style={{ marginTop: 8 }}>
+                  <InputIcon
+                    icon={Star}
+                    placeholder="업종을 직접 입력해 주세요 (예: 부동산 플랫폼)"
+                    value={form.industryCustom || ""}
+                    onChange={v => set("industryCustom", v)}
+                  />
+                </div>
+              )}
             </div>
 
             {/* 관심 분야/주요 기술 */}
