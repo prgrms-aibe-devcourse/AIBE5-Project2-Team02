@@ -224,6 +224,19 @@ public class ProjectService {
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("알 수 없는 status: " + statusName);
         }
+        // IN_PROGRESS 전이는 7개 협의 모듈이 모두 "협의완료"여야 허용
+        // (RECRUITING/CLOSED/COMPLETED 전이엔 적용되지 않음)
+        if (target == Project.ProjectStatus.IN_PROGRESS) {
+            List<ProjectModule> mods = projectModuleRepository.findByProjectId(projectId);
+            long agreed = mods.stream()
+                    .filter(m -> "협의완료".equals(m.getStatus()))
+                    .count();
+            if (mods.size() < 7 || agreed < 7) {
+                throw new RuntimeException(
+                        "7개 협의 모듈(범위·산출물·일정·결제·수정·완료·조항)이 모두 '협의완료'되어야 진행 상태로 전이할 수 있습니다. (현재 협의완료: "
+                                + agreed + "/7)");
+            }
+        }
         p.setStatus(target);
         Project saved = projectRepository.save(p);
         List<String> tags = projectTagRepository.findByProject(saved).stream()

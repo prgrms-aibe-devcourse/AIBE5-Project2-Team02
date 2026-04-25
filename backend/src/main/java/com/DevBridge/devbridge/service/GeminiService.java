@@ -55,8 +55,9 @@ public class GeminiService {
                     "GEMINI_API_KEY 환경변수가 설정되지 않았습니다. 백엔드 실행 환경에 키를 등록하세요.");
         }
 
-        // Gemini contents 형식으로 변환
-        List<Map<String, Object>> contents = request.getHistory().stream()
+        // Gemini contents 형식으로 변환 (history가 null이면 빈 대화로 처리 - NPE 방어)
+        List<AiChatRequest.Message> history = request.getHistory() != null ? request.getHistory() : List.of();
+        List<Map<String, Object>> contents = history.stream()
                 .map(m -> {
                     Map<String, Object> content = new HashMap<>();
                     // Gemini는 역할을 오직 'user' 또는 'model'만 허용함 (그 외는 400 Bad Request)

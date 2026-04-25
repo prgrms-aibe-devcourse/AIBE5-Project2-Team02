@@ -90,11 +90,11 @@ export default function PartnerBannerCard({ activePage, viewMode = false, partne
   const store = useStore();
   const {
     loginUser, user,
-    partnerSubTitle, setPartnerSubTitle,
+    //partnerSubTitle, setPartnerSubTitle,
     partnerDropdowns, setPartnerDropdown,
     partnerBannerBg, setPartnerBannerBg,
     partnerProfile,
-    partnerProfileDetail,
+    //partnerProfileDetail,
     profileRefreshTrigger,
     bumpProfileRefresh,
     dbId,

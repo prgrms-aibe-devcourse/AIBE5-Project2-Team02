@@ -8,6 +8,11 @@ import { portfolioApi } from "../api";
 import { profileApi } from "../api/profile.api";
 import { toPortfolioCard } from "../lib/portfolio";
 
+import tutoOnboard from "../assets/tuto_onboard.png";
+import tutoIncome from "../assets/tuto_income.png";
+import tutoSolution from "../assets/tuto_solution.png";
+
+
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 /* ── GitHub 잔디 ─────────────────────────────────────────── */
@@ -338,7 +343,7 @@ function SelectedProjects() {
   }, [page, totalPages]);
 
   return (
-    <div style={{ marginBottom: 48 }}>
+    <div style={{ marginBottom: 14 }}>
       {/* 헤더 */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
@@ -397,7 +402,7 @@ function SelectedProjects() {
 const NEW_STEPS_DATA = [
   {
     id: 1,
-    thumbnail: "/assets/tuto_onboard.png",
+    thumbnail: tutoOnboard,
     imgBg: "#E8E0D8",
     imgContent: "For My Newbes⭐",
     title: "튜토리얼 온보딩",
@@ -405,14 +410,14 @@ const NEW_STEPS_DATA = [
   },
   {
     id: 2,
-    thumbnail: "/assets/tuto_income.png",
+    thumbnail: tutoIncome,
     imgBg: "#E8E0D8",
     title: "Developer Income 가계부",
     desc: "Manage and track your developer earnings",
   },
   {
     id: 3,
-    thumbnail: "/assets/tuto_solution.png",
+    thumbnail: tutoSolution,
     imgBg: "#E8E0D8",
     title: "솔루션 검색과 등록하기",
     desc: "Find or contribute software solutions",
@@ -446,7 +451,7 @@ function NewStepCard({ step, onClick }) {
       {/* ✅ 정사각형 썸네일 */}
       <div style={{
         width: "100%",
-        aspectRatio: "1 / 1",
+        height: 305,          // 원하는 썸네일 높이
         overflow: "hidden",
       }}>
         <img
@@ -456,6 +461,7 @@ function NewStepCard({ step, onClick }) {
             width: "100%",
             height: "100%",
             objectFit: "cover",
+            objectPostion:"center top",
           }}
         />
       </div>
@@ -505,7 +511,7 @@ function NewSteps() {
     3: "/solution_market",
   };
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div style={{ marginBottom: 7 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
         <span style={{ fontSize: 20 }}>🧩</span>
         <span style={{ fontSize: 23, fontWeight: 800, fontFamily: F, background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>New Steps</span>
@@ -558,7 +564,7 @@ export default function Partner_Portfolio() {
         <div style={{
           background: "white", borderRadius: 20,
           border: "1.5px solid #F1F5F9",
-          padding: "28px 32px",
+          padding: "20px 32px",
           marginBottom: 28,
           marginLeft: -38, marginRight: -38,
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
@@ -611,7 +617,7 @@ export default function Partner_Portfolio() {
         <div style={{
           background: "white", borderRadius: 20,
           border: "1.5px solid #F1F5F9",
-          padding: "28px 32px",
+          padding: "20px 32px",
           marginBottom: 28,
           marginLeft: -38, marginRight: -38,
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
@@ -623,7 +629,7 @@ export default function Partner_Portfolio() {
         <div style={{
           background: "white", borderRadius: 20,
           border: "1.5px solid #F1F5F9",
-          padding: "28px 32px",
+          padding: "20px 32px",
           marginBottom: 28,
           marginLeft: -38, marginRight: -38,
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
