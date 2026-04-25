@@ -668,14 +668,16 @@ function PartnerCard({ data }) {
           ))}
         </div>
 
-        {/* 서비스 분야 · 파트너 유형 · 선호 방식 */}
+        {/* 서비스 분야 · 파트너 유형 · 선호 방식 — 빈 값(미입력)은 chip으로 렌더하지 않음 */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {[data.serviceField, data.partnerType, data.workPref].map((chip, i) => (
-            <span key={i} style={{
-              fontSize: 12, fontWeight: 600, color: "#6366F1",
-              background: "#EEF2FF", borderRadius: 999, padding: "4px 10px", fontFamily: F,
-            }}>{chip}</span>
-          ))}
+          {[data.serviceField, data.partnerType, data.workPref]
+            .filter(c => c != null && String(c).trim() !== "")
+            .map((chip, i) => (
+              <span key={i} style={{
+                fontSize: 12, fontWeight: 600, color: "#6366F1",
+                background: "#EEF2FF", borderRadius: 999, padding: "4px 10px", fontFamily: F,
+              }}>{chip}</span>
+            ))}
         </div>
 
       </div>
