@@ -452,6 +452,60 @@ function ApplicationsTab({ activeTab }) {
   const accept = (id) => setAppStatuses(prev => ({ ...prev, [id]: "합격" }));
   const reject = (id) => setAppStatuses(prev => ({ ...prev, [id]: "불합격" }));
   const getStatus = (id) => appStatuses[id];
+
+  // 실제 백엔드 데이터 — 본인 RECRUITING 프로젝트 + 받은 지원자
+  const [liveActive, setLiveActive] = useState(null); // null=로딩 전 → mock 사용, []=빈 결과 → 빈 화면
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [recruiting, received] = await Promise.all([
+          projectsApi.myList(["RECRUITING"]).catch(() => []),
+          applicationsApi.receivedList().catch(() => []),
+        ]);
+        if (cancelled) return;
+        // projectId → 지원자 목록 그룹핑
+        const byProj = {};
+        for (const a of (received || [])) {
+          const list = byProj[a.projectId] || (byProj[a.projectId] = []);
+          const statusKr = a.status === "ACCEPTED" ? "합격"
+                         : a.status === "REJECTED" ? "불합격"
+                         : "검토 중";
+          list.push({
+            id: a.id,
+            applicationId: a.id,
+            partnerUserId: a.partnerUserId,
+            name: a.partnerUsername || "파트너",
+            title: "지원자",
+            rating: 4.8,
+            match: 85,
+            status: statusKr,
+            appliedAt: a.appliedAt ? String(a.appliedAt).slice(0, 10).replaceAll("-", ".") : "",
+            tags: [],
+            desc: a.message || "",
+          });
+        }
+        // RECRUITING 프로젝트 어댑터
+        const adapted = (recruiting || []).map(p => ({
+          id: p.id,
+          badge: p.priceType || "유료",
+          title: p.title || p.slogan || "프로젝트",
+          desc: p.desc || p.sloganSub || "",
+          tags: Array.isArray(p.tags) ? p.tags : [],
+          period: p.period || "협의",
+          budget: p.price || "협의",
+          deadline: p.deadline ? `마감 ${p.deadline}` : "",
+          deadlineColor: "#64748B",
+          applicants: byProj[p.id] || [],
+        }));
+        setLiveActive(adapted);
+      } catch (e) {
+        console.error("[ApplicationsTab] 데이터 로드 실패:", e);
+        if (!cancelled) setLiveActive([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const openApplicantModal = (app) => setSelectedPartner({
     partner: app,
     onAccept: () => accept(app.id),
@@ -495,13 +549,21 @@ function ApplicationsTab({ activeTab }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {activeTab === "apply_active" && (
           <>
-            {MOCK_ACTIVE_PROJS.map(p => (
-              <ActiveProjCard key={p.id} proj={p} onViewPartner={openApplicantModal}
-                onViewProject={setSelectedProj} getStatus={getStatus} />
-            ))}
-            {MOCK_ACCEPTED_PROJS.map(p => (
-              <AcceptedProjCard key={p.id} proj={p} onViewPartner={openApplicantModal} getStatus={getStatus} />
-            ))}
+            {liveActive === null ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#94A3B8", fontSize: 14, fontFamily: F }}>
+                불러오는 중...
+              </div>
+            ) : liveActive.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#94A3B8", fontSize: 14, fontFamily: F }}>
+                모집 중인 프로젝트가 없어요. 새 프로젝트를 등록해보세요.
+              </div>
+            ) : (
+              liveActive.map(p => (
+                <ActiveProjCard key={p.id} proj={p} onViewPartner={openApplicantModal}
+                  onViewProject={setSelectedProj} getStatus={getStatus} />
+              ))
+            )}
+            {/* AcceptedProjCard: 추후 ACCEPTED 상태 application 기준으로 별도 데이터 fetch 예정 */}
           </>
         )}
         {activeTab === "apply_done" && (
