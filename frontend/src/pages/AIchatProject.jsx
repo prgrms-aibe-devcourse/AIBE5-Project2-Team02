@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header_client from "../components/Header_client";
 import mascotIcon from "../assets/hero_default.png";
-import heroTeacher from "../assets/hero_teacher.png";
+import heroStudent from "../assets/hero_student.png";
 import { chatWithAI } from "../lib/aiClient";
 import useStore from "../store/useStore";
 
@@ -291,7 +291,29 @@ export default function AIchatProject() {
   const navigate = useNavigate();
   const setAiProjectDraft = useStore((s) => s.setAiProjectDraft);
   const clientProfileDetail = useStore((s) => s.clientProfileDetail);
+  const partnerProfileDetail = useStore((s) => s.partnerProfileDetail);
+  const userRole = useStore((s) => s.userRole);
   const contractMode = location.state?.contractMode ?? false;
+
+  // 헤더와 동일한 hero 이미지 source
+  const [dbHero, setDbHero] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { profileApi } = await import("../api/profile.api");
+        const data = await profileApi.getMyDetail();
+        if (!cancelled) setDbHero(data?.profileImageUrl || null);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const userHero = (() => {
+    const isClient = userRole === "client";
+    const raw = dbHero || (isClient ? clientProfileDetail?.heroImage : partnerProfileDetail?.heroImage);
+    if (raw && /cdn\.devbridge\.com/i.test(raw)) return heroStudent;
+    return raw || heroStudent;
+  })();
   const [messages, setMessages] = useState([
     { role: "bot", text: contractMode ? BOT_CONTRACT_INTRO : BOT_INTRO, time: new Date() },
   ]);
@@ -487,7 +509,7 @@ export default function AIchatProject() {
               display: "flex", alignItems: "center", justifyContent: "center",
               overflow: "hidden",
             }}>
-              <img src={heroTeacher} alt="AI 행운이" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={heroStudent} alt="AI 행운이" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
             <div>
               <p style={{ fontSize: 18, fontWeight: 700, color: "#111827", margin: 0, fontFamily: F }}>AI 행운이</p>
@@ -509,7 +531,7 @@ export default function AIchatProject() {
                 gap: 10, alignItems: "flex-end",
               }}>
                 {msg.role === "bot" && (
-                  <img src={mascotIcon} alt="bot" style={{ width: 42, height: 42, objectFit: "contain", borderRadius: "50%", flexShrink: 0 }} />
+                  <img src={heroStudent} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }} />
                 )}
                 <div style={{
                   maxWidth: "70%",
@@ -534,7 +556,7 @@ export default function AIchatProject() {
                 </div>
                 {msg.role === "user" && (
                   <img
-                    src={clientProfileDetail?.heroImage || mascotIcon}
+                    src={userHero}
                     alt="나"
                     style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }}
                   />
@@ -544,7 +566,7 @@ export default function AIchatProject() {
 
             {isTyping && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <img src={mascotIcon} alt="bot" style={{ width: 42, height: 42, objectFit: "contain", borderRadius: "50%" }} />
+                <img src={heroStudent} alt="bot" style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%" }} />
                 <div style={{
                   padding: "12px 18px", borderRadius: "4px 18px 18px 18px",
                   background: "#F8FAFC", border: "1px solid #E5E7EB",
