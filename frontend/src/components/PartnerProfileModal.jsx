@@ -65,27 +65,49 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
   const scrollRef = useRef(null);
 
   // 실제 백엔드 데이터로 prop 보강 (mock fallback 우선순위 낮춤)
-  // partner.partnerUsername 또는 partner.username 으로 GET /api/profile/{username}/detail 호출
+  //  - profileApi.getDetailByUsername(username) → bio/skills/careers/educations/...
+  //  - portfolioApi.byUsername(username) → 공개 포트폴리오 항목들
+  //  - reviewsApi.byPartner(partnerProfileId) → 리뷰 (partnerProfileId 있을 때만)
   const [fetched, setFetched] = useState(null);
+  const [fetchedPortfolio, setFetchedPortfolio] = useState(null);
+  const [fetchedReviews, setFetchedReviews] = useState(null);
   useEffect(() => {
     const username = partner?.partnerUsername || partner?.username || partner?.name;
+    const partnerProfileId = partner?.partnerProfileId;
     if (!username) return;
     let cancelled = false;
     (async () => {
       try {
-        const { profileApi } = await import("../api/profile.api");
-        const data = await profileApi.getDetailByUsername(username);
-        if (!cancelled) setFetched(data);
+        const [{ profileApi }, { portfolioApi }, reviewsMod] = await Promise.all([
+          import("../api/profile.api"),
+          import("../api/portfolio.api"),
+          import("../api/reviews.api"),
+        ]);
+        const detailP = profileApi.getDetailByUsername(username).catch(() => null);
+        const portfolioP = portfolioApi.byUsername(username).catch(() => []);
+        const reviewsP = partnerProfileId
+          ? reviewsMod.reviewsApi.byPartner(partnerProfileId).catch(() => [])
+          : Promise.resolve([]);
+        const [detail, portfolio, reviews] = await Promise.all([detailP, portfolioP, reviewsP]);
+        if (cancelled) return;
+        setFetched(detail);
+        setFetchedPortfolio(Array.isArray(portfolio) ? portfolio : []);
+        setFetchedReviews(Array.isArray(reviews) ? reviews : []);
       } catch (e) {
-        // 조용히 실패 — partner prop 만으로 렌더 fallback
-        if (!cancelled) setFetched(null);
+        if (!cancelled) { setFetched(null); setFetchedPortfolio([]); setFetchedReviews([]); }
       }
     })();
     return () => { cancelled = true; };
-  }, [partner?.partnerUsername, partner?.username, partner?.name]);
+  }, [partner?.partnerUsername, partner?.username, partner?.name, partner?.partnerProfileId]);
 
   // partner prop + 실제 fetch 데이터 병합 (실제 데이터가 우선)
-  const merged = { ...partner, ...(fetched || {}) };
+  // portfolioItems / reviews는 별도 fetch 결과로 override
+  const merged = {
+    ...partner,
+    ...(fetched || {}),
+    ...(fetchedPortfolio && fetchedPortfolio.length > 0 ? { portfolioItems: fetchedPortfolio } : {}),
+    ...(fetchedReviews && fetchedReviews.length > 0 ? { reviews: fetchedReviews } : {}),
+  };
   const sectionRefs = {
     intro:     useRef(null),
     skills:    useRef(null),
@@ -162,26 +184,68 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{partner.name}</span>
+            {/* 1행: @username + 등급/인증 배지들 */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "#1E293B", fontFamily: F }}>
+                @{merged.partnerUsername || merged.username || partner.name}
+              </span>
+              {/* devLevel 배지 (시니어/주니어 등) */}
+              {(merged.devLevel || merged.level) && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#7C3AED", background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 99, padding: "2px 8px", fontFamily: F }}>
+                  🏷️ {(() => {
+                    const lvl = merged.devLevel || merged.level;
+                    const map = { JUNIOR_1_3Y: "주니어", MIDDLE_3_5Y: "미들", SENIOR_5_7Y: "시니어", EXPERT_7Y_PLUS: "엑스퍼트" };
+                    return map[lvl] || lvl;
+                  })()}
+                </span>
+              )}
+              {/* 학력/경력 인증 (educations / careers 배열에 데이터가 있으면 인증으로 간주) */}
+              {(merged.educations || []).length > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#3B82F6", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 99, padding: "2px 8px", fontFamily: F }}>🎖️ 학력 인증</span>
+              )}
+              {(merged.careers || []).length > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#16A34A", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 99, padding: "2px 8px", fontFamily: F }}>🎖️ 경력 인증</span>
+              )}
               {grade && (
                 <span style={{
-                  fontSize: 12, fontWeight: 700, color: grade.color,
+                  fontSize: 11, fontWeight: 700, color: grade.color,
                   background: grade.bg, border: `1px solid ${grade.border}`,
-                  borderRadius: 8, padding: "3px 10px", fontFamily: F,
+                  borderRadius: 8, padding: "2px 8px", fontFamily: F,
                 }}>{grade.label}</span>
               )}
             </div>
-            <div style={{ fontSize: 13, color: "#64748B", fontFamily: F, marginBottom: 6 }}>
-              {partner.title || partner.slogan || "개발 파트너"}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 14, color: "#F59E0B" }}>{"★".repeat(Math.round(rating))}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{rating.toFixed(1)}</span>
-              <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>/5.0</span>
-              {partner.contractCount && (
-                <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, marginLeft: 4 }}>· {partner.contractCount}건 완료</span>
+            {/* 2행: 슬로건 (이모지 포함) */}
+            {(merged.slogan || partner.slogan) && (
+              <div style={{ fontSize: 13, color: "#475569", fontFamily: F, marginBottom: 4, lineHeight: 1.5 }}>
+                {merged.slogan || partner.slogan}
+              </div>
+            )}
+            {/* 3행: 한줄 자기소개 */}
+            {(merged.shortBio || merged.bio) && (
+              <div style={{ fontSize: 12, color: "#64748B", fontFamily: F, marginBottom: 6, lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                {merged.shortBio || merged.bio}
+              </div>
+            )}
+            {/* 4행: 칩들 (서비스분야 / 레벨 / 지역 / 근무선호) */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+              {merged.serviceField && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 99, padding: "2px 9px", fontFamily: F }}>{merged.serviceField}</span>
               )}
+              {merged.region && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 99, padding: "2px 9px", fontFamily: F }}>{merged.region}</span>
+              )}
+              {merged.workPreference && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 99, padding: "2px 9px", fontFamily: F }}>{merged.workPreference}</span>
+              )}
+            </div>
+            {/* 5행: 평점 */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, color: "#F59E0B" }}>{"★".repeat(Math.round(rating))}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{rating.toFixed(1)}</span>
+              <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F }}>/5.0</span>
+              {(merged.completedProjects ?? partner.contractCount) ? (
+                <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, marginLeft: 4 }}>· 완료 {merged.completedProjects ?? partner.contractCount}건</span>
+              ) : null}
             </div>
           </div>
 
@@ -236,31 +300,42 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ background: "#F8FAFC", borderRadius: 14, padding: "20px 24px", border: "1.5px solid #E2E8F0" }}>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "#475569", fontFamily: F, margin: "0 0 10px" }}>자기소개</p>
-                <p style={{ fontSize: 15, color: "#1E293B", fontFamily: F, lineHeight: 1.8, margin: 0 }}>
-                  {partner.desc || "안녕하세요. 클라이언트의 목표를 실현하는 파트너입니다."}
+                <p style={{ fontSize: 15, color: "#1E293B", fontFamily: F, lineHeight: 1.8, margin: 0, whiteSpace: "pre-wrap" }}>
+                  {merged.bio || merged.shortBio || partner.desc || "안녕하세요. 클라이언트의 목표를 실현하는 파트너입니다."}
                 </p>
               </div>
-              {partner.sloganSub && (
+              {(merged.strengthDesc || merged.sloganSub || partner.sloganSub) && (
                 <div style={{ background: "#F8FAFC", borderRadius: 14, padding: "20px 24px", border: "1.5px solid #E2E8F0" }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "#475569", fontFamily: F, margin: "0 0 10px" }}>주요 업무 분야 및 강점</p>
-                  <p style={{ fontSize: 15, color: "#1E293B", fontFamily: F, lineHeight: 1.8, margin: 0 }}>{partner.sloganSub}</p>
+                  <p style={{ fontSize: 15, color: "#1E293B", fontFamily: F, lineHeight: 1.8, margin: 0 }}>
+                    {merged.strengthDesc || merged.sloganSub || partner.sloganSub}
+                  </p>
                 </div>
               )}
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#64748B", fontFamily: F, margin: "0 0 10px" }}>주요 기술 태그</p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {(partner.tags || []).map(tag => {
-                    const color = SKILL_COLOR_MAP[tag] || "#6366F1";
-                    return (
-                      <span key={tag} style={{
-                        padding: "6px 14px", borderRadius: 99,
-                        background: color + "18", border: `1.5px solid ${color}40`,
-                        color, fontSize: 13, fontWeight: 700, fontFamily: F,
-                      }}>{tag}</span>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* 주요 기술 태그 — merged.skills 또는 partner.tags */}
+              {(() => {
+                const tagList = (merged.skills && merged.skills.length > 0)
+                  ? merged.skills.map(s => typeof s === "string" ? s : (s.techName || s.customTech)).filter(Boolean)
+                  : (partner.tags || []);
+                if (tagList.length === 0) return null;
+                return (
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "#64748B", fontFamily: F, margin: "0 0 10px" }}>주요 기술 태그</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {tagList.map(tag => {
+                        const color = SKILL_COLOR_MAP[tag] || "#6366F1";
+                        return (
+                          <span key={tag} style={{
+                            padding: "6px 14px", borderRadius: 99,
+                            background: color + "18", border: `1.5px solid ${color}40`,
+                            color, fontSize: 13, fontWeight: 700, fontFamily: F,
+                          }}>{tag}</span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -268,7 +343,7 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
           <div ref={sectionRefs.skills} style={{ marginBottom: 40 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", textTransform: "uppercase", letterSpacing: 1 }}>기술</p>
             <div>
-              {(partner.skills && partner.skills.length > 0 ? partner.skills : (partner.tags || [])).map((item, i) => {
+              {(merged.skills && merged.skills.length > 0 ? merged.skills : (partner.tags || [])).map((item, i) => {
                 const techName = typeof item === "string" ? item : (item.techName || item.customTech || "기타");
                 const proficiency = typeof item === "object" ? item.proficiency : ["전문가", "고급", "중급", "초급"][Math.min(i, 3)];
                 const experience  = typeof item === "object" ? item.experience  : `${Math.max(1, (partner.experience || 3) - i)}년`;
