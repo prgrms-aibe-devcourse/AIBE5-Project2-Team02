@@ -3600,7 +3600,15 @@ function MeetingProjectCard({ project, onDetail }) {
 
 function getMeetingPartnerPreview(contact) {
   const base = CLIENT_MEETING_PROFILE_MAP[contact?.name] || {};
+  // PartnerProfileModal이 partnerUsername으로 실제 백엔드 데이터를 자체 fetch 하기 때문에
+  // contact.name 또는 username을 partnerUsername에 매핑해 두면 풀 디자인 모달이
+  // 진짜 데이터(자기소개/기술/경력/학력/포트폴리오/평가)로 채워짐.
+  const usernameCandidate = contact?.username || contact?.name;
   return {
+    partnerUsername: usernameCandidate,
+    username: usernameCandidate,
+    partnerUserId: contact?.targetUserId || contact?.userId,
+    partnerProfileId: contact?.partnerProfileId,
     name: contact?.name || base.name || "상대 파트너",
     initials: contact?.initials || (contact?.name || "상대").split(" ").map(token => token[0]).slice(0, 2).join("").toUpperCase(),
     title: base.title || "협업 파트너",
@@ -4324,7 +4332,8 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
     let cancelled = false;
     const load = async () => {
       try {
-        if (projectActionMode === "myProject" || projectActionMode === "proposal") {
+        if (projectActionMode === "myProject" || projectActionMode === "proposal" || projectActionMode === "share") {
+          // share/myProject/proposal 공통: 본인이 등록한 프로젝트 리스트
           const data = await projectsApi.myList();
           if (!cancelled) setModalProjects((data || []).map(normalizeProject));
         } else if (projectActionMode === "theirProject") {
@@ -4535,9 +4544,9 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
               {menuOpen && (
                 <div style={{ position: "absolute", top: 40, right: 0, width: 210, background: "white", border: "1px solid #E2E8F0", borderRadius: 16, boxShadow: "0 20px 48px rgba(15,23,42,0.14)", padding: 8, zIndex: 10 }}>
                   {[
-                    { key: "myProject", label: "내 프로젝트 카드 보기", action: () => { setProjectActionMode("myProject"); setMenuOpen(false); } },
-                    { key: "theirProject", label: "상대 프로젝트 카드 보기", action: () => { setProjectActionMode("theirProject"); setMenuOpen(false); } },
+                    { key: "share", label: "프로젝트 보여주기", action: () => { setProjectActionMode("share"); setMenuOpen(false); } },
                     { key: "proposal", label: "프로젝트 제안하기", action: () => { setProjectActionMode("proposal"); setMenuOpen(false); } },
+                    { key: "profile", label: "상대 프로필 보기", action: () => { setSelectedProfile(getMeetingPartnerPreview(activeContact)); setMenuOpen(false); } },
                   ].map(item => (
                     <button
                       key={item.key}
@@ -4899,20 +4908,21 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
           </div>
 
           {projectActionMode && (() => {
-            const isMy = projectActionMode === "myProject";
+            const isShare = projectActionMode === "share" || projectActionMode === "myProject";
             const isProposal = projectActionMode === "proposal";
             const isTheir = projectActionMode === "theirProject";
             const theirCanApply = isTheir && counterpartIsClient;
             const requireRole = isProposal || theirCanApply;
-            const titleMap = { myProject: "내 프로젝트 카드 보기", theirProject: "상대 프로젝트 카드 보기", proposal: "프로젝트 제안하기" };
+            const titleMap = { share: "프로젝트 보여주기", myProject: "내 프로젝트 카드 보기", theirProject: "상대 프로젝트 카드 보기", proposal: "프로젝트 제안하기" };
             const subtitleMap = {
+              share: "내가 등록한 프로젝트 중 하나를 골라 채팅창에 카드로 공유합니다.",
               myProject: "내가 등록한 프로젝트 중 하나를 골라 채팅창에 카드로 공유합니다.",
               theirProject: theirCanApply
                 ? "상대(클라이언트)의 프로젝트 중 하나를 고르고 직무를 선택해 지원합니다."
                 : "상대가 등록한 프로젝트 카드를 채팅창에 공유합니다.",
               proposal: "내 프로젝트와 함께할 직무를 선택해 협업 제안 메시지를 보냅니다.",
             };
-            const confirmMap = { myProject: "채팅에 공유하기", proposal: "제안 보내기" };
+            const confirmMap = { share: "채팅에 공유하기", myProject: "채팅에 공유하기", proposal: "제안 보내기" };
             const confirmLabel = isTheir ? (theirCanApply ? "지원하기" : "채팅에 공유하기") : confirmMap[projectActionMode];
             return (
               <MeetingProjectSelectModal
@@ -4924,7 +4934,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
                 confirmLabel={confirmLabel}
                 onClose={() => setProjectActionMode(null)}
                 onConfirm={(project, role) => {
-                  if (isMy) { handleShareProject(project); return; }
+                  if (isShare) { handleShareProject(project); return; }
                   if (isProposal) { handleSuggestProject(project, role); return; }
                   if (isTheir) {
                     if (theirCanApply) { handleApplyProject(project, role); }
@@ -4934,7 +4944,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
               />
             );
           })()}
-          {selectedProfile && <PartnerDetailPopup partner={selectedProfile} onClose={() => setSelectedProfile(null)} backdrop="transparent" />}
+          {selectedProfile && <PartnerProfileModal partner={selectedProfile} onClose={() => setSelectedProfile(null)} />}
           {selectedProject && <ProjectDetailPopup proj={selectedProject} onClose={() => setSelectedProject(null)} />}
         </div>
       )}
@@ -6201,7 +6211,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           )}
 
           {selectedProject && <ProjectDetailPopup proj={selectedProject} onClose={() => setSelectedProject(null)} />}
-          {selectedProfile && <PartnerDetailPopup partner={selectedProfile} onClose={() => setSelectedProfile(null)} backdrop="transparent" />}
+          {selectedProfile && <PartnerProfileModal partner={selectedProfile} onClose={() => setSelectedProfile(null)} />}
         </div>
       )}
 
