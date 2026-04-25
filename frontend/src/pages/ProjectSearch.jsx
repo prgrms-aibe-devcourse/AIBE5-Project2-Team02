@@ -933,6 +933,21 @@ const CONTRACT_TABS = [
   { key: "terms",       label: "7. 특약" },
 ];
 
+// 프로젝트 등록 폼은 일부 키를 다른 이름으로 보냄 (deliverables=복수, specialTerms).
+// project_modules 테이블의 표준 키(deliverable/terms)와 호환시키기 위한 alias.
+const TAB_KEY_ALIAS = {
+  deliverable: ["deliverable", "deliverables"],
+  terms: ["terms", "specialTerms"],
+};
+function pickTermData(terms, key) {
+  if (!terms) return undefined;
+  const candidates = TAB_KEY_ALIAS[key] || [key];
+  for (const k of candidates) {
+    if (terms[k] != null) return terms[k];
+  }
+  return undefined;
+}
+
 function ContractTermsTabs({ terms }) {
   const [active, setActive] = useState("scope");
   if (!terms || typeof terms !== "object" || Object.keys(terms).length === 0) {
@@ -956,7 +971,7 @@ function ContractTermsTabs({ terms }) {
       {/* 탭 헤더 */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14, borderBottom: "1px solid #E2E8F0", paddingBottom: 0 }}>
         {CONTRACT_TABS.map((t) => {
-          const has = !!terms[t.key];
+          const has = pickTermData(terms, t.key) != null;
           const isActive = active === t.key;
           return (
             <button
@@ -979,7 +994,7 @@ function ContractTermsTabs({ terms }) {
         background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12,
         padding: "18px 22px", minHeight: 80, fontFamily: F,
       }}>
-        <ContractTermInlineModal termKey={active} data={terms[active]} />
+        <ContractTermInlineModal termKey={active} data={pickTermData(terms, active)} />
       </div>
     </div>
   );
