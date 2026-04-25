@@ -227,30 +227,56 @@ function ApplicantBanner({ app, onViewPartner, statusOverride }) {
   const statusBg    = effectiveStatus === "검토 중" ? "#EFF6FF" : effectiveStatus === "합격" ? "#F0FFF4" : "#FEF2F2";
   const statusBorder = effectiveStatus === "검토 중" ? "#BFDBFE" : effectiveStatus === "합격" ? "#86EFAC" : "#FECACA";
   const matchColor  = app.match >= 90 ? "#10B981" : app.match >= 75 ? "#3B82F6" : "#F59E0B";
+
+  // 해당 지원자의 profileImageUrl 자체 fetch (지원자별 N회지만 보통 N이 작아 OK)
+  const [heroUrl, setHeroUrl] = useState(null);
+  useEffect(() => {
+    const username = app.partnerUsername || app.name;
+    if (!username) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { profileApi } = await import("../api/profile.api");
+        const d = await profileApi.getDetailByUsername(username);
+        if (!cancelled) {
+          const raw = d?.profileImageUrl;
+          if (raw && !/cdn\.devbridge\.com/i.test(raw)) setHeroUrl(raw);
+        }
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, [app.partnerUsername, app.name]);
+
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 14,
       padding: "12px 16px", borderRadius: 12,
       background: "#F8FAFC", border: "1.5px solid #E2E8F0",
     }}>
-      {/* 아바타 */}
+      {/* 아바타 — 동그라미 hero */}
       <div style={{
-        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-        background: "linear-gradient(135deg, #DBEAFE, #EFF6FF)",
-        border: "1.5px solid #BFDBFE",
+        width: 48, height: 48, borderRadius: "50%", flexShrink: 0,
+        background: "white",
+        border: "2px solid white",
+        boxShadow: "0 2px 8px rgba(59,130,246,0.15)",
+        overflow: "hidden",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="8" r="4" fill="#60A5FA"/>
-          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#60A5FA"/>
-        </svg>
+        {heroUrl ? (
+          <img src={heroUrl} alt="hero" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="8" r="4" fill="#60A5FA"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#60A5FA"/>
+          </svg>
+        )}
       </div>
       {/* 이름·직함 */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{app.name}</span>
           <span style={{ fontSize: 12, color: "#64748B", fontFamily: F }}>{app.title}</span>
-          <span style={{ fontSize: 11, color: "#FBBF24" }}>★</span>
+          <span style={{ fontSize: 13, lineHeight: 1 }}>⭐</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: "#475569", fontFamily: F }}>{app.rating}</span>
           <span style={{
             fontSize: 11, fontWeight: 700, color: matchColor,
@@ -519,6 +545,8 @@ function ApplicationsTab({ activeTab }) {
             id: a.id,
             applicationId: a.id,
             partnerUserId: a.partnerUserId,
+            partnerUsername: a.partnerUsername,
+            partnerProfileId: a.partnerProfileId,
             name: a.partnerUsername || "파트너",
             title: "지원자",
             rating: 4.8,
@@ -1162,29 +1190,40 @@ function InterestsTab({ onProposePartner }) {
         {displayedPartners.length === 0 && (
           <EmptyState label="파트너" onGo={() => navigate("/partner_search")} />
         )}
-        {displayedPartners.map(partner => (
+        {displayedPartners.map(partner => {
+          const heroRaw = partner.profileImageUrl || partner.heroImage || null;
+          const heroOk = heroRaw && !/cdn\.devbridge\.com/i.test(heroRaw);
+          return (
           <div key={partner.id} style={{
             border: "1.5px solid #F1F5F9", borderRadius: 14,
             padding: "18px 22px", background: "white",
             boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
             display: "flex", alignItems: "flex-start", gap: 16,
           }}>
-            {/* 아바타 */}
+            {/* 아바타 — 동그라미 hero */}
             <div style={{
-              width: 60, height: 60, borderRadius: 12, flexShrink: 0,
-              background: "#F1F5F9", border: "1.5px solid #E2E8F0",
+              width: 64, height: 64, borderRadius: "50%", flexShrink: 0,
+              background: "white",
+              border: "2px solid white",
+              boxShadow: "0 2px 8px rgba(59,130,246,0.15)",
+              overflow: "hidden",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="8" r="4" fill="#94A3B8"/>
-                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#94A3B8"/>
-              </svg>
+              {heroOk ? (
+                <img src={heroRaw} alt="hero" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="4" fill="#94A3B8"/>
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#94A3B8"/>
+                </svg>
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 16, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{partner.name}</span>
-                  <span style={{ fontSize: 13, color: "#FBBF24", fontFamily: F }}>★ {partner.rating}</span>
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>⭐</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#475569", fontFamily: F }}>{partner.rating}</span>
                   <button
                     onClick={() => togglePartnerInterest(partner.id).catch(() => {})}
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: 0, lineHeight: 1 }}
@@ -1209,7 +1248,8 @@ function InterestsTab({ onProposePartner }) {
               <p style={{ fontSize: 13, color: "#475569", margin: 0, fontFamily: F, lineHeight: 1.6 }}>{partner.desc}</p>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

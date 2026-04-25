@@ -661,23 +661,21 @@ function PartnerCard({ data }) {
           );
         })()}
 
-        {/* 기술 태그 */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-          {data.tags.map(t => (
-            <span key={t} style={{ fontSize: 12, fontWeight: 600, color: "#475569", background: "#F1F5F9", borderRadius: 6, padding: "4px 10px", fontFamily: F }}>{t}</span>
-          ))}
-        </div>
-
-        {/* 서비스 분야 · 파트너 유형 · 선호 방식 — 빈 값(미입력)은 chip으로 렌더하지 않음 */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {/* 기술 태그 + 서비스 분야 chip — 한 행으로 통합해 카드 하단으로 내림 */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+          {/* 서비스 분야 / 파트너 유형 / 선호 방식 (빈값은 제외) */}
           {[data.serviceField, data.partnerType, data.workPref]
             .filter(c => c != null && String(c).trim() !== "")
             .map((chip, i) => (
-              <span key={i} style={{
+              <span key={`f-${i}`} style={{
                 fontSize: 12, fontWeight: 600, color: "#6366F1",
                 background: "#EEF2FF", borderRadius: 999, padding: "4px 10px", fontFamily: F,
               }}>{chip}</span>
             ))}
+          {/* 기술 태그 */}
+          {data.tags.map(t => (
+            <span key={t} style={{ fontSize: 12, fontWeight: 600, color: "#475569", background: "#F1F5F9", borderRadius: 6, padding: "4px 10px", fontFamily: F }}>{t}</span>
+          ))}
         </div>
 
       </div>
