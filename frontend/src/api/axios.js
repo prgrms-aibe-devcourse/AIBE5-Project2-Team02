@@ -1,8 +1,13 @@
 /**
  * 글로벌 axios 인스턴스.
- * - baseURL: '/api'  → vite.config.js의 proxy로 http://localhost:8080 으로 전달.
- * - timeout: AI 매칭처럼 응답이 긴 요청을 위해 30초로 확장.
- * - 토큰 인터셉터 자리(현재 no-op). Phase 7 (JWT 도입)에서 활성화.
+ * - baseURL: '/api' → dev에선 vite proxy(localhost:8080), 운영에선 같은 도메인.
+ * - withCredentials: true → 백엔드가 set한 HttpOnly 쿠키(DEVBRIDGE_TOKEN)를 자동 전송.
+ * - JWT는 더 이상 localStorage에 저장하지 않음 (XSS 방어). 인증 토큰은 전적으로 쿠키 의존.
+ *
+ * 레거시 호환:
+ *   localStorage에 'accessToken'이 남아있는 경우(기존 로그인 세션 마이그레이션용)에 한해
+ *   Authorization 헤더로 1회 전송. 백엔드도 헤더를 fallback으로 받음.
+ *   사용자가 로그인 다시 하면 localStorage는 비어지고, 쿠키 인증으로 완전 전환.
  */
 import axios from 'axios';
 
@@ -15,12 +20,12 @@ const api = axios.create({
   },
 });
 
-// --- Request 인터셉터: 토큰 자리 ---
+// --- Request 인터셉터: 레거시 호환 (구 세션의 localStorage 토큰만 헤더로 부착) ---
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const legacy = localStorage.getItem('accessToken');
+    if (legacy) {
+      config.headers.Authorization = `Bearer ${legacy}`;
     }
     return config;
   },
@@ -45,7 +50,9 @@ api.interceptors.response.use(
         // 조용히 실패 — 호출부가 .catch 로 처리
         return Promise.reject(error);
       }
-      console.warn('[api] 401 Unauthorized - 토큰 만료/무효, 로그인 페이지로 이동');
+      if (import.meta.env.DEV) {
+        console.warn('[api] 401 Unauthorized - 토큰 만료/무효, 로그인 페이지로 이동');
+      }
       localStorage.removeItem('accessToken');
       localStorage.removeItem('dbId');     // 백엔드 User PK (숫자)
       localStorage.removeItem('userId');   // 구 키 정리 (마이그레이션)

@@ -58,12 +58,14 @@ function Login() {
 
     try {
       const data = await authApi.login({ email, password: pw });
-      // ===== JWT 토큰 + 사용자 정보 저장 =====
+      // ===== 사용자 식별 정보 저장 =====
+      // JWT 토큰은 백엔드가 HttpOnly 쿠키(DEVBRIDGE_TOKEN)로 자동 set — JS 저장 불필요/금지(XSS 방어).
       // 용어: dbId = 백엔드 User PK(숫자), username = 회원가입 시 입력한 로그인 핸들
-      if (data.token) {
-        localStorage.setItem('accessToken', data.token);
-        localStorage.setItem('dbId', String(data.userId ?? ''));      // PK
-        localStorage.setItem('username', data.username ?? '');         // 핸들
+      // 잔존 레거시 토큰 정리 (이전 로그인 세션이 남긴 localStorage 토큰 제거)
+      localStorage.removeItem('accessToken');
+      if (data.userId != null) {
+        localStorage.setItem('dbId', String(data.userId));      // PK (비민감)
+        localStorage.setItem('username', data.username ?? '');   // 핸들 (비민감)
         localStorage.setItem('userType', data.userType ?? '');
       }
       setLogin(data.email, "local");
@@ -116,10 +118,11 @@ function Login() {
         // BE 에 소셜 로그인 요청 → JWT 발급
         try {
           const data = await authApi.socialLogin({ email: userEmail, provider: "google" });
-          if (data.token) {
-            localStorage.setItem('accessToken', data.token);
-            localStorage.setItem('dbId', String(data.userId ?? ''));      // PK
-            localStorage.setItem('username', data.username ?? '');         // 핸들
+          // JWT는 HttpOnly 쿠키로 자동 set — 잔존 레거시 토큰 정리만.
+          localStorage.removeItem('accessToken');
+          if (data.userId != null) {
+            localStorage.setItem('dbId', String(data.userId));     // PK (비민감)
+            localStorage.setItem('username', data.username ?? '');  // 핸들
             localStorage.setItem('userType', data.userType ?? '');
           }
           const role = (data.userType || '').toLowerCase();

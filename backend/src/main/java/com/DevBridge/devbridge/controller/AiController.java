@@ -13,7 +13,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class AiController {
 
     private final GeminiService geminiService;

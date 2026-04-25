@@ -82,6 +82,22 @@ const TIERS = [
     heroes: [heroDefault, heroCheck, heroStudent, heroTeacher, heroMeeting, heroMoney],
   },
   {
+    key: "platinum",
+    name: "Platinum",
+    emoji: "🌙",
+    color: "#8B5CF6",
+    bg: "#EDE9FE",
+    border: "#C4B5FD",
+    requirements: ["완료 프로젝트 37개 이상", "평균 평점 4.5 이상", "재계약률 40% 이상"],
+    benefits: [
+      { label: "플랫폼 수수료", value: "2%" },
+      { label: "Hero 이미지", value: "7종" },
+      { label: "프로필 커스텀", value: "배너 + 컬러 자유 편집" },
+      { label: "상단 노출", value: "월 8회" },
+    ],
+    heroes: [heroDefault, heroCheck, heroStudent, heroTeacher, heroMeeting, heroMoney, heroVacation],
+  },
+  {
     key: "diamond",
     name: "Diamond",
     emoji: "💎",
@@ -439,7 +455,7 @@ export default function Onboarding() {
           </p>
 
           {/* 티어 선택 그리드 */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, marginBottom: 28 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, marginBottom: 28 }}>
             {TIERS.map(t => (
               <TierCard key={t.key} tier={t} active={activeTier === t.key} onClick={() => setActiveTier(t.key)} />
             ))}

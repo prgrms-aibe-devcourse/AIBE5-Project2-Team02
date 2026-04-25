@@ -18,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/match")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class MatchController {
 
     private final MatchService matchService;

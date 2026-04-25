@@ -578,12 +578,11 @@ function PartnerRegister() {
 
       try {
         const data = await authApi.signup(payload);
-        // ===== JWT 토큰 + 사용자 정보 저장 =====
-        // 용어: dbId = 백엔드 User PK(숫자), username = 회원가입 시 입력한 로그인 핸들
-        if (data.token) {
-          localStorage.setItem('accessToken', data.token);
-          localStorage.setItem('dbId', String(data.userId ?? ''));      // PK
-          localStorage.setItem('username', data.username ?? '');         // 핸들
+        // JWT 토큰은 HttpOnly 쿠키로 백엔드가 자동 set (XSS 방어). 잔존 레거시 토큰만 정리.
+        localStorage.removeItem('accessToken');
+        if (data.userId != null) {
+          localStorage.setItem('dbId', String(data.userId));     // PK (비민감)
+          localStorage.setItem('username', data.username ?? '');  // 핸들
           localStorage.setItem('userType', data.userType ?? '');
         }
         // store에 user 정보 저장

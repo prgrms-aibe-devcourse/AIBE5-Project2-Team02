@@ -12,7 +12,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/verify")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class EmailVerificationController {
 
     private final EmailVerificationService service;

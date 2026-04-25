@@ -27,7 +27,8 @@ function esc(str) {
 }
 
 function portfolioLink(sourceKey) {
-  return `http://localhost:5173/portfolio_project_preview?sourceKey=${encodeURIComponent(sourceKey)}`;
+  const origin = (typeof window !== "undefined" && window.location?.origin) || "";
+  return `${origin}/portfolio_project_preview?sourceKey=${encodeURIComponent(sourceKey)}`;
 }
 
 // ── 영문 HTML ────────────────────────────────────────────────────
