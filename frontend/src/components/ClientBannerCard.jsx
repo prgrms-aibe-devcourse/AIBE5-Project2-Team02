@@ -259,7 +259,18 @@ export default function ClientBannerCard({ activePage }) {
 
         {/* 태그 칩 */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-          <DropdownChip options={["AI", "커머스", "웹사이트", "디자인/기획", "유지보수", "핀테크", "SaaS", "모바일", "클라우드"]} value={clientProfileDetail?.industry || user?.industry || partnerDropdowns.category} onChange={v => setPartnerDropdown("category", v)} />
+          <DropdownChip
+            options={["AI", "커머스", "웹사이트", "디자인/기획", "유지보수", "핀테크", "SaaS", "모바일", "클라우드"]}
+            value={dbData?.industry || clientProfileDetail?.industry || user?.industry || ""}
+            onChange={async v => {
+              try {
+                const cur = await profileApi.getMyDetail().catch(() => ({}));
+                await profileApi.saveMyDetail({ ...(cur || {}), industry: v });
+                setDbData(prev => ({ ...(prev || {}), industry: v }));
+                bumpProfileRefresh();
+              } catch (e) { console.error("industry 저장 실패:", e); }
+            }}
+          />
           <DropdownChip options={["주니어", "미들", "시니어", "엑스퍼트"]} value={partnerDropdowns.type} onChange={v => setPartnerDropdown("type", v)} />
           <DropdownChip options={["서울", "경기권", "수도권", "지방"]}  value={partnerDropdowns.location}  onChange={v => setPartnerDropdown("location",  v)} />
           <DropdownChip options={["외주선호", "상주선호"]}              value={partnerDropdowns.workStyle} onChange={v => setPartnerDropdown("workStyle", v)} />

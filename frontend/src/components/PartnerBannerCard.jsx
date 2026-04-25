@@ -343,7 +343,18 @@ export default function PartnerBannerCard({ activePage, viewMode = false, partne
             </>
           ) : (
             <>
-              <DropdownChip options={["AI", "커머스", "웹사이트", "디자인/기획", "유지보수", "핀테크", "SaaS", "모바일", "클라우드"]} value={drops.category} onChange={v => setPartnerDropdown("category", v)} />
+              <DropdownChip
+                options={["AI", "커머스", "웹사이트", "디자인/기획", "유지보수", "핀테크", "SaaS", "모바일", "클라우드"]}
+                value={dbData?.serviceField || partnerProfile?.serviceField || drops.category}
+                onChange={async v => {
+                  try {
+                    const cur = await profileApi.getMyDetail().catch(() => ({}));
+                    await profileApi.saveMyDetail({ ...(cur || {}), serviceField: v });
+                    setDbData(prev => ({ ...(prev || {}), serviceField: v }));
+                    bumpProfileRefresh();
+                  } catch (e) { console.error("serviceField 저장 실패:", e); }
+                }}
+              />
               <DropdownChip options={["주니어", "미들", "시니어", "엑스퍼트"]}          value={drops.type}      onChange={v => setPartnerDropdown("type",      v)} />
               <DropdownChip options={["서울", "경기권", "수도권", "지방"]}  value={drops.location}  onChange={v => setPartnerDropdown("location",  v)} />
               <DropdownChip options={["외주선호", "상주선호"]}              value={drops.workStyle} onChange={v => setPartnerDropdown("workStyle", v)} />
