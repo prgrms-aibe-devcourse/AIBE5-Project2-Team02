@@ -142,6 +142,7 @@ function ClientRegister() {
       password: signupFormData.pw,
       userType: "CLIENT",
       interests: signupFormData.skills,
+      industry: signupFormData.industry || null,
       birthDate: signupFormData.birthdate || null,
       clientType: form.clientType,
       slogan: form.sloganTitle,

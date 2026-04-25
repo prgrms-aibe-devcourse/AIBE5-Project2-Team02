@@ -21,8 +21,12 @@ public class SignupRequest {
     private String interests;
     private LocalDate birthDate;
 
+    // 기본 회원가입에서 입력받는 업종/서비스 분야.
+    // 클라이언트 가입 시 ClientProfile.industry, 파트너 가입 시 PartnerProfile.serviceField 에 저장.
+    private String industry;
+
     // 2. 클라이언트용 추가 정보 (ClientRegister.jsx)
-    private String clientType; 
+    private String clientType;
     private String slogan;
 
     // 3. 파트너용 추가 정보 (PartnerRegister.jsx)

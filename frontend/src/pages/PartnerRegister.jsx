@@ -554,6 +554,7 @@ function PartnerRegister() {
         password: signupFormData.pw,
         userType: "PARTNER",
         interests: signupFormData.skills,
+        industry: signupFormData.industry || null,
         birthDate: signupFormData.birthdate || null,
 
         workCategory: form.jobCategory,
