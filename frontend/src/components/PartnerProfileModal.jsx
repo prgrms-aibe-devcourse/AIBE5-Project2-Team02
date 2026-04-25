@@ -4,8 +4,30 @@ import { GraduationCap } from "lucide-react";
 import heroCheck from "../assets/hero_check.png";
 import heroStudent from "../assets/hero_student.png";
 import heroMoney from "../assets/hero_money.png";
+import heroDefault from "../assets/hero_default.png";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+const PRIMARY_GRAD = "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)";
+
+/* PartnerProfileView 와 동일한 섹션 제목 컴포넌트 (아이콘 + 그라데이션 텍스트) */
+function SectionTitle({ icon, title }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 10, background: "#EFF6FF",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: icon === "</>" ? 11 : 16, fontWeight: 800, color: "#3B82F6",
+        flexShrink: 0, fontFamily: F,
+      }}>{icon}</div>
+      <h2 style={{
+        fontSize: 18, fontWeight: 900,
+        background: PRIMARY_GRAD,
+        WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+        margin: 0, fontFamily: F,
+      }}>{title}</h2>
+    </div>
+  );
+}
 
 const GRADE_BADGE = {
   diamond: { label: "💎 다이아몬드", color: "#1E3A8A", bg: "#DBEAFE", border: "#93C5FD" },
@@ -52,11 +74,11 @@ const MOCK_REVIEWS_FALLBACK = [
 
 const TABS = [
   { key: "intro",     label: "소개",       icon: "👤" },
+  { key: "reviews",   label: "평가",       icon: "⭐" },
   { key: "skills",    label: "기술",       icon: "</>", isCode: true },
   { key: "career",    label: "경력",       icon: "💼" },
   { key: "education", label: "학력",       icon: "🎓" },
   { key: "portfolio", label: "포트폴리오", icon: "📋" },
-  { key: "reviews",   label: "평가",       icon: "⭐" },
 ];
 
 export default function PartnerProfileModal({ partner, onClose, onPropose, onReject }) {
@@ -122,7 +144,7 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
     if (!container) return;
     const handleScroll = () => {
       const scrollTop = container.scrollTop;
-      const keys = ["intro", "skills", "career", "education", "portfolio", "reviews"];
+      const keys = ["intro", "reviews", "skills", "career", "education", "portfolio"];
       let current = keys[0];
       for (const key of keys) {
         const el = sectionRefs[key].current;
@@ -165,22 +187,33 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
           overflow: "hidden",
         }}
       >
-        {/* ── 헤더 ─────────────────────────────────── */}
+        {/* ── 헤더 (PartnerBannerCard 스타일 — 하늘색 그라데이션 + 동그라미 hero) ─── */}
         <div style={{
-          padding: "22px 28px 16px", borderBottom: "1px solid #F1F5F9",
-          background: "white", flexShrink: 0,
+          padding: "20px 28px 16px",
+          borderBottom: "1px solid #C7D2FE",
+          background: "linear-gradient(135deg, #EEF2FF 0%, #E0F2FE 50%, #F5F3FF 100%)",
+          flexShrink: 0,
           display: "flex", alignItems: "flex-start", gap: 18,
         }}>
+          {/* hero — 동그라미 + 흰 테두리 */}
           <div style={{
-            width: 72, height: 72, borderRadius: 18, flexShrink: 0,
-            background: "linear-gradient(135deg, #DBEAFE, #EFF6FF)",
-            border: "2px solid #BFDBFE",
+            width: 96, height: 96, borderRadius: "50%", flexShrink: 0,
+            background: "white",
+            border: "3px solid white",
+            boxShadow: "0 4px 16px rgba(59,130,246,0.20)",
+            overflow: "hidden",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="8" r="4" fill="#60A5FA"/>
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#60A5FA"/>
-            </svg>
+            <img
+              src={(() => {
+                const raw = merged.profileImageUrl;
+                if (!raw || /cdn\.devbridge\.com/i.test(raw)) return heroDefault;
+                return raw;
+              })()}
+              alt="hero"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              onError={e => { e.currentTarget.src = heroDefault; }}
+            />
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -220,32 +253,34 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
                 {merged.slogan || partner.slogan}
               </div>
             )}
-            {/* 3행: 한줄 자기소개 */}
+            {/* 3행: shortBio (잘림 없이 풀 표시) */}
             {(merged.shortBio || merged.bio) && (
-              <div style={{ fontSize: 12, color: "#64748B", fontFamily: F, marginBottom: 6, lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                {merged.shortBio || merged.bio}
+              <div style={{ fontSize: 13, color: "#475569", fontFamily: F, marginBottom: 8, lineHeight: 1.6 }}>
+                {merged.shortBio || (merged.bio && merged.bio.length > 200 ? merged.bio.slice(0, 200) + "…" : merged.bio)}
               </div>
             )}
-            {/* 4행: 칩들 (서비스분야 / 레벨 / 지역 / 근무선호) */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+            {/* 4행: 칩들 (서비스분야 / 지역 / 근무선호) */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {merged.serviceField && (
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 99, padding: "2px 9px", fontFamily: F }}>{merged.serviceField}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "rgba(255,255,255,0.82)", border: "1px solid #C7D2FE", borderRadius: 99, padding: "3px 10px", fontFamily: F }}>{merged.serviceField}</span>
               )}
               {merged.region && (
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 99, padding: "2px 9px", fontFamily: F }}>{merged.region}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "rgba(255,255,255,0.82)", border: "1px solid #C7D2FE", borderRadius: 99, padding: "3px 10px", fontFamily: F }}>{merged.region}</span>
               )}
               {merged.workPreference && (
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 99, padding: "2px 9px", fontFamily: F }}>{merged.workPreference}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#3730A3", background: "rgba(255,255,255,0.82)", border: "1px solid #C7D2FE", borderRadius: 99, padding: "3px 10px", fontFamily: F }}>{merged.workPreference}</span>
               )}
             </div>
-            {/* 5행: 평점 */}
+            {/* 5행: 별점 (큰 ⭐ 이모지) + 완료 N건 */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 13, color: "#F59E0B" }}>{"★".repeat(Math.round(rating))}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{rating.toFixed(1)}</span>
-              <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F }}>/5.0</span>
-              {(merged.completedProjects ?? partner.contractCount) ? (
-                <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, marginLeft: 4 }}>· 완료 {merged.completedProjects ?? partner.contractCount}건</span>
-              ) : null}
+              <span style={{ fontSize: 16, lineHeight: 1 }}>
+                {Array.from({ length: 5 }, (_, i) => i < Math.round(rating) ? "⭐" : "☆").join("")}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{rating.toFixed(1)}</span>
+              <span style={{ fontSize: 12, color: "#64748B", fontFamily: F }}>/5.0</span>
+              {(merged.completedProjects ?? partner.contractCount) != null && (
+                <span style={{ fontSize: 12, color: "#475569", fontFamily: F, marginLeft: 6, fontWeight: 600 }}>· 완료 {merged.completedProjects ?? partner.contractCount}건</span>
+              )}
             </div>
           </div>
 
@@ -296,7 +331,7 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
 
           {/* 소개 섹션 */}
           <div ref={sectionRefs.intro} style={{ marginBottom: 40 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", textTransform: "uppercase", letterSpacing: 1 }}>소개</p>
+            <SectionTitle icon="👤" title="소개" />
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ background: "#F8FAFC", borderRadius: 14, padding: "20px 24px", border: "1.5px solid #E2E8F0" }}>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "#475569", fontFamily: F, margin: "0 0 10px" }}>자기소개</p>
@@ -341,7 +376,7 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
 
           {/* 기술 섹션 */}
           <div ref={sectionRefs.skills} style={{ marginBottom: 40 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", textTransform: "uppercase", letterSpacing: 1 }}>기술</p>
+            <SectionTitle icon="</>" title="기술" />
             <div>
               {(merged.skills && merged.skills.length > 0 ? merged.skills : (partner.tags || [])).map((item, i) => {
                 const techName = typeof item === "string" ? item : (item.techName || item.customTech || "기타");
@@ -375,38 +410,17 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
 
           {/* 경력 섹션 */}
           <div ref={sectionRefs.career} style={{ marginBottom: 40 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", textTransform: "uppercase", letterSpacing: 1 }}>경력</p>
+            <SectionTitle icon="💼" title="경력" />
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {careers.map((c, i) => {
-                const companyName = c.companyName || c.company || "";
-                const jobTitle    = c.jobTitle || c.role || "";
-                const period = c.startDate
-                  ? `${c.startDate.replace(/-/g, ".")} ~ ${c.isCurrent ? "현재" : (c.endDate || "").replace(/-/g, ".")}`
-                  : (c.period || "");
-                const empType = c.employmentType || c.type || "";
-                const desc    = c.description || c.desc || "";
-                return (
-                  <div key={i} style={{ background: "white", borderRadius: 14, padding: "20px 24px", border: "1.5px solid #E2E8F0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: desc ? 8 : 0 }}>
-                      <div>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{companyName}</div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: "#3B82F6", fontFamily: F, marginTop: 3 }}>{jobTitle}</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>{period}</div>
-                        {empType && <span style={{ fontSize: 11, fontWeight: 600, color: "#10B981", background: "#ECFDF5", borderRadius: 5, padding: "2px 8px", fontFamily: F }}>{empType}</span>}
-                      </div>
-                    </div>
-                    {desc && <p style={{ fontSize: 13, color: "#475569", fontFamily: F, margin: 0, lineHeight: 1.7 }}>{desc}</p>}
-                  </div>
-                );
-              })}
+              {careers.map((c, i) => (
+                <CareerCard key={i} career={c} />
+              ))}
             </div>
           </div>
 
           {/* 학력 섹션 */}
           <div ref={sectionRefs.education} style={{ marginBottom: 40 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", textTransform: "uppercase", letterSpacing: 1 }}>학력</p>
+            <SectionTitle icon="🎓" title="학력" />
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {educations.map((e, i) => {
                 const schoolName = e.schoolName || e.school || "";
@@ -441,38 +455,109 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
 
           {/* 포트폴리오 섹션 */}
           <div ref={sectionRefs.portfolio} style={{ marginBottom: 40 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", textTransform: "uppercase", letterSpacing: 1 }}>포트폴리오</p>
+            <SectionTitle icon="📋" title="포트폴리오" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-              {portfolioItems.map((p, i) => (
-                <div key={i} style={{ borderRadius: 16, overflow: "hidden", border: "1.5px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                  <div style={{
-                    height: 110, background: PORTFOLIO_BG[i % PORTFOLIO_BG.length],
-                    display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
-                  }}>
-                    <img src={PORTFOLIO_IMGS[i % PORTFOLIO_IMGS.length]} alt="" style={{ height: 80, objectFit: "contain", opacity: 0.9 }} />
-                    {p.rep && (
-                      <span style={{ position: "absolute", top: 8, left: 8, fontSize: 11, fontWeight: 800, color: "#1D4ED8", background: "white", borderRadius: 6, padding: "2px 8px", fontFamily: F }}>대표</span>
-                    )}
-                  </div>
-                  <div style={{ padding: "12px 14px", background: "white" }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", fontFamily: F, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
-                    {p.category && <div style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, marginBottom: 6 }}>{p.category}</div>}
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                      {(p.tech || p.tags || []).map(t => (
-                        <span key={t} style={{ fontSize: 11, fontWeight: 600, color: "#3B82F6", background: "#EFF6FF", borderRadius: 5, padding: "2px 8px", fontFamily: F }}>{t}</span>
-                      ))}
+              {portfolioItems.map((p, i) => {
+                // 백엔드 PortfolioItemResponse 형식: sourceKey, title, role|period, techTags[], thumbnailUrl, isRepresentative
+                const sourceKey = p.sourceKey || p.id;
+                const tags = Array.isArray(p.techTags) ? p.techTags : (p.tech || p.tags || []);
+                const thumbnailUrl = p.thumbnailUrl || null;
+                const isRep = !!(p.isRepresentative ?? p.rep);
+                const handleClick = () => {
+                  if (!sourceKey || String(sourceKey).startsWith("mock-")) return;
+                  const items = (merged.portfolioItems || []).filter(it => it && (it.sourceKey || it.id));
+                  const sourceKeys = items.map(it => it.sourceKey || it.id);
+                  onClose && onClose();
+                  navigate("/portfolio_project_preview", {
+                    state: {
+                      sourceKey,
+                      sourceKeys,
+                      portfolioItems: items,
+                      username: merged.partnerUsername || merged.username || partner.name,
+                    },
+                  });
+                };
+                return (
+                  <div
+                    key={i}
+                    onClick={handleClick}
+                    style={{
+                      borderRadius: 16, overflow: "hidden",
+                      border: "1.5px solid #E2E8F0",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                      cursor: sourceKey ? "pointer" : "default",
+                      transition: "transform 0.15s, box-shadow 0.15s",
+                    }}
+                    onMouseEnter={e => { if (sourceKey) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 22px rgba(59,130,246,0.18)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)"; }}
+                  >
+                    <div style={{
+                      height: 130, position: "relative",
+                      background: thumbnailUrl ? "#F1F5F9" : PORTFOLIO_BG[i % PORTFOLIO_BG.length],
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      overflow: "hidden",
+                    }}>
+                      {thumbnailUrl ? (
+                        <img src={thumbnailUrl} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <img src={PORTFOLIO_IMGS[i % PORTFOLIO_IMGS.length]} alt="" style={{ height: 88, objectFit: "contain", opacity: 0.9 }} />
+                      )}
+                      {isRep && (
+                        <span style={{ position: "absolute", top: 8, left: 8, fontSize: 11, fontWeight: 800, color: "#1D4ED8", background: "white", borderRadius: 6, padding: "2px 8px", fontFamily: F }}>대표</span>
+                      )}
                     </div>
-                    {p.desc && <p style={{ fontSize: 12, color: "#64748B", margin: 0, fontFamily: F, lineHeight: 1.5 }}>{p.desc}</p>}
+                    <div style={{ padding: "12px 14px", background: "white" }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", fontFamily: F, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
+                      {(p.role || p.period || p.category) && (
+                        <div style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, marginBottom: 6 }}>{p.role || p.period || p.category}</div>
+                      )}
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
+                        {tags.slice(0, 6).map(t => (
+                          <span key={t} style={{ fontSize: 11, fontWeight: 600, color: "#3B82F6", background: "#EFF6FF", borderRadius: 5, padding: "2px 8px", fontFamily: F }}>
+                            {String(t).startsWith("#") ? t : `#${t}`}
+                          </span>
+                        ))}
+                      </div>
+                      {p.desc && <p style={{ fontSize: 12, color: "#64748B", margin: 0, fontFamily: F, lineHeight: 1.5 }}>{p.desc}</p>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {/* 평가 섹션 */}
           <div ref={sectionRefs.reviews} style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", textTransform: "uppercase", letterSpacing: 1 }}>평가</p>
+            <SectionTitle icon="⭐" title="클라이언트 평가" />
+            <div style={{ fontSize: 12, color: "#64748B", fontFamily: F, marginBottom: 14, marginTop: -8 }}>
+              클라이언트가 직접 남긴 프로젝트 평가와 생생한 후기입니다.
+            </div>
             <div>
+              {/* 통계 3개 카드 — CONTRACT COUNT / COMPLETION RATE / RE-EMPLOYMENT */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+                {[
+                  { icon: "✅", iconBg: "#EFF6FF", label: "CONTRACT COUNT",  value: String(merged.completedProjects ?? partner.contractCount ?? reviews.length), unit: "건" },
+                  { icon: "✔",  iconBg: "#F0FDF4", label: "COMPLETION RATE", value: String(merged.completionRate ?? 98), unit: "%" },
+                  { icon: "🔄", iconBg: "#FFF7ED", label: "RE-EMPLOYMENT",   value: String(merged.reemploymentRate ?? merged.repeatRate ?? 85), unit: "%" },
+                ].map((s, i) => (
+                  <div key={i} style={{
+                    background: "white", border: "1.5px solid #E2E8F0", borderRadius: 14,
+                    padding: "14px 16px", display: "flex", alignItems: "center", gap: 10,
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10, background: s.iconBg,
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+                    }}>{s.icon}</div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.4, fontFamily: F }}>{s.label}</span>
+                      <span style={{ fontSize: 18, fontWeight: 900, color: "#1E293B", fontFamily: F }}>
+                        {s.value}<span style={{ fontSize: 12, fontWeight: 700, color: "#64748B", marginLeft: 2 }}>{s.unit}</span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {/* 요약 카드 */}
               <div style={{
                 display: "flex", alignItems: "center", gap: 28,
@@ -571,6 +656,84 @@ export default function PartnerProfileModal({ partner, onClose, onPropose, onRej
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── 경력 카드 (클릭 시 세부 내역 펼침/접기) ──────────────────────────── */
+function CareerCard({ career }) {
+  const [expanded, setExpanded] = useState(false);
+  const companyName = career.companyName || career.company || "";
+  const jobTitle    = career.jobTitle || career.role || "";
+  const period = career.startDate
+    ? `${career.startDate.replace(/-/g, ".")} ~ ${career.isCurrent ? "현재" : (career.endDate || "").replace(/-/g, ".")}`
+    : (career.period || "");
+  const empType = career.employmentType || career.type || "";
+  const desc    = career.description || career.desc || "";
+  const projects = career.projects || []; // 수행 프로젝트 (있다면)
+
+  return (
+    <div
+      onClick={() => setExpanded(v => !v)}
+      style={{
+        background: "white", borderRadius: 14, padding: "20px 24px",
+        border: `1.5px solid ${expanded ? "#BFDBFE" : "#E2E8F0"}`,
+        boxShadow: expanded ? "0 4px 14px rgba(59,130,246,0.10)" : "0 1px 4px rgba(0,0,0,0.04)",
+        cursor: "pointer",
+        transition: "all 0.15s",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: desc ? 8 : 0 }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{companyName}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#3B82F6", fontFamily: F, marginTop: 3 }}>{jobTitle}</div>
+        </div>
+        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>{period}</div>
+          {empType && <span style={{ fontSize: 11, fontWeight: 600, color: "#10B981", background: "#ECFDF5", borderRadius: 5, padding: "2px 8px", fontFamily: F }}>{empType}</span>}
+          <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F, marginTop: 2 }}>{expanded ? "▴ 접기" : "▾ 자세히 보기"}</span>
+        </div>
+      </div>
+      {desc && <p style={{ fontSize: 13, color: "#475569", fontFamily: F, margin: 0, lineHeight: 1.7 }}>{desc}</p>}
+
+      {/* 펼침 영역 — 주요 업무 설명 + 수행 프로젝트 */}
+      {expanded && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px dashed #CBD5E1" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <span style={{ width: 3, height: 14, background: "#3B82F6", borderRadius: 2 }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: "#1E293B", fontFamily: F }}>주요 업무 설명</span>
+          </div>
+          <div style={{
+            background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10,
+            padding: "12px 14px", marginBottom: projects.length > 0 ? 14 : 0,
+            fontSize: 13, color: "#475569", fontFamily: F, lineHeight: 1.7,
+            whiteSpace: "pre-wrap",
+          }}>
+            {desc || <span style={{ color: "#94A3B8" }}>세부 업무 내용이 등록되지 않았어요.</span>}
+          </div>
+
+          {projects.length > 0 && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <span style={{ width: 3, height: 14, background: "#3B82F6", borderRadius: 2 }} />
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#1E293B", fontFamily: F }}>수행 프로젝트</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#3730A3", background: "#EEF2FF", borderRadius: 99, padding: "2px 8px" }}>{projects.length}건</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {projects.map((proj, j) => (
+                  <div key={j} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", fontFamily: F }}>{proj.title || proj.name}</span>
+                      {proj.period && <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: F }}>{proj.period}</span>}
+                    </div>
+                    {proj.desc && <p style={{ fontSize: 12, color: "#475569", fontFamily: F, margin: 0, lineHeight: 1.6 }}>{proj.desc}</p>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
