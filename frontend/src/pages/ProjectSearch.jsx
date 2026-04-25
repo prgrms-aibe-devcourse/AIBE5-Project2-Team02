@@ -592,7 +592,7 @@ function ProjectCard({ data, onSelect }) {
         </div>
       </div>
 
-      <div style={{ flexShrink: 0, textAlign: "right", minWidth: 180, position: "relative", alignSelf: "stretch", display: "flex", flexDirection: "column" }}>
+      <div style={{ flexShrink: 0, textAlign: "right", width: 220, position: "relative", alignSelf: "stretch", display: "flex", flexDirection: "column" }}>
         {/* 찜 하트 */}
         <button
           onClick={handleLikeClick}
