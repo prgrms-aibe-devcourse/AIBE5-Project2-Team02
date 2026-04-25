@@ -13,7 +13,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/bank")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class BankVerificationController {
 
     private final BankVerificationService bankVerificationService;

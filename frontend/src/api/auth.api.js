@@ -24,5 +24,12 @@ export const authApi = {
    * @param {{email: string, provider?: string}} payload
    */
   socialLogin: (payload) => api.post('/auth/social-login', payload).then((r) => r.data),
+
+  /**
+   * 로그아웃: 백엔드가 HttpOnly 쿠키(DEVBRIDGE_TOKEN)를 즉시 만료시킴.
+   * JS에서 직접 쿠키를 지울 수 없으므로 반드시 이 엔드포인트를 호출해야 함.
+   * 네트워크 실패해도 클라이언트 측 정리는 진행해야 하므로 catch하여 swallow.
+   */
+  logout: () => api.post('/auth/logout').then((r) => r.data).catch(() => null),
 };
 

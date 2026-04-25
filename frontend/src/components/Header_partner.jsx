@@ -5,6 +5,7 @@ import mainLogo from "../assets/main_logo.png";
 import heroDefault from "../assets/hero_default.png";
 import useStore from "../store/useStore";
 import { profileApi } from "../api/profile.api";
+import { authApi } from "../api/auth.api";
 
 const PRIMARY_GRAD = "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)";
 
@@ -158,7 +159,14 @@ function Header_partner() {
     return heroImage || null;
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 백엔드 쿠키 만료 요청 → 실패해도 클라 정리는 계속
+    await authApi.logout();
+    // 레거시 토큰/식별자 정리
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("dbId");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userType");
     clearUser();
     clearLogin();
     navigate("/home");

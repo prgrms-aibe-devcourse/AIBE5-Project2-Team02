@@ -5,6 +5,7 @@ import mainLogo from "../assets/main_logo.png";
 import heroCheck from "../assets/hero_check.png";
 import useStore from "../store/useStore";
 import { profileApi } from "../api/profile.api";
+import { authApi } from "../api/auth.api";
 
 const NAV_ITEMS = [
   { name: "프로젝트 등록", path: "/project_register" },
@@ -133,7 +134,18 @@ function Header_client() {
     return heroImage || heroCheck;
   };
 
-  const handleLogout = () => { clearUser(); clearLogin(); navigate("/home"); };
+  const handleLogout = async () => {
+    // 백엔드 쿠키 만료 요청 → 실패해도 클라 정리는 계속
+    await authApi.logout();
+    // 레거시 토큰/식별자 정리
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("dbId");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userType");
+    clearUser();
+    clearLogin();
+    navigate("/home");
+  };
 
   useEffect(() => {
     const fn = (e) => {

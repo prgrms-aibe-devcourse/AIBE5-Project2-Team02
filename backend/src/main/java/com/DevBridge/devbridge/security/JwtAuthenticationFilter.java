@@ -1,7 +1,9 @@
 package com.DevBridge.devbridge.security;
 
+import com.DevBridge.devbridge.controller.AuthController;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +14,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Authorization: Bearer <token> 헤더에서 JWT 파싱.
+ * JWT 추출 우선순위:
+ *   1) HttpOnly 쿠키 (DEVBRIDGE_TOKEN) — 새로운 표준
+ *   2) Authorization: Bearer <token> 헤더 — 레거시 호환
+ *
  * 검증 통과 시 request attribute에 다음 값 설정:
  *   - "auth.userId" (Long)
  *   - "auth.userType" (String)
@@ -31,9 +36,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7).trim();
+        String token = extractToken(request);
+        if (token != null && !token.isBlank()) {
             try {
                 var claims = jwtUtil.parse(token);
                 Object uid = claims.get("uid");
@@ -50,6 +54,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private String extractToken(HttpServletRequest request) {
+        // 1순위: HttpOnly 쿠키
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if (AuthController.AUTH_COOKIE_NAME.equals(c.getName())) {
+                    String v = c.getValue();
+                    if (v != null && !v.isBlank()) return v.trim();
+                }
+            }
+        }
+        // 2순위: Authorization 헤더 (레거시 호환)
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7).trim();
+        }
+        return null;
     }
 }
 
