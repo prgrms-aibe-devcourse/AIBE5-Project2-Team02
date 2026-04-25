@@ -6,6 +6,11 @@ import ClientBannerCard from "../components/ClientBannerCard";
 import useStore from "../store/useStore";
 import { portfolioApi } from "../api";
 import { toPortfolioCard } from "../lib/portfolio";
+
+import tutoOnboard from "../assets/tuto_onboard.png";
+import tutoIncome from "../assets/tuto_income.png";
+import tutoSolution from "../assets/tuto_solution.png";
+
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 /* ── GitHub 잔디 ─────────────────────────────────────────── */
@@ -387,20 +392,22 @@ function SelectedProjects() {
 const NEW_STEPS_DATA = [
   {
     id: 1,
+    thumbnail: tutoOnboard,
     imgBg: "#E8E0D8",
-    imgContent: "UTORIAL",
+    imgContent: "For My Newbes⭐",
     title: "튜토리얼 온보딩",
     desc: "Learn the ropes of our platform",
   },
   {
     id: 2,
+    thumbnail: tutoIncome,
     imgBg: "#D4C8A8",
-    imgContent: "💰",
     title: "Developer Income 가계부",
     desc: "Manage and track your developer earnings",
   },
   {
     id: 3,
+    thumbnail: tutoSolution,
     imgBg: "#4A5568",
     imgContent: "🗂️",
     title: "솔루션 검색과 등록하기",
@@ -414,10 +421,11 @@ const NEW_STEPS_IMAGES = [
   null,
 ];
 
+
+
+
 function NewStepCard({ step, onClick }) {
   const [hov, setHov] = useState(false);
-  const bgColors = ["#D6CCC0", "#C8B89A", "#3D4A5C"];
-  const color = bgColors[step.id - 1];
 
   return (
     <div
@@ -425,56 +433,72 @@ function NewStepCard({ step, onClick }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background: "white", borderRadius: 16,
-        border: `1.5px solid ${hov ? "#BFDBFE" : "#F1F5F9"}`,
+        background: "white",
+        borderRadius: 16,
         overflow: "hidden",
-        boxShadow: hov ? "0 8px 24px rgba(59,130,246,0.12)" : "0 2px 8px rgba(0,0,0,0.04)",
-        transition: "all 0.2s",
         cursor: "pointer",
+        boxShadow: hov ? "0 8px 24px rgba(59,130,246,0.12)" : "0 2px 8px rgba(0,0,0,0.04)",
         transform: hov ? "translateY(-2px)" : "none",
+        transition: "all 0.2s",
       }}
     >
-      {/* 썸네일 */}
+      {/* ✅ 정사각형 썸네일 */}
       <div style={{
-        height: 160, background: color,
-        display: "flex", alignItems: "center", justifyContent: "center",
+        width: "100%",
+        height: 305,          // 원하는 썸네일 높이
         overflow: "hidden",
       }}>
-        {step.id === 1 && (
-          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.9)" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", marginBottom: 4 }}>— T U T O R I A L —</div>
-            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "0.05em" }}>UTORIAL</div>
-            <div style={{ fontSize: 8, marginTop: 6, opacity: 0.7, lineHeight: 1.5 }}>
-              온보딩 프로세스<br />STEP BY STEP
-            </div>
-          </div>
-        )}
-        {step.id === 2 && (
-          <div style={{ fontSize: 64 }}>🪙</div>
-        )}
-        {step.id === 3 && (
-          <div style={{ fontSize: 64 }}>🗂️</div>
-        )}
+        <img
+          src={step.thumbnail}
+          alt={step.title}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPostion:"center top",
+          }}
+        />
       </div>
 
-      {/* 내용 */}
+      {/* 텍스트 영역 */}
       <div style={{ padding: "20px 22px" }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: "#1E293B", fontFamily: F, marginBottom: 6 }}>
+        <div style={{
+          fontSize: 17,
+          fontWeight: 700,
+          color: "#1E293B",
+          marginBottom: 6
+        }}>
           {step.title}
         </div>
-        <p style={{ fontSize: 14, color: "#94A3B8", fontFamily: F, margin: "0 0 16px", lineHeight: 1.6 }}>
+
+        <p style={{
+          fontSize: 14,
+          color: "#94A3B8",
+          marginBottom: 16
+        }}>
           {step.desc}
         </p>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6", fontFamily: F, letterSpacing: "0.08em", cursor: "pointer" }}>
+
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between"
+        }}>
+          <span style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#3B82F6"
+          }}>
             GET STARTED
           </span>
-          <span style={{ color: "#3B82F6", fontSize: 16 }}>→</span>
+          <span style={{ color: "#3B82F6" }}>→</span>
         </div>
       </div>
     </div>
   );
 }
+
+
+
 
 function NewSteps() {
   const navigate = useNavigate();
@@ -539,7 +563,7 @@ export default function Client_Portfolio() {
         <div style={{
           background: "white", borderRadius: 20,
           border: "1.5px solid #F1F5F9",
-          padding: "28px 32px",
+          padding: "20px 32px",
           marginBottom: 28,
           marginLeft: -38, marginRight: -38,
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
@@ -592,7 +616,7 @@ export default function Client_Portfolio() {
         <div style={{
           background: "white", borderRadius: 20,
           border: "1.5px solid #F1F5F9",
-          padding: "28px 32px",
+          padding: "20px 32px",
           marginBottom: 28,
           marginLeft: -38, marginRight: -38,
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
@@ -604,7 +628,7 @@ export default function Client_Portfolio() {
         <div style={{
           background: "white", borderRadius: 20,
           border: "1.5px solid #F1F5F9",
-          padding: "28px 32px",
+          padding: "20px 32px",
           marginBottom: 28,
           marginLeft: -38, marginRight: -38,
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
