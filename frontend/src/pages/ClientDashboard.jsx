@@ -523,14 +523,16 @@ function ApplicationsTab({ activeTab }) {
   };
   const getStatus = (id) => appStatuses[id];
 
-  // 실제 백엔드 데이터 — 본인 RECRUITING 프로젝트 + 받은 지원자
-  const [liveActive, setLiveActive] = useState(null); // null=로딩 전 → mock 사용, []=빈 결과 → 빈 화면
+  // 실제 백엔드 데이터 — 본인 RECRUITING/CLOSED 프로젝트 + 받은 지원자
+  const [liveActive, setLiveActive] = useState(null);
+  const [liveClosed, setLiveClosed] = useState(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [recruiting, received] = await Promise.all([
+        const [recruiting, closed, received] = await Promise.all([
           projectsApi.myList(["RECRUITING"]).catch(() => []),
+          projectsApi.myList(["CLOSED"]).catch(() => []),
           applicationsApi.receivedList().catch(() => []),
         ]);
         if (cancelled) return;
@@ -557,8 +559,8 @@ function ApplicationsTab({ activeTab }) {
             desc: a.message || "",
           });
         }
-        // RECRUITING 프로젝트 어댑터
-        const adapted = (recruiting || []).map(p => ({
+        // RECRUITING/CLOSED 공용 어댑터
+        const adapt = (p, includeApplicants) => ({
           id: p.id,
           badge: p.priceType || "유료",
           title: p.title || p.slogan || "프로젝트",
@@ -568,12 +570,17 @@ function ApplicationsTab({ activeTab }) {
           budget: p.price || "협의",
           deadline: p.deadline ? `마감 ${p.deadline}` : "",
           deadlineColor: "#64748B",
-          applicants: byProj[p.id] || [],
-        }));
-        setLiveActive(adapted);
+          applicants: includeApplicants ? (byProj[p.id] || []) : [],
+          endDate: p.deadline ? `종료일: ${p.deadline}` : "",
+          statusText: "모집 종료",
+        });
+        const activeAdapted = (recruiting || []).map(p => adapt(p, true));
+        const closedAdapted = (closed || []).map(p => adapt(p, false));
+        setLiveActive(activeAdapted);
+        setLiveClosed(closedAdapted);
       } catch (e) {
         console.error("[ApplicationsTab] 데이터 로드 실패:", e);
-        if (!cancelled) setLiveActive([]);
+        if (!cancelled) { setLiveActive([]); setLiveClosed([]); }
       }
     })();
     return () => { cancelled = true; };
@@ -639,7 +646,13 @@ function ApplicationsTab({ activeTab }) {
           </>
         )}
         {activeTab === "apply_done" && (
-          MOCK_CLOSED_PROJS.map(p => <ClosedProjCard key={p.id} proj={p} onViewPartner={setSelectedPartner} />)
+          liveClosed === null ? (
+            <div style={{ padding: "40px 20px", textAlign: "center", color: "#94A3B8", fontSize: 14, fontFamily: F }}>불러오는 중...</div>
+          ) : liveClosed.length === 0 ? (
+            <div style={{ padding: "40px 20px", textAlign: "center", color: "#94A3B8", fontSize: 14, fontFamily: F }}>모집을 종료한 프로젝트가 없어요.</div>
+          ) : (
+            liveClosed.map(p => <ClosedProjCard key={p.id} proj={p} onViewPartner={setSelectedPartner} />)
+          )
         )}
       </div>
     </div>
