@@ -50,6 +50,7 @@ function toCardPartner(p) {
   };
 }
 import PartnerProfileModal from "../components/PartnerProfileModal";
+import ClientProfileModal from "../components/ClientProfileModal";
 import { buildProjectDetail } from "../lib/erdLookup";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -1028,12 +1029,18 @@ const MEETING_CLIENT_PROFILE_MAP = {
 
 function getMeetingClientPreview(contact) {
   const base = MEETING_CLIENT_PROFILE_MAP[contact?.name] || {};
+  // ClientProfileModal 이 username 으로 실제 백엔드 데이터를 자체 fetch 하기 때문에
+  // contact.name 또는 username을 partnerUsername/username 으로 매핑.
+  const usernameCandidate = contact?.username || contact?.name;
   return {
+    partnerUsername: usernameCandidate, // 모달 내부 fetch 키
+    username: usernameCandidate,
+    partnerUserId: contact?.targetUserId || contact?.userId,
     name: contact?.name || base.name || "상대 클라이언트",
     initials: contact?.initials || (contact?.name || "상대").split(" ").map(token => token[0]).slice(0, 2).join("").toUpperCase(),
     title: base.title || "클라이언트",
     project: contact?.project || "진행 중 프로젝트",
-    clientType: base.clientType || "클라이언트",
+    clientType: base.clientType || "INDIVIDUAL",
     industry: base.industry || "IT 서비스",
     summary: base.summary || "현재 프로젝트 협의를 진행 중인 클라이언트입니다.",
     preferredSkills: base.preferredSkills || ["Communication", "Planning"],
@@ -4833,7 +4840,7 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
               />
             );
           })()}
-          {selectedProfile && <MeetingClientProfilePopup client={selectedProfile} onClose={() => setSelectedProfile(null)} backdrop="transparent" />}
+          {selectedProfile && <ClientProfileModal client={selectedProfile} onClose={() => setSelectedProfile(null)} />}
           {selectedProject && <ProjectDetailPopup proj={selectedProject} onClose={() => setSelectedProject(null)} />}
         </div>
       )}
@@ -6143,7 +6150,7 @@ function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_M
           )}
 
           {selectedProject && <ProjectDetailPopup proj={selectedProject} onClose={() => setSelectedProject(null)} />}
-          {selectedProfile && <MeetingClientProfilePopup client={selectedProfile} onClose={() => setSelectedProfile(null)} backdrop="transparent" />}
+          {selectedProfile && <ClientProfileModal client={selectedProfile} onClose={() => setSelectedProfile(null)} />}
         </div>
       )}
 
