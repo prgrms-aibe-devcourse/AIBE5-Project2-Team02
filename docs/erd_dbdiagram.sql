@@ -1,8 +1,15 @@
--- DevBridge ERD — 32 tables
--- 사용법: 이 파일 전체를 https://dbdiagram.io/home 의 "Import → Import From SQL → MySQL"
---         또는 https://www.eraser.io / https://drawsql.app 에 붙여넣으면 ERD 자동 생성됨.
--- 의존성 순서 (USERS → SKILL_MASTER → CLIENT/PARTNER_PROFILE → PROJECTS → 자식 테이블들)
--- 로 정렬되어 있어 FK 충돌 없이 한 번에 실행 가능.
+/*
+ * DevBridge ERD - 32 tables
+ *
+ * Usage: paste this whole file into one of:
+ *   https://dbdiagram.io/home   (Import > Import From SQL > MySQL)
+ *   https://www.eraser.io
+ *   https://drawsql.app
+ *
+ * Tables are ordered by FK dependency (USERS first, then SKILL_MASTER,
+ * CLIENT/PARTNER_PROFILE, PROJECTS, and child tables) so the script
+ * runs in MySQL as-is without FK violations.
+ */
 
 CREATE TABLE USERS (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
