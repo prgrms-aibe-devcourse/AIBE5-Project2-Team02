@@ -7,6 +7,7 @@ import com.DevBridge.devbridge.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
  * - PartnerProfile.jsx, Client_Profile.jsx 의 "전체 설정 저장하기" 버튼에서 호출.
  * - AIchatProfile 결과 자동 저장에도 사용 가능.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProfileService {
@@ -437,9 +439,6 @@ public class ProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        System.out.println("🔍 [ProfileService] updateBasicInfo 시작 - userId: " + userId);
-        System.out.println("📥 받은 gender 값: '" + req.getGender() + "'");
-
         // User 테이블 업데이트 (빈 문자열 체크 추가)
         if (req.getPhone() != null && !req.getPhone().isBlank()) {
             user.setPhone(req.getPhone());
@@ -448,7 +447,7 @@ public class ProfileService {
             try {
                 user.setBirthDate(java.time.LocalDate.parse(req.getBirthDate()));
             } catch (Exception e) {
-                System.err.println("❌ birthDate 파싱 실패: " + req.getBirthDate());
+                log.warn("[ProfileService] birthDate 파싱 실패: {}", req.getBirthDate());
             }
         }
         if (req.getRegion() != null && !req.getRegion().isBlank()) {
@@ -463,12 +462,10 @@ public class ProfileService {
         if (req.getGender() != null && !req.getGender().isBlank()) {
             try {
                 String genderUpper = req.getGender().toUpperCase().trim();
-                System.out.println("🔄 gender 변환 시도: '" + req.getGender() + "' → '" + genderUpper + "'");
                 User.Gender genderEnum = User.Gender.valueOf(genderUpper);
                 user.setGender(genderEnum);
-                System.out.println("✅ gender 저장 성공: " + genderEnum);
             } catch (IllegalArgumentException e) {
-                System.err.println("❌ gender 변환 실패: '" + req.getGender() + "' (허용값: MALE, FEMALE, OTHER)");
+                log.warn("[ProfileService] gender 변환 실패: '{}' (허용값: MALE, FEMALE, OTHER)", req.getGender());
                 throw new RuntimeException("잘못된 성별 값입니다. MALE, FEMALE, OTHER 중 하나를 사용해주세요.");
             }
         }
@@ -476,7 +473,6 @@ public class ProfileService {
             user.setProfileImageUrl(req.getProfileImageUrl());
         }
         userRepository.save(user);
-        System.out.println("💾 사용자 정보 저장 완료 - gender: " + user.getGender());
 
         // 파트너인 경우 serviceField, slogan 업데이트
         String updatedServiceField = null;

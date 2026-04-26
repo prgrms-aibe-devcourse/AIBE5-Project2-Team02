@@ -104,6 +104,48 @@ npm run dev               # 5173 포트 (API는 /api → 8080 프록시)
 > - 🟢 = 사용자가 프론트에서 조작 → 실제 DB에 기록 → 재조회까지 확인됨
 > - 🟡 = API 연결 완료, 프론트 연동 작업 진행 중
 
+### 🛡️ 안정성 보완 (2026-04-26 ~ 2026-04-27 일괄 정리)
+
+배포 전 보안·안정성·코드 위생 일괄 점검 결과 적용된 항목입니다.
+
+#### 🔴 CRITICAL — 보안 패치
+- **JWT HttpOnly 쿠키 마이그레이션** — `Set-Cookie: HttpOnly; Secure(prod); SameSite=Lax`. `JwtAuthenticationFilter` 쿠키 우선 + Authorization 헤더 fallback. XSS 환경에서 토큰 탈취 차단.
+- **마일스톤 COMPLETED 가드 (HIGH-1)** — `ProgressDashboardService.ensureProjectActive()` 가 7개 mutation 진입점에서 종료 프로젝트 변경 차단 (createMilestone / submit / approve / requestRevision / cancelRevision / createEscrow / payMock).
+- **계좌 인증 레이스 강화 (HIGH-2)** — `BankVerificationService`: `Math.random()` → `SecureRandom`, TTL 5분 + 시도 5회 제한, `ConcurrentHashMap.compute()` 로 검증·시도카운트·만료 원자 처리.
+- **StreamChatConfig** — 외부 시스템 프로퍼티 `STREAM_KEY`/`STREAM_SECRET` 우선 보존, 빈 값일 때 setProperty 차단, 시크릿 미로깅.
+- **첨부파일 path traversal 방지** — `ProjectAttachmentService` 에서 `..` / 절대경로 / 심볼릭링크 차단.
+
+#### 🟠 HIGH — 코드 위생
+- **`console.*` 자동 제거** — Vite `esbuild.drop: ['console', 'debugger']` 운영 빌드 한정. 149개 호출 자동 stripping → PII / 디버그 정보 노출 차단.
+- **`PartnerDashboard_backup.jsx` 삭제** — ~7,000 line 데드 코드 제거.
+- **백엔드 로그 정리** — `ProfileService` 의 `System.out.println` 5개 → `@Slf4j` logger (`log.warn`) 로 교체. 운영 로그 노이즈 제거.
+- **Mock → 라이브 전환 (3개 surface)**:
+  - 포트폴리오 추가 탭 (Client·Partner) — `MOCK_ONGOING/SELECTED_FOR_PORTFOLIO` → `projectsApi.myList(...)` / `applicationsApi.myList()` + `portfolioApi.setAdded()` 토글 영속화.
+  - 채팅 프로젝트 보여주기/제안하기 모달 — `CLIENT_MEETING_PROJECT_OPTIONS` → `projectsApi.myList()` onDemand fetch.
+  - 계약 채팅 contacts — `MOCK_CONTRACT_CONTACTS` → 빈 배열 sentinel, BE chat rooms 가 유일 데이터 소스.
+- **Profile modal fallback** — `MOCK_*_FALLBACK` 4종 → 빈 배열, 가짜 정보 노출 차단.
+- **데드코드 정리** — `MOCK_ACTIVE/ACCEPTED/CLOSED_PROJS`, `MOCK_PARTNERS_DETAIL`, `MOCK_MANAGE_PROJECTS`, `MOCK_EVAL_PENDING/RECEIVED/EXPIRED`, `MOCK_CONTACTS`, `MOCK_PROJECT_MEETING_CONTACTS` 등 ~1,128 line 삭제.
+
+#### 🟡 MEDIUM — UX·운영 안전망
+- **React Error Boundary** — 최상위(`main.jsx`) 에 적용. 자식 트리 렌더링/생명주기 에러로 인한 화이트스크린 차단 + 새로고침/홈 이동 폴백 UI.
+- **multipart 업로드 제한** — `spring.servlet.multipart.max-file-size=50MB` / `max-request-size=55MB` 적용 확인 (대용량 파일 DoS 방지).
+- **`application-prod.properties`** — `ddl-auto=validate`, 모든 시크릿 env-required, actuator 노출 최소화, 쿠키 `secure=true`, CORS env-driven.
+- **CSRF** — `SameSite=Lax` 쿠키로 cross-site POST 차단. SPA 환경에서 적정한 방어 수준.
+
+#### 🔵 점검만 (수정 보류 — 추후 PR 권장)
+
+배포 전 검증으로 식별했지만 기능 회귀 위험으로 후속 PR 분리:
+
+| 항목 | 현재 상태 | 후속 작업 |
+|---|---|---|
+| `localStorage.accessToken` fetch 헤더 22곳 | 레거시 호환 fallback (새 로그인은 미사용) | fetch → axios 통일 + `credentials: include` 패턴화 |
+| `EvaluationService` N+1 (프로젝트 루프 내 sub-fetch) | 사용자당 5–30 쿼리 (영향 미미) | batch IN 쿼리 또는 `JOIN FETCH` 로 1쿼리화 |
+| 인덱스 누락 (`status`, `is_read`, `created_at`) | 1000건 시드 규모라 EXPLAIN 영향 없음 | 운영 누적 후 slow query 식별 → `@Index` 추가 |
+| `/login` Rate Limiting | 미적용 | bucket4j 또는 Spring Security `LoginThrottlingFilter` |
+| 번들 사이즈 (3.78MB single chunk) | 첫 로드 ~1MB gzip, 운영 가능 수준 | route-level `React.lazy()` + `manualChunks` 분리 |
+
+---
+
 ### 🆕 최근 주요 변경 (2026-04-27)
 
 #### 보안 하드닝 (배포 직전)
