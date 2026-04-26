@@ -41,7 +41,7 @@ public class ProgressDashboardService {
 
     @Transactional
     public MilestoneResponse createMilestone(Long projectId, MilestoneCreateRequest req) {
-        ensureClient(projectId);
+        ensureClient(projectId); ensureProjectActive(projectId);
         if (req.getTitle() == null || req.getTitle().isBlank())
             throw new IllegalArgumentException("마일스톤 제목을 입력해 주세요.");
         if (req.getAmount() == null || req.getAmount() <= 0)
@@ -66,7 +66,7 @@ public class ProgressDashboardService {
 
     @Transactional
     public MilestoneResponse submit(Long projectId, Long milestoneId, MilestoneSubmitRequest req) {
-        ensurePartner(projectId);
+        ensurePartner(projectId); ensureProjectActive(projectId);
         ProjectMilestone m = milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
                 .orElseThrow(() -> new IllegalArgumentException("마일스톤을 찾을 수 없습니다."));
 
@@ -95,7 +95,7 @@ public class ProgressDashboardService {
 
     @Transactional
     public MilestoneResponse approve(Long projectId, Long milestoneId) {
-        ensureClient(projectId);
+        ensureClient(projectId); ensureProjectActive(projectId);
         ProjectMilestone m = milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
                 .orElseThrow(() -> new IllegalArgumentException("마일스톤을 찾을 수 없습니다."));
         if (m.getStatus() != ProjectMilestone.MilestoneStatus.SUBMITTED) {
@@ -141,7 +141,7 @@ public class ProgressDashboardService {
 
     @Transactional
     public MilestoneResponse requestRevision(Long projectId, Long milestoneId, String reason) {
-        ensureClient(projectId);
+        ensureClient(projectId); ensureProjectActive(projectId);
         ProjectMilestone m = milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
                 .orElseThrow(() -> new IllegalArgumentException("마일스톤을 찾을 수 없습니다."));
         if (m.getStatus() != ProjectMilestone.MilestoneStatus.SUBMITTED) {
@@ -168,7 +168,7 @@ public class ProgressDashboardService {
 
     @Transactional
     public MilestoneResponse cancelRevision(Long projectId, Long milestoneId) {
-        ensureClient(projectId);
+        ensureClient(projectId); ensureProjectActive(projectId);
         ProjectMilestone m = milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
                 .orElseThrow(() -> new IllegalArgumentException("마일스톤을 찾을 수 없습니다."));
         if (m.getStatus() != ProjectMilestone.MilestoneStatus.REVISION_REQUESTED) {
@@ -191,7 +191,7 @@ public class ProgressDashboardService {
 
     @Transactional
     public EscrowResponse createEscrow(Long projectId, Long milestoneId, Long amount, Long payeeUserId) {
-        Long clientId = ensureClient(projectId);
+        Long clientId = ensureClient(projectId); ensureProjectActive(projectId);
         if (amount == null || amount <= 0) throw new IllegalArgumentException("금액이 올바르지 않습니다.");
         if (payeeUserId == null) throw new IllegalArgumentException("파트너 정보가 필요합니다.");
         ProjectEscrow e = ProjectEscrow.builder()
@@ -207,7 +207,7 @@ public class ProgressDashboardService {
 
     @Transactional
     public EscrowResponse payMock(Long projectId, Long escrowId, EscrowPayMockRequest req) {
-        Long clientId = ensureClient(projectId);
+        Long clientId = ensureClient(projectId); ensureProjectActive(projectId);
         ProjectEscrow e = escrowRepository.findById(escrowId)
                 .orElseThrow(() -> new IllegalArgumentException("에스크로 결제 항목을 찾을 수 없습니다."));
         if (!Objects.equals(e.getProjectId(), projectId))
@@ -436,6 +436,20 @@ public class ProgressDashboardService {
             throw new SecurityException("매칭된 파트너만 가능합니다.");
         }
         return uid;
+    }
+
+    /**
+     * 프로젝트가 종료(COMPLETED) 상태가 아닌지 확인. 마일스톤 제출/승인/수정요청/철회 등
+     * 모든 작업은 진행 중인 프로젝트에 대해서만 허용한다. (이미 정산 완료된 프로젝트의
+     * 사후 변경을 차단해 마일스톤-에스크로 일관성 유지.)
+     */
+    private void ensureProjectActive(Long projectId) {
+        Project p = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
+        Project.ProjectStatus s = p.getStatus();
+        if (s == Project.ProjectStatus.COMPLETED) {
+            throw new IllegalStateException("이미 완료된 프로젝트는 마일스톤을 더 이상 변경할 수 없습니다.");
+        }
     }
 
     private void createNotification(User user, Notification.NotificationType type,
