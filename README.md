@@ -59,7 +59,7 @@ npm run dev               # 5173 포트 (API는 /api → 8080 프록시)
 
 ## 📊 ERD — 현재 DB 연결 기준 최종 스냅샷
 
-> 실제 운영 중인 JPA 엔티티 기준 **23개 테이블** · 최종 업데이트 **2026-04-20**
+> 실제 운영 중인 JPA 엔티티 기준 **32개 테이블** · 최종 업데이트 **2026-04-27**
 
 ### 🔌 Feature Wiring Status
 
@@ -67,8 +67,8 @@ npm run dev               # 5173 포트 (API는 /api → 8080 프록시)
 
 | 테이블 | Entity | Repository | API | Frontend | 상태 |
 |-----|:-:|:-:|:-:|:-:|:-:|
-| `users` | ✅ | ✅ | `/api/auth/*` | 로그인/회원가입 | 🟢 |
-| `users.bank_*` | ✅ | ✅ | `/api/bank/*` | 마이페이지 계좌 카드 | 🟢 1원 인증(목업) |
+| `users` | ✅ | ✅ | `/api/auth/*` | 로그인/회원가입 | 🟢 JWT HttpOnly 쿠키 |
+| `users.bank_*` | ✅ | ✅ | `/api/bank/*` | 마이페이지 계좌 카드 | 🟢 1원 인증(TTL 5분/시도 5회) |
 | `partner_profile` | ✅ | ✅ | `/api/partners/*` | 파트너 검색/프로필 | 🟢 |
 | `client_profile` | ✅ | ✅ | `/api/clients/*` | 클라이언트 검색/프로필 | 🟢 |
 | `partner_profile_stats` | ✅ | ✅ | ✅ | 파트너 카드 (평점/경력) | 🟢 |
@@ -81,9 +81,18 @@ npm run dev               # 5173 포트 (API는 /api → 8080 프록시)
 | `project_skill_mapping` | ✅ | ✅ | ✅ | 필수/우대 스킬 | 🟢 |
 | `project_tags` | ✅ | ✅ | ✅ | 해시태그 | 🟢 |
 | `project_application` | ✅ | ✅ | `/api/applications/*` | 프로젝트 지원/계약 | 🟢 |
+| `project_milestones` | ✅ | ✅ | `/api/dashboard/projects/*/milestones` | 진행 대시보드 마일스톤 | 🟢 COMPLETED 가드 적용 |
+| `project_escrows` | ✅ | ✅ | `/api/dashboard/projects/*/escrows` | 에스크로 보관/정산 | 🟢 마일스톤 승인 시 자동 RELEASED |
+| `project_modules` | ✅ | ✅ | `/api/project-modules/*` | 7모듈 계약 협의 | 🟢 양측 수락 → 협의완료 |
+| `project_meetings` | ✅ | ✅ | `/api/dashboard/projects/*/meeting` | 다음 미팅 일정 | 🟢 |
+| `project_attachments` | ✅ | ✅ | `/api/dashboard/projects/*/attachments` | 진행 대시보드 파일 | 🟢 path traversal 방지 |
+| `chat_room` | ✅ | ✅ | `/api/chat/rooms` | DM/계약/진행 미팅 채팅 | 🟢 Stream Chat |
+| `notification` | ✅ | ✅ | `/api/notifications/*` | 진행 대시보드 알림 | 🟢 |
+| `payment_methods` | ✅ | ✅ | `/api/payment-methods/*` | 결제수단 등록/삭제 | 🟢 |
 | `user_interest_projects` | ✅ | ✅ | `/api/interests/projects` | 검색·대시보드 하트 | 🟢 낙관적 업데이트 |
 | `user_interest_partners` | ✅ | ✅ | `/api/interests/partners` | 검색·대시보드 하트 | 🟢 낙관적 업데이트 |
-| `partner_review` | ✅ | ✅ | `/api/reviews/*` | 파트너 후기/별점 | 🟡 |
+| `partner_review` | ✅ | ✅ | `/api/reviews/partner/*` | 파트너 후기/별점 | 🟢 |
+| `client_review` | ✅ | ✅ | `/api/reviews/client/*` | 클라이언트 후기/별점 | 🟢 |
 | `partner_portfolios` | ✅ | ✅ | `/api/portfolios/*` | 포트폴리오 CRUD | 🟢 |
 | `user_profile_detail` | ✅ | ✅ | `/api/profile/*` | 프로필 상세 (bio/GitHub) | 🟢 |
 | `user_skill_detail` | ✅ | ✅ | `/api/profile/*` | 스킬 상세 (숙련도/경력) | 🟢 |
@@ -92,10 +101,47 @@ npm run dev               # 5173 포트 (API는 /api → 8080 프록시)
 | `user_certification` | ✅ | ✅ | `/api/profile/*` | 자격증 | 🟢 |
 | `user_award` | ✅ | ✅ | `/api/profile/*` | 수상 경력 | 🟢 |
 
-> - 🟢 = 사용자가 프론트에서 조작 → 실제 DB에 기록 → 재조회까지 확인됨  
-> - 🟡 = API 연결 완료, 프론트 연동 작업 진행 중 (특정 계정 mock 표시 예정)
+> - 🟢 = 사용자가 프론트에서 조작 → 실제 DB에 기록 → 재조회까지 확인됨
+> - 🟡 = API 연결 완료, 프론트 연동 작업 진행 중
 
-### 🆕 최근 주요 변경 (2026-04-20)
+### 🆕 최근 주요 변경 (2026-04-27)
+
+#### 보안 하드닝 (배포 직전)
+- **JWT HttpOnly 쿠키 마이그레이션** — `localStorage.accessToken` 노출 제거 → `Set-Cookie: HttpOnly; Secure(prod); SameSite=Lax`. `JwtAuthenticationFilter` 가 쿠키 우선, Authorization 헤더 fallback.
+- **마일스톤 COMPLETED 가드 (HIGH-1)** — `ProgressDashboardService.ensureProjectActive()` 가 7개 mutation 진입점(createMilestone/submit/approve/requestRevision/cancelRevision/createEscrow/payMock) 에서 종료 프로젝트 변경 차단.
+- **계좌 인증 레이스 강화 (HIGH-2)** — `BankVerificationService` 가 `Math.random()` → `SecureRandom`, TTL 5분 + 시도 5회 제한, `ConcurrentHashMap.compute()` 로 검증·시도카운트·만료 원자 처리.
+- **StreamChatConfig** — 외부 시스템 프로퍼티 `STREAM_KEY`/`STREAM_SECRET` 우선 보존, 빈 값일 때 setProperty 자체 차단, 시크릿 미로깅.
+- **`application-prod.properties`** — `ddl-auto=validate`, 모든 시크릿 env-required, actuator 노출 최소화, 쿠키 `secure=true`.
+
+#### Mock → 라이브 전환 (3개 surface)
+- **포트폴리오 추가 탭** (Client·Partner) — `MOCK_ONGOING/SELECTED_FOR_PORTFOLIO` → `projectsApi.myList(IN_PROGRESS/COMPLETED)` (Client) / `applicationsApi.myList()` filter (Partner) + `portfolioApi.setAdded()` 토글 영속화.
+- **채팅 — 프로젝트 보여주기/제안하기 모달** — `CLIENT_MEETING_PROJECT_OPTIONS` (← `MOCK_INTEREST_PROJECTS`) → `projectsApi.myList()` onDemand fetch.
+- **계약 채팅 contacts** — `MOCK_CONTRACT_CONTACTS` 기본값 → 빈 배열 sentinel. BE chat rooms fetch 가 유일한 데이터 소스.
+- **Profile modal fallback** — `MOCK_*_FALLBACK` 4종 (careers/edu/portfolio/reviews) 제거 → 빈 배열로 전환, 가짜 정보 노출 차단.
+- **데드코드 정리** — `MOCK_ACTIVE/ACCEPTED/CLOSED_PROJS`, `MOCK_PARTNERS_DETAIL`, `MOCK_MANAGE_PROJECTS`, `MOCK_EVAL_PENDING/RECEIVED/EXPIRED`, `MOCK_CONTACTS`, `MOCK_PROJECT_MEETING_CONTACTS` 등 약 1,128 line 삭제 / 250 line 유지.
+
+#### 진행 프로젝트 시스템 완성
+- **마일스톤 라이프사이클** — PENDING → IN_PROGRESS → SUBMITTED → APPROVED / REVISION_REQUESTED. 첨부파일 path traversal 방지.
+- **에스크로 자동 동기화** — 마일스톤 APPROVED 시 DEPOSITED → RELEASED 자동 전환. 결제 mock + 정산.
+- **7모듈 계약 협의** — `project_modules` (scope/deliverable/schedule/payment/revision/completion/terms) 양측 수락 패턴 (`_nego.proposerAccepted` + `workerAccepted`) 으로 협의완료 도달 시 IN_PROGRESS 전이.
+- **3채팅방 타입** — DM(자유미팅) / negotiation(계약 협의) / ensure-meeting(진행 프로젝트). Stream Chat Java SDK 기반.
+
+#### Profile/Modal 풀 리뉴얼
+- **PartnerProfileModal/ClientProfileModal** — 9단계 통합: 헤더 sky-blue 그라데이션 + 원형 hero, full-text bio, 실제 skills/careers/educations/portfolio/reviews fetch, 탭 순서(intro→reviews→skills→career→education→portfolio), career 카드 expand, 포트폴리오 thumbnail+tags+navigate.
+- **PartnerSearch 카드** — 기술 + 서비스분야 chip 통합 행.
+- **지원자 배너 / 관심 파트너 카드** — 원형 hero + ⭐ 별점 통합.
+
+#### 회원가입·온보딩 확장
+- **업종/서비스분야(industry) 필드 추가** — 회원가입 시 12개 옵션 + "직접 입력" 커스텀.
+- **티어 시스템** — SILVER / GOLD / PLATINUM / DIAMOND 4단계, 🥈🥇🌙💎 아이콘.
+
+#### Schedule 탭 UI
+- **FullCalendar timeGrid 정렬 수정** — `slotDuration` 30분 → 1시간, 슬롯 높이 24px → 52px. 이벤트가 시간 행 시작점에 정확히 정렬.
+- **패널 높이** — 820 → 1100px (Partner+Client 양쪽 dashboard).
+
+---
+
+### 📜 이전 변경 (2026-04-20)
 
 #### Backend 확장
 - **프로필 상세 시스템** — `UserProfileDetail` + 5개 하위 테이블 (`UserSkillDetail`, `UserCareer`, `UserEducation`, `UserCertification`, `UserAward`) 추가. `/api/profile/*` 엔드포인트로 일괄 CRUD 지원.
@@ -431,6 +477,131 @@ erDiagram
         datetime created_at
     }
 
+    PROJECT_MILESTONES {
+        bigint id PK
+        bigint project_id FK
+        int seq
+        varchar title
+        text description
+        text completion_criteria
+        bigint amount
+        date start_date
+        date end_date
+        datetime submitted_at
+        text submission_note
+        varchar submission_file_url
+        datetime approved_at
+        text revision_reason
+        varchar status "PENDING/IN_PROGRESS/SUBMITTED/APPROVED/REVISION_REQUESTED"
+        datetime created_at
+        datetime updated_at
+    }
+
+    PROJECT_ESCROWS {
+        bigint id PK
+        bigint project_id FK
+        bigint milestone_id FK
+        bigint amount
+        bigint payer_user_id FK
+        bigint payee_user_id FK
+        varchar status "PENDING/DEPOSITED/RELEASED/REFUNDED"
+        varchar payment_method
+        bigint payment_method_id
+        varchar payment_tx_id
+        datetime deposited_at
+        datetime released_at
+        datetime refunded_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    PROJECT_MODULES {
+        bigint id PK
+        bigint project_id FK
+        varchar module_key "scope/deliverable/schedule/payment/revision/completion/terms"
+        varchar status "미확정/논의 중/제안됨/협의완료"
+        bigint last_modifier_id FK
+        varchar last_modifier_name
+        json data "_nego: {proposerAccepted, workerAccepted}"
+        datetime created_at
+        datetime updated_at
+    }
+
+    PROJECT_MEETINGS {
+        bigint id PK
+        bigint project_id FK_UK "1:1"
+        varchar frequency_label
+        datetime next_at
+        varchar location_label
+        text agenda
+        datetime created_at
+        datetime updated_at
+    }
+
+    PROJECT_ATTACHMENTS {
+        bigint id PK
+        bigint project_id FK
+        varchar kind
+        varchar name
+        varchar url
+        varchar mime_type
+        bigint size_bytes
+        varchar notes
+        bigint uploader_user_id FK
+        datetime created_at
+    }
+
+    CHAT_ROOM {
+        bigint id PK
+        bigint user1_id FK
+        bigint user2_id FK
+        varchar room_type "DIRECT_MESSAGE/NEGOTIATION/PROJECT_MEETING"
+        bigint contract_negotiation_id
+        varchar stream_channel_id UK
+        varchar stream_channel_type
+        datetime created_at
+    }
+
+    NOTIFICATION {
+        bigint id PK
+        bigint user_id FK
+        varchar notification_type
+        varchar title
+        text message
+        varchar related_entity_type
+        bigint related_entity_id
+        boolean is_read
+        datetime created_at
+    }
+
+    PAYMENT_METHODS {
+        bigint id PK
+        bigint user_id FK
+        varchar brand
+        varchar last4
+        varchar holder_name
+        int exp_month
+        int exp_year
+        boolean is_default
+        varchar nickname
+        datetime created_at
+        datetime updated_at
+    }
+
+    CLIENT_REVIEW {
+        bigint id PK
+        bigint client_profile_id FK
+        bigint reviewer_user_id FK
+        bigint project_id FK "optional"
+        double rating
+        double expertise
+        double schedule
+        double communication
+        double proactivity
+        text content
+        datetime created_at
+    }
+
     %% 관계 정의
     USERS ||--o| USER_PROFILE_DETAIL : "1:1"
     USERS ||--o{ USER_SKILL_DETAIL : "has"
@@ -464,7 +635,23 @@ erDiagram
     PROJECTS ||--o{ USER_INTEREST_PROJECTS : ""
     PROJECTS ||--o{ PROJECT_APPLICATION : ""
     PROJECTS ||--o{ PARTNER_REVIEW : "context"
+    PROJECTS ||--o{ CLIENT_REVIEW : "context"
     PROJECTS ||--o{ PARTNER_PORTFOLIOS : "source"
+    PROJECTS ||--o{ PROJECT_MILESTONES : "has"
+    PROJECTS ||--o{ PROJECT_ESCROWS : "has"
+    PROJECTS ||--o{ PROJECT_MODULES : "has"
+    PROJECTS ||--o| PROJECT_MEETINGS : "1:1"
+    PROJECTS ||--o{ PROJECT_ATTACHMENTS : "has"
+
+    PROJECT_MILESTONES ||--o| PROJECT_ESCROWS : "1:1"
+    USERS ||--o{ PROJECT_ESCROWS : "payer/payee"
+    USERS ||--o{ PROJECT_MODULES : "modifies"
+    USERS ||--o{ PROJECT_ATTACHMENTS : "uploads"
+    USERS ||--o{ CHAT_ROOM : "participates"
+    USERS ||--o{ NOTIFICATION : "receives"
+    USERS ||--o{ PAYMENT_METHODS : "owns"
+    USERS ||--o{ CLIENT_REVIEW : "writes"
+    CLIENT_PROFILE ||--o{ CLIENT_REVIEW : "receives"
 ```
 
 ---
@@ -505,6 +692,22 @@ erDiagram
 | **project_skill_mapping** | 요구 스킬 | `is_required` 플래그로 **필수/우대** 구분 |
 | **project_tags** | 해시태그 | 검색·필터용 (`#AI/ML`, `#핀테크` 등) |
 | **project_application** | 프로젝트 지원/계약 | APPLIED → ACCEPTED/REJECTED → CONTRACTED → IN_PROGRESS → COMPLETED → WITHDRAWN |
+| **project_milestones** | 마일스톤 단위 작업 | PENDING → IN_PROGRESS → SUBMITTED → APPROVED / REVISION_REQUESTED · COMPLETED 프로젝트 변경 차단 |
+| **project_escrows** | 에스크로 결제·정산 | PENDING → DEPOSITED → RELEASED · 마일스톤 APPROVED 시 자동 RELEASED |
+| **project_modules** | 7모듈 계약 협의 | scope/deliverable/schedule/payment/revision/completion/terms · `_nego` JSON 으로 양측 수락 패턴 |
+| **project_meetings** | 다음 미팅 일정 | 1:1 (project) · frequency / next_at / location / agenda |
+| **project_attachments** | 진행 대시보드 첨부 파일 | path traversal 방지 적용 · uploader_user_id 추적 |
+
+### 💬 Communication 도메인
+| 테이블 | 역할 | 핵심 포인트 |
+|-----|-----|-----|
+| **chat_room** | 채팅방 메타데이터 | DM/NEGOTIATION/PROJECT_MEETING 3타입 · Stream Chat Java SDK 연동 · stream_channel_id UNIQUE |
+| **notification** | 진행 대시보드 알림 | 마일스톤 제출/승인/수정요청 등 시스템 이벤트 · is_read 토글 |
+
+### 💳 Payment 도메인
+| 테이블 | 역할 | 핵심 포인트 |
+|-----|-----|-----|
+| **payment_methods** | 결제수단 (목업) | brand/last4/exp/holder · is_default 토글 · 에스크로 입금에 사용 |
 
 ### 📚 Master 도메인 (마스터 데이터)
 | 테이블 | 역할 | 핵심 포인트 |
@@ -520,36 +723,96 @@ erDiagram
 
 ---
 
-## 🔌 Backend API 맵 (14개 컨트롤러)
+## 🔌 Backend API 맵 (22개 컨트롤러)
 
 | 컨트롤러 | 엔드포인트 베이스 | 주요 기능 | 인증 |
 |-----|-----|-----|:-:|
-| `AuthController` | `/api/auth/*` | `signup`, `login` — 비번 해시 + JWT 발급 | ❌ |
+| `AuthController` | `/api/auth/*` | `signup`, `login`, `logout` — 비번 해시 + JWT 발급, **HttpOnly 쿠키** | ❌ |
 | `EmailVerificationController` | `/api/verify/*` | 가입 이메일 인증 코드 발송/검증 | ❌ |
-| `BankVerificationController` | `/api/bank/*` | `send-code`, `verify-code`, `account` — 1원 인증 목업 | 🔒 |
+| `BankVerificationController` | `/api/bank/*` | `send-code`, `verify-code`, `account` — 1원 인증 (TTL 5분/시도 5회) | 🔒 |
+| `UserController` | `/api/users/*` | 내 정보 조회/수정 | 🔒 |
 | `PartnerController` | `/api/partners/*` | `list`, `detail` — batch 로딩 적용 | ❌ (read) |
 | `ClientController` | `/api/clients/*` | `list`, `detail` — batch 로딩 적용 | ❌ (read) |
-| `ProjectController` | `/api/projects/*` | `list`, `detail`, `create`, `remove` | 🔒 write |
-| `ProjectApplicationController` | `/api/applications/*` | `apply`, `myApplications`, `projectApplications`, `updateStatus` | 🔒 |
+| `ProjectController` | `/api/projects/*` | `list`, `detail`, `create`, `remove`, `myList`, `byUsername` | 🔒 write |
+| `ProjectApplicationController` | `/api/applications/*` | `apply`, `myList`, `received`, `updateStatus`, `closeRecruiting`, `ensureActive` | 🔒 |
+| `ProgressDashboardController` | `/api/dashboard/projects/*/...` | 마일스톤·에스크로·미팅·첨부 통합 (`/milestones`, `/escrows`, `/meeting`, `/attachments`) — COMPLETED 가드 | 🔒 |
+| `ProjectModuleController` | `/api/project-modules/*` | 7모듈 (`scope`/`deliverable`/`schedule`/`payment`/`revision`/`completion`/`terms`) 협의 상태 upsert | 🔒 |
+| `ChatController` | `/api/chat/*` | `token`, `rooms`, `rooms/dm`, `rooms/negotiation`, `rooms/ensure-meeting` | 🔒 |
+| `NotificationController` | `/api/notifications/*` | `list`, `mark-read`, `mark-all-read` | 🔒 |
+| `PaymentMethodController` | `/api/payment-methods/*` | 결제수단 등록/삭제/기본 설정 | 🔒 |
 | `InterestController` | `/api/interests/*` | `myProjects`, `myPartners`, `add/remove` | 🔒 |
 | `MatchController` | `/api/match/*` | `partners`, `clients`, `projects` — Gemini 호출 | ❌ |
 | `MasterController` | `/api/master/*` | `skills`, `fields` — 마스터 조회 | ❌ |
-| `AiController` | `/api/ai/*` | AI 기타 유틸 | ❌ |
+| `AiController` | `/api/ai/*` | AI 기타 유틸 (배너 카드 챗봇 등) | ❌ |
 | `ProfileController` | `/api/profile/*` | `getDetail`, `getDetailByUsername`, `upsert` — 프로필 상세 일괄 CRUD | 🔒 |
 | `PortfolioController` | `/api/portfolios/*` | `me`, `me/added`, `{username}`, `upsertBySource`, `setAdded` | 🔒 |
-| `PartnerReviewController` | `/api/reviews/*` | `listByPartner`, `create` | 🔒 create |
+| `PartnerReviewController` | `/api/reviews/partner/*` | `listByPartner`, `create` | 🔒 create |
+| `ClientReviewController` | `/api/reviews/client/*` | `listByClient`, `create` | 🔒 create |
+| `EvaluationController` | `/api/evaluation/*` | 평가 대기 프로젝트 + 후기 통합 응답 (forPartner / forClient) | 🔒 |
 
-> 🔒 = `AuthContext.currentUserId()` 로 JWT 검증 · 비로그인은 401 또는 빈 응답
+> 🔒 = `AuthContext.currentUserId()` 로 JWT(쿠키 우선, Header fallback) 검증 · 비로그인은 401 또는 빈 응답
+
+---
+
+## 🖥️ Frontend 페이지 맵 (38개 라우트)
+
+### 🌐 공개 페이지
+| 라우트 | 컴포넌트 | 설명 |
+|-----|-----|-----|
+| `/` | `LandingPage` | 첫 진입 랜딩 |
+| `/home`·`/client_home`·`/partner_home` | `Home` / `Client_Home` / `Partner_Home` | 역할별 홈 (AI 검색바) |
+| `/login` | `Login` | 일반/카카오 OAuth |
+| `/find-password` | `FindPassword` | 비번 찾기 |
+| `/signup` | `Signup` | 통합 회원가입 (industry 필드 포함) |
+| `/onboarding` | `Onboarding` | 가입 후 역할별 분기 (티어 4단계) |
+| `/oauth/kakao/callback` | `OAuthKakaoCallback` | OAuth 리다이렉트 핸들러 |
+| `/loading` | `Loading` | 로딩 화면 (배경 영상) |
+| `/solution_market`·`/solution_detail` | `SolutionMarket` / `SolutionDetail` | 솔루션 마켓 |
+| `/usage_guide`·`/usage_guide/{portfolio,matching,contract,policy}` | `UsageGuide*` | 이용 가이드 (5개) |
+
+### 🔍 검색·프로필
+| 라우트 | 컴포넌트 | 설명 |
+|-----|-----|-----|
+| `/partner_search` | `PartnerSearch` | 파트너 카드 (기술+분야 통합 chip) |
+| `/client_search` | `ClientSearch` | 클라이언트 카드 |
+| `/project_search` | `ProjectSearch` | 프로젝트 카드 + 7세부 협의사항 탭 |
+| `/partner_profile_view` | `PartnerProfileView` | 공개 파트너 프로필 |
+| `/client_profile_view` | `ClientProfileView` | 공개 클라이언트 프로필 |
+| `/partner_profile`·`/client_profile` | `PartnerProfile` / `Client_Profile` | 본인 프로필 편집 |
+
+### 📁 프로젝트·포트폴리오·등록
+| 라우트 | 컴포넌트 | 설명 |
+|-----|-----|-----|
+| `/partner_register`·`/client_register` | `PartnerRegister` / `ClientRegister` | 파트너/클라이언트 등록 |
+| `/project_register` | `ProjectRegister` | 프로젝트 등록 (외주/상주 통합) |
+| `/partner_portfolio`·`/client_portfolio` | `Partner_Portfolio` / `Client_Portfolio` | 포트폴리오 페이지 |
+| `/portfolio_detail_editor` | `PortfolioDetailEditor` | 포트폴리오 상세 작성 |
+| `/portfolio_project_preview` | `PortfolioProjectPreview` | 포트폴리오 프리뷰 |
+
+### 🤖 AI 챗
+| 라우트 | 컴포넌트 | 설명 |
+|-----|-----|-----|
+| `/ai_chat_project` | `AIchatProject` | 프로젝트 AI 어시스턴트 |
+| `/ai_chat_profile` | `AIchatProfile` | 프로필 AI 어시스턴트 |
+| `/aichat_portfolio` | `AIchatPortfolio` | 포트폴리오 AI 어시스턴트 |
+
+### 🛠️ 대시보드·미팅·마이페이지
+| 라우트 | 컴포넌트 | 설명 |
+|-----|-----|-----|
+| `/partner_dashboard`·`/client_dashboard` | `PartnerDashboard` / `ClientDashboard` | 통합 대시보드 (스케줄/지원/미팅/관리/평가/포트폴리오 탭) |
+| `/chat` | `StreamChatPage` | Stream Chat 통합 채팅 |
+| `/mypage` | `Mypage` | 마이페이지 (계좌·결제수단) |
 
 ---
 
 ## 📦 Frontend API 어댑터 (`frontend/src/api/`)
 
-14개 모듈: `auth.api.js`, `bank.api.js`, `partners.api.js`, `clients.api.js`, `projects.api.js`, `applications.api.js`, `interests.api.js`, `match.api.js`, `master.api.js`, `profile.api.js`, `portfolio.api.js`, `reviews.api.js`, `axios.js`(공통 설정)
+17개 모듈 + 공통 설정:
+`auth.api.js`, `bank.api.js`, `partners.api.js`, `clients.api.js`, `projects.api.js`, `applications.api.js`, `interests.api.js`, `match.api.js`, `master.api.js`, `profile.api.js`, `portfolio.api.js`, `reviews.api.js`, `evaluation.api.js`, `progressDashboard.api.js`, `projectModules.api.js`, `paymentMethods.api.js`, `index.js`(re-export), `axios.js`(공통 설정).
 
 ### axios.js 특이사항
-- **요청 인터셉터**: `localStorage.accessToken` 자동 `Bearer` 헤더 첨부
-- **응답 인터셉터**: 401 시 토큰 + Zustand persist 정리 후 `/login` 리다이렉트
+- **JWT HttpOnly 쿠키 마이그레이션 완료** — `withCredentials: true` 로 쿠키 자동 송신. `localStorage.accessToken` 직접 노출 제거 (백워드 호환 위해 dbId 같은 비민감 식별자만 localStorage 유지).
+- **응답 인터셉터**: 401 시 Zustand persist 정리 후 `/login` 리다이렉트
 - **SILENT_401_PATTERNS**: `/bank/*`, `/interests/*` 는 401 나도 자동 redirect 안 함 (사용자 입력 보존)
 
 ---
@@ -570,17 +833,20 @@ erDiagram
 
 ```
 devbridge/
-├── src/main/java/com/DevBridge/devbridge/
-│   ├── controller/        # 14개 REST 컨트롤러
-│   ├── service/           # 도메인 서비스 (batch 로딩 적용됨)
-│   ├── repository/        # JPA 리포지토리 (findAllBy... batch 쿼리)
-│   ├── entity/            # 23개 JPA 엔티티
-│   ├── dto/               # 요청/응답 DTO
-│   ├── security/          # JwtUtil, JwtAuthenticationFilter, AuthContext
-│   └── config/            # DataSeeder, CORS 등
-├── src/main/resources/
-│   ├── application.properties
-│   └── seed/erd/          # JSON seed (DataSeeder가 부트 시 로드)
+├── backend/
+│   ├── src/main/java/com/DevBridge/devbridge/
+│   │   ├── controller/        # 22개 REST 컨트롤러
+│   │   ├── service/           # 도메인 서비스 (batch 로딩 적용됨)
+│   │   ├── repository/        # JPA 리포지토리 (findAllBy... batch 쿼리)
+│   │   ├── entity/            # 32개 JPA 엔티티
+│   │   ├── dto/               # 요청/응답 DTO
+│   │   ├── security/          # JwtUtil, JwtAuthenticationFilter, AuthContext (쿠키 우선)
+│   │   └── config/            # DataSeeder, StreamChatConfig, CORS 등
+│   └── src/main/resources/
+│       ├── application.properties              # 공통 + dev 기본값
+│       ├── application-local.properties        # 로컬 시크릿 (gitignored)
+│       ├── application-prod.properties         # 배포용 (ddl-auto=validate, env-required)
+│       └── seed/erd/                            # JSON seed (DataSeeder가 부트 시 로드)
 ├── docs/
 │   ├── ERD_current.md     # 상세 컬럼 스펙 + Enum 정의
 │   ├── ERD_v2.md          # 설계 단계 확장안
@@ -588,9 +854,12 @@ devbridge/
 │   └── seed_partners_projects.sql
 └── frontend/
     ├── src/
-    │   ├── api/           # axios + 14개 리소스별 API
-    │   ├── pages/         # Home/Login/Search/Dashboard/Mypage/Profile 등
-    │   ├── components/    # Header, Footer, ChatBot, ContractModals
+    │   ├── api/           # axios + 17개 리소스별 API (HttpOnly 쿠키 송신)
+    │   ├── pages/         # 38개 라우트 페이지
+    │   ├── components/    # Header, Footer, ChatBot, ContractModals,
+    │   │                  # PartnerProfileModal/ClientProfileModal (풀 리뉴얼),
+    │   │                  # dashboard/{ScheduleTab, StartingProjectsTab,
+    │   │                  #            PartnerApplicationsTab, ProjectManageTabLive, ...}
     │   ├── store/         # Zustand (loginUser, interests, profileDetail)
     │   ├── lib/           # erdLookup, utils, portfolio 등
     │   └── assets/
@@ -601,13 +870,13 @@ devbridge/
 
 ## 🔐 Security
 
-- **현재**: Spring Security 의존성 포함이지만 `build.gradle` 에서 주석 처리 (개발 편의). JWT 기반 경량 인증(`JwtAuthenticationFilter`) 만 활성.
-- **프론트 토큰 관리**: `localStorage.accessToken` + Zustand `devbridge-storage` persist.
+- **인증 방식**: JWT (HS256, 24h TTL) — `Set-Cookie: HttpOnly; Secure(prod); SameSite=Lax` 으로 발급. `JwtAuthenticationFilter` 가 **쿠키 우선, Authorization 헤더 fallback** 으로 추출.
+- **계좌 인증**: TTL 5분 + 시도 5회 제한, `SecureRandom`, `ConcurrentHashMap.compute()` 원자 처리.
+- **마일스톤·에스크로**: COMPLETED 프로젝트 변경 차단 가드 (`ensureProjectActive`).
+- **첨부파일**: path traversal 방지 (`ProjectAttachmentService`).
+- **CORS**: env-driven (`app.cors.allowed-origins`).
 - **401 복구 시나리오**: Mypage 진입 같은 백그라운드 호출에선 redirect 안 하고 빈 응답 반환 → 사용자 입력 보존.
-- **배포 전 체크리스트**:
-  1. `build.gradle` 에서 `spring-boot-starter-security` 주석 해제
-  2. `JWT_SECRET` 환경변수로 교체 (기본값 사용 금지)
-  3. `@CrossOrigin` 하드코딩 제거 및 CORS 설정 분리
+- **배포 환경 분리**: `application-prod.properties` 로 분리 — `ddl-auto=validate`, 모든 시크릿 env-required, actuator 노출 최소화, `cookie.secure=true`.
 
 ---
 
@@ -630,4 +899,4 @@ devbridge/
 
 ---
 
-> Made with 💙 by **AIBE5 Team 2** · 2026-04-20
+> Made with 💙 by **AIBE5 Team 2** · 2026-04-27
