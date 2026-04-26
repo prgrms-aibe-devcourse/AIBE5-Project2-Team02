@@ -5,8 +5,6 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import useStore from "../../store/useStore";
 
-const TIME_GRADIENT = "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)";
-
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const DAY_WIDTHS = {
   mon: 1,
@@ -17,8 +15,8 @@ const DAY_WIDTHS = {
   sat: 1,
   sun: 1,
 };
-const AXIS_WIDTH_PCT = 5.5; // 시간축 너비 (%) — "11 PM" 같은 라벨 수용
-const DAY_WIDTH_PCT = 13.5; // (100 - AXIS) / 7
+const AXIS_WIDTH_PCT = 4; // 시간축 너비 (%)
+const DAY_WIDTH_PCT = 13.7142857; // (100 - AXIS) / 7
 const DAY_WIDTHS_PCT = {
   mon: DAY_WIDTH_PCT, tue: DAY_WIDTH_PCT, wed: DAY_WIDTH_PCT, thu: DAY_WIDTH_PCT,
   fri: DAY_WIDTH_PCT, sat: DAY_WIDTH_PCT, sun: DAY_WIDTH_PCT,
@@ -1134,30 +1132,7 @@ function ScheduleTab() {
             snapDuration="00:15:00"
             locale="ko"
             firstDay={1}
-            slotLabelContent={(args) => {
-              const h = args.date.getHours();
-              let label;
-              if (h === 0) label = "12 AM";
-              else if (h < 12) label = `${h} AM`;
-              else if (h === 12) label = "12 PM";
-              else label = `${h - 12} PM`;
-              return (
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  fontFamily: F,
-                  background: TIME_GRADIENT,
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  whiteSpace: "nowrap",
-                  letterSpacing: "0.01em",
-                  paddingRight: 4,
-                }}>
-                  {label}
-                </span>
-              );
-            }}
+            slotLabelContent={() => null}
             events={events}
             datesSet={handleDatesSet}
             headerToolbar={false}
