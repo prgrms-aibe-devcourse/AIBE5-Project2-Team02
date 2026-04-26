@@ -6326,7 +6326,7 @@ export default function ClientDashboard() {
   const isInterestsTab = activeTab === "interests";
   const isHeightSyncedTab = isScheduleTab || isInterestsTab || isMeetingTab;
   const defaultPanelMinHeight = activeTab === "contract_meeting" ? 900 : (activeTab === "free_meeting" || activeTab === "project_meeting") ? 760 : 600;
-  const syncedPanelHeight = Math.max(isScheduleTab ? 820 : defaultPanelMinHeight, syncedPanelMinHeight);
+  const syncedPanelHeight = Math.max(isScheduleTab ? 1100 : defaultPanelMinHeight, syncedPanelMinHeight);
 
   useEffect(() => {
     const node = leftColumnRef.current;

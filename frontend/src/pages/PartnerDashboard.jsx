@@ -6306,7 +6306,7 @@ export default function PartnerDashboard() {
   const isInterestsTab = activeTab === "interests";
   const isHeightSyncedTab = isScheduleTab || isInterestsTab || isFreeMeetingTab;
   const defaultPanelMinHeight = (activeTab === "contract_meeting" || activeTab === "project_meeting") ? 900 : activeTab === "free_meeting" ? 760 : 600;
-  const syncedPanelHeight = Math.max(isScheduleTab ? 820 : defaultPanelMinHeight, syncedPanelMinHeight);
+  const syncedPanelHeight = Math.max(isScheduleTab ? 1100 : defaultPanelMinHeight, syncedPanelMinHeight);
   const contractContactId = Number(searchParams.get("contactId") || 1);
 
   useEffect(() => {
