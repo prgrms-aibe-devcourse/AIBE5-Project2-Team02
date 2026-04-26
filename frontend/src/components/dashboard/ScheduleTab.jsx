@@ -4,7 +4,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import useStore from "../../store/useStore";
-import timeAxisImg from "../../assets/time.png";
+
+const TIME_GRADIENT = "linear-gradient(120deg, #2563EB 0%, #1D4ED8 28%, #3B82F6 58%, #6366F1 100%)";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const DAY_WIDTHS = {
@@ -16,8 +17,8 @@ const DAY_WIDTHS = {
   sat: 1,
   sun: 1,
 };
-const AXIS_WIDTH_PCT = 4; // 시간축 너비 (%)
-const DAY_WIDTH_PCT = 13.7142857; // (100 - AXIS) / 7
+const AXIS_WIDTH_PCT = 5.5; // 시간축 너비 (%) — "11 PM" 같은 라벨 수용
+const DAY_WIDTH_PCT = 13.5; // (100 - AXIS) / 7
 const DAY_WIDTHS_PCT = {
   mon: DAY_WIDTH_PCT, tue: DAY_WIDTH_PCT, wed: DAY_WIDTH_PCT, thu: DAY_WIDTH_PCT,
   fri: DAY_WIDTH_PCT, sat: DAY_WIDTH_PCT, sun: DAY_WIDTH_PCT,
@@ -193,9 +194,14 @@ const dashCalStyles = `
   /* 1시간 = 1슬롯, 슬롯 높이 확장 (5pm 이벤트가 5pm 행 시작점에 정확히 정렬되도록) */
   .dash-cal .fc-timegrid-slot { height: 52px !important; }
   .dash-cal .fc-timegrid-slot-lane { border-color: #f1f3f4 !important; }
-  /* axis 라벨 자체 텍스트는 비움 (오버레이 이미지가 대체) */
-  .dash-cal td.fc-timegrid-slot-label .fc-timegrid-slot-label-frame,
-  .dash-cal td.fc-timegrid-slot-label .fc-timegrid-slot-label-cushion { visibility: hidden !important; }
+  /* axis 라벨 cushion — 슬롯 상단 정렬 + 우측 정렬 */
+  .dash-cal .fc-timegrid-slot-label {
+    vertical-align: top !important;
+  }
+  .dash-cal .fc-timegrid-slot-label-frame {
+    text-align: right !important;
+    padding-top: 2px !important;
+  }
 
   /* 월 뷰 헤더 가운데 정렬 */
   .dash-cal .fc-col-header-cell-cushion {
@@ -1116,27 +1122,6 @@ function ScheduleTab() {
 
         {/* FullCalendar 영역 */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-          {/* time.png 오버레이 — timeGridWeek/Day 뷰에서만 노출.
-              axis col(폭 ${AXIS_WIDTH_PCT}%) 위에 절대위치로 깔아 18시간(06:00~24:00)에 1:1 매칭. */}
-          {(calView === "timeGridWeek" || calView === "timeGridDay") && (
-            <img
-              src={timeAxisImg}
-              alt="time axis"
-              style={{
-                position: "absolute",
-                top: 48,            // .fc-col-header 높이 (48px)
-                left: 0,
-                width: `${AXIS_WIDTH_PCT}%`,
-                height: `calc(100% - 48px)`,
-                objectFit: "fill",   // 18줄 → 18시간 슬롯에 강제 매핑
-                pointerEvents: "none",
-                zIndex: 4,           // axis td(z-index 3)보다 위
-                userSelect: "none",
-                background: "white",
-              }}
-              draggable={false}
-            />
-          )}
           <FullCalendar
             ref={calRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1149,7 +1134,30 @@ function ScheduleTab() {
             snapDuration="00:15:00"
             locale="ko"
             firstDay={1}
-            slotLabelContent={() => null}
+            slotLabelContent={(args) => {
+              const h = args.date.getHours();
+              let label;
+              if (h === 0) label = "12 AM";
+              else if (h < 12) label = `${h} AM`;
+              else if (h === 12) label = "12 PM";
+              else label = `${h - 12} PM`;
+              return (
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  fontFamily: F,
+                  background: TIME_GRADIENT,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  whiteSpace: "nowrap",
+                  letterSpacing: "0.01em",
+                  paddingRight: 4,
+                }}>
+                  {label}
+                </span>
+              );
+            }}
             events={events}
             datesSet={handleDatesSet}
             headerToolbar={false}
