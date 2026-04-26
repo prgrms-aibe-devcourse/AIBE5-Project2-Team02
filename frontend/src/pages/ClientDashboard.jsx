@@ -16,9 +16,7 @@ import {
   ScopeModal, DeliverablesModal, ScheduleModal, PaymentModal,
   RevisionModal, CompletionModal, SpecialTermsModal,
 } from "../components/ContractModals";
-import MOCK_INTEREST_PROJECTS from "../data/mockInterestProjects.json";
-import MOCK_INTEREST_PARTNERS from "../data/mockInterestPartners.json";
-import { projectsApi, partnersApi, applicationsApi, profileApi, projectModulesApi, dashboardApi, milestonesApi, escrowsApi, paymentMethodsApi, evaluationApi, reviewsApi } from "../api";
+import { projectsApi, partnersApi, applicationsApi, profileApi, projectModulesApi, dashboardApi, milestonesApi, escrowsApi, paymentMethodsApi, evaluationApi, reviewsApi, portfolioApi } from "../api";
 
 /* ── 찜 목록 상세 API 응답을 카드 표시용으로 매핑 ───────────── */
 function toCardProject(p) {
@@ -139,86 +137,6 @@ const SECTIONS = [
 ];
 
 /* ── MiniCalendar ─────────────────────────────────────────── */
-
-/* ── 지원 내역 모의 데이터 ─────────────────────────────────── */
-const MOCK_ACTIVE_PROJS = [
-  {
-    id: 1, badge: "유료",
-    title: "AI 기반 이상 거래 탐지 시스템 고도화",
-    desc: "금융 데이터 분석을 통한 실시간 이상 거래 탐지 모델 최적화 및 API 개발",
-    tags: ["#AI/ML", "#Python", "#Fintech"],
-    period: "3개월", budget: "1,500만원",
-    deadline: "마감 임박 (D-3)", deadlineColor: "#EF4444",
-    applicants: [
-      { id: 1, name: "Alex Miller", title: "백엔드·플랫폼 파트너", rating: 4.9, match: 93, status: "검토 중", appliedAt: "2026.04.12", tags: ["Java", "Spring", "AWS"], desc: "대규모 커머스 API 현대화와 인증, 성능 최적화 경험을 보유한 백엔드 파트너입니다." },
-      { id: 2, name: "Sophie Chen", title: "프론트엔드·AI 파트너", rating: 4.8, match: 87, status: "검토 중", appliedAt: "2026.04.13", tags: ["React", "TypeScript", "Python"], desc: "사용자 경험 중심의 프론트엔드 설계와 AI 연동 경험이 풍부한 파트너입니다." },
-      { id: 3, name: "David Kim", title: "AI/ML 엔지니어", rating: 4.7, match: 81, status: "검토 중", appliedAt: "2026.04.14", tags: ["Python", "AI/ML", "TensorFlow"], desc: "추천 엔진 및 자연어 처리 모델 개발 경험이 풍부한 AI 파트너입니다." },
-    ],
-  },
-  {
-    id: 2, badge: "무료",
-    title: "이커머스 플랫폼 모바일 앱 리뉴얼",
-    desc: "사용자 경험 중심의 UI/UX 개편 및 Flutter 기반 크로스 플랫폼 앱 개발",
-    tags: ["#Mobile", "#Web", "#Flutter"],
-    period: "4개월", budget: "2,800만원",
-    deadline: "마감 D-15", deadlineColor: "#64748B",
-    applicants: [
-      { id: 4, name: "이하은", title: "모바일·풀스택 파트너", rating: 5.0, match: 91, status: "검토 중", appliedAt: "2026.04.10", tags: ["Flutter", "React Native", "Firebase"], desc: "크로스플랫폼 앱 개발과 UX 최적화 경험이 풍부한 모바일 파트너입니다." },
-    ],
-  },
-];
-const MOCK_ACCEPTED_PROJS = [
-  {
-    id: 1,
-    statusBadge: "지원 합격", statusBadgeBg: "#FFF7ED", statusBadgeColor: "#C2410C",
-    title: "블록체인 기반 공급망 관리 시스템 구축",
-    desc: "물류 프로세스 투명성 확보를 위한 이더리움 기반 스마트 컨트랙트 개발",
-    tags: ["#Blockchain", "#Solidity", "#Node.js"],
-    period: "6개월", budget: "4,200만원",
-    statusText: "계약 대기중", statusTextColor: "#F97316",
-    btnLabel: "계약하기",
-    btnBg: "#FEF3C7", btnBgHover: "#FDE68A", btnColor: "#92400E",
-    applicants: [
-      { id: 5, name: "박지훈", title: "블록체인 개발 파트너", rating: 4.9, match: 95, status: "합격", appliedAt: "2026.03.20", tags: ["Solidity", "Ethereum", "Node.js"], desc: "블록체인 기반 DApp 및 스마트 컨트랙트 개발 전문 파트너입니다." },
-      { id: 6, name: "Chris Park", title: "백엔드·블록체인 파트너", rating: 4.6, match: 78, status: "불합격", appliedAt: "2026.03.22", tags: ["Go", "Ethereum", "AWS"], desc: "분산 시스템 설계와 블록체인 인프라 구축 경험을 보유한 파트너입니다." },
-    ],
-  },
-  {
-    id: 2,
-    statusBadge: "논의 중", statusBadgeBg: "#EFF6FF", statusBadgeColor: "#1D4ED8",
-    title: "메타버스 협업 툴 시각화 모듈 개발",
-    desc: "Three.js를 활용한 웹 기반 3D 데이터 시각화 엔진 고도화 및 최적화",
-    tags: ["#Three.js", "#WebGL", "#React"],
-    period: "2개월", budget: "1,200만원",
-    statusText: "시작 예정 (12/01)", statusTextColor: "#64748B",
-    btnLabel: "상세 계약 미팅 이동",
-    btnBg: "#DBEAFE", btnBgHover: "#BFDBFE", btnColor: "#1E3A5F",
-    applicants: [
-      { id: 7, name: "나유진", title: "3D·그래픽스 파트너", rating: 4.8, match: 89, status: "합격", appliedAt: "2026.03.28", tags: ["Three.js", "WebGL", "React"], desc: "웹 기반 3D 그래픽스 및 실시간 렌더링 최적화 경험이 풍부한 파트너입니다." },
-    ],
-  },
-];
-const MOCK_CLOSED_PROJS = [
-  {
-    id: 1,
-    title: "실시간 스트리밍 앱 최적화 및 안정화",
-    desc: "대규모 동시 접속자 처리를 위한 백엔드 구조 개편 및 트래픽 제어 알고리즘 적용",
-    tags: ["#Streaming", "#Go", "#Redis"],
-    endDate: "종료일: 2024.11.15", statusText: "모집 완료",
-    applicants: [
-      { id: 8, name: "김도현", title: "백엔드·인프라 파트너", rating: 4.9, match: 94, status: "합격", appliedAt: "2024.10.30", tags: ["Go", "Redis", "Kafka"], desc: "대용량 트래픽 처리와 스트리밍 시스템 설계 경험이 풍부한 파트너입니다." },
-      { id: 9, name: "이수진", title: "DevOps·백엔드 파트너", rating: 4.5, match: 72, status: "불합격", appliedAt: "2024.11.01", tags: ["AWS", "Docker", "Go"], desc: "클라우드 인프라 구축 및 DevOps 파이프라인 자동화 전문 파트너입니다." },
-    ],
-  },
-  {
-    id: 2,
-    title: "개인 맞춤형 식단 관리 웹 서비스",
-    desc: "사용자 건강 데이터를 기반으로 한 영양소 분석 및 AI 레시피 추천 시스템",
-    tags: ["#HealthCare", "#Vue.js", "#Django"],
-    endDate: "마감일: 2024.11.10", statusText: "지원 철회됨",
-    applicants: [],
-  },
-];
 
 /* ── 지원자 배너 미니 카드 ──────────────────────────────── */
 function ApplicantBanner({ app, onViewPartner, statusOverride }) {
@@ -658,27 +576,6 @@ function ApplicationsTab({ activeTab }) {
     </div>
   );
 }
-
-const MOCK_PARTNERS_DETAIL = [{
-    title: "AI/ML 엔지니어",
-    rating: 5.0,
-    liked: true,
-    tags: ["AI/ML", "Python", "PyTorch"],
-    desc: "데이터 분석 및 딥러닝 모델 고도화 전문가입니다. 복잡한 문제를 효율적인 알고리즘으로 해결합니다.",
-    careers: [
-      { company: "Samsung SDS", role: "AI Research Engineer", period: "2020.04 ~ 현재", desc: "딥러닝 모델 개발 및 MLOps 파이프라인 구축" },
-    ],
-    educations: [
-      { school: "서울대학교", major: "컴퓨터공학과", degree: "석사", year: "2020" },
-    ],
-    reviews: [
-      { reviewer: "MedTech Inc", rating: 5, comment: "AI 모델 정확도를 20% 이상 향상시켜 주셨습니다. 최고의 파트너입니다.", date: "2024.03" },
-    ],
-    portfolioItems: [
-      { title: "의료 이미지 분석 AI", tech: ["PyTorch", "Python", "Docker"], desc: "CT 이미지 병변 탐지 모델 개발 (F1 Score 0.97)" },
-    ],
-  },
-];
 
 /* ── 파트너 스킬 태그 색상 맵 ──────────────────────────────── */
 const PARTNER_TAG_COLORS = {
@@ -1269,45 +1166,6 @@ function InterestsTab({ onProposePartner }) {
 }
 
 /* ── ProjectManageTab (진행 프로젝트 관리) ──────────────────── */
-const MOCK_MANAGE_PROJECTS = [
-  {
-    id: 1, badge: "유료",
-    title: "AI 기반 지능형 큐레이터 플랫폼 고도화",
-    tags: [("AI/ML"), ("Python"), ("Fintech")],
-    progress: 68, progressColor: "#3B82F6",
-    overallStatus: null,
-    milestones: [
-      { num: 1, title: "아키텍처 설계",     desc: "데이터 파이프라인 구조 및 API 명세서 확정",                           status: "COMPLETED"   },
-      { num: 2, title: "모델 파인튜닝",     desc: "LLM 기반 추천 엔진 성능 최적화 진행 중 (Target Accuracy 92%)",   status: "IN_PROGRESS" },
-      { num: 3, title: "UI 통합 및 테스트", desc: "프론트엔드 연동 및 최종 QA 배포",                                  status: "PENDING"     },
-    ],
-    client: { name: "Alpha FinTech",  rating: 4.8, reviews: 24 },
-  },
-  {
-    id: 2, badge: "무료",
-    title: "E-commerce Platform UX/UI Redesign",
-    tags: [("UX/UI"), ("Flutter")],
-    progress: 32, progressColor: "#22C55E",
-    overallStatus: null,
-    milestones: [
-      { num: 1, title: "Wireframe Design",      desc: "사용자 흐름 분석 및 고수준 와이어프레임 설계",      status: "COMPLETED"   },
-      { num: 2, title: "Mobile UI Prototypes",  desc: "인터랙티브 프로토타입 제작 및 사용자 테스트",     status: "IN_PROGRESS" },
-      { num: 3, title: "Admin Panel Dev",        desc: "백엔드 대시보드 연동 및 관리 도구 개발",           status: "PENDING"     },
-    ],
-    client: { name: "Blue Retail Co.", rating: 4.9, reviews: 12 },
-  },
-  {
-    id: 3, badge: "유료",
-    title: "Bitcoin Auto-Trading System Development",
-    tags: [("Blockchain"), ("Fintech"), ("Python")],
-    progress: 0, progressColor: "#94A3B8",
-    overallStatus: "PLANNED",
-    milestones: [
-      { num: 1, title: "Core Logic Design", desc: "거래 알고리즘 및 API 연동 아키텍처 설계 중", status: "IN_PROGRESS" },
-    ],
-    client: { name: "Crypto Systems", rating: 5.0, reviews: 8 },
-  },
-];
 
 function MilestoneRow({ ms }) {
   const isCompleted  = ms.status === "COMPLETED";
@@ -2315,74 +2173,24 @@ function GuaranteeTab() {
   );
 }
 
-/* ── PortfolioAddTab ─────────────────────────────────────────── */
-const MOCK_ONGOING_FOR_PORTFOLIO = [
-  {
-    id: 1, badge: "유료",
-    title: "AI 기반 이상 거래 탐지 시스템 고도화",
-    desc: "금융 데이터 분석을 통한 실시간 이상 거래 탐지 모델 최적화 및 API 개발",
-    tags: ["#AI/ML", "#Python", "#Fintech"],
-    endDate: "2024.11.20", period: "3개월",
-  },
-  {
-    id: 2, badge: "무료",
-    title: "이커머스 플랫폼 모바일 앱 리뉴얼",
-    desc: "사용자 경험 중심의 UI/UX 개편 및 Flutter 기반 크로스 플랫폼 앱 개발",
-    tags: ["#Mobile", "#Web", "#Flutter"],
-    endDate: "2024.11.18", period: "4개월",
-  },
-];
-
-const MOCK_SELECTED_FOR_PORTFOLIO = [
-  {
-    id: 1,
-    satisfaction: "조금 불만족했어요",
-    satisfBg: "#FFF7ED", satisfBorder: "#FED7AA", satisfColor: "#C2410C",
-    title: "블록체인 기반 공급망 관리 시스템 구축",
-    desc: "물류 프로세스 투명성 확보를 위한 이더리움 기반 스마트 컨트랙트 개발",
-    tags: ["#Blockchain", "#Solidity"],
-    endDate: "2024.11.01", writeDate: "2024.11.05",
-    commentText: "더 발전할 수 있게 코멘트를 남겨주셨어요",
-    commentColor: "#F97316",
-    added: false,
-  },
-  {
-    id: 2,
-    satisfaction: "너무 만족했어요",
-    satisfBg: "#ECFDF5", satisfBorder: "#A7F3D0", satisfColor: "#065F46",
-    title: "메타버스 협업 툴 시각화 모듈 개발",
-    desc: "Three.js를 활용한 웹 기반 3D 데이터 시각화 엔진 고도화 및 최적화",
-    tags: ["#Three.js", "#WebGL"],
-    endDate: "2024.10.15", writeDate: "2024.10.20",
-    commentText: "별점만 있고 남겨진 코멘트가 없어요",
-    commentColor: "#94A3B8",
-    added: true,
-  },
-  {
-    id: 3,
-    satisfaction: "매우 훌륭했어요",
-    satisfBg: "#F0FDFA", satisfBorder: "#99F6E4", satisfColor: "#0F766E",
-    title: "Global Finance App",
-    desc: "다양한 통화 지원 및 실시간 자산 관리 기능을 갖춘 글로벌 핀테크 모바일 애플리케이션",
-    tags: ["#React-Native", "#Fintech"],
-    endDate: "2024.09.28", writeDate: "2024.10.05",
-    commentText: "최고의 파트너라는 극찬을 받았습니다",
-    commentColor: "#0F766E",
-    added: true,
-  },
-  {
-    id: 4,
-    satisfaction: "협업이 즐거웠어요",
-    satisfBg: "#F5F3FF", satisfBorder: "#C4B5FD", satisfColor: "#5B21B6",
-    title: "AI Logistics Dashboard",
-    desc: "물류 공급망 최적화를 위한 AI 기반 예측 분석 및 대화형 데이터 시각화 대시보드",
-    tags: ["#Python", "#Data-Viz"],
-    endDate: "2024.08.12", writeDate: "2024.08.20",
-    commentText: "깔끔한 인터페이스에 만족하셨습니다",
-    commentColor: "#94A3B8",
-    added: false,
-  },
-];
+/* ── PortfolioAddTab — 라이브 데이터 (projectsApi.myList) ──────── */
+function projectToCard(p) {
+  if (!p) return null;
+  const tags = (p.tags && p.tags.length ? p.tags
+              : (p.skillSet && p.skillSet.length ? p.skillSet
+              : (p.requiredSkills || [])))
+    .map(t => (typeof t === "string" && t.startsWith("#")) ? t : `#${t}`);
+  return {
+    id: p.id,
+    sourceKey: String(p.id),
+    badge: p.priceType || "프로젝트",
+    title: p.title || "(제목 없음)",
+    desc: p.desc || p.slogan || "",
+    tags,
+    endDate: p.deadline || p.expectedStartDate || "",
+    period: p.period || (p.durationDays ? `${Math.round(p.durationDays/30)}개월` : ""),
+  };
+}
 
 /* ── 포트폴리오 토글 스위치 ── */
 function ToggleSwitch({ on, onChange }) {
@@ -2410,12 +2218,62 @@ function ToggleSwitch({ on, onChange }) {
 
 function PortfolioAddTab() {
   const navigate = useNavigate();
-  const [ongoingAdded, setOngoingAdded] = useState(
-    Object.fromEntries(MOCK_ONGOING_FOR_PORTFOLIO.map(p => [p.id, true]))
-  );
-  const [selectedAdded, setSelectedAdded] = useState(
-    Object.fromEntries(MOCK_SELECTED_FOR_PORTFOLIO.map(p => [p.id, p.added]))
-  );
+  const [ongoingProjs, setOngoingProjs] = useState([]);
+  const [completedProjs, setCompletedProjs] = useState([]);
+  const [addedKeys, setAddedKeys] = useState(() => new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      projectsApi.myList(["IN_PROGRESS"]).catch(() => []),
+      projectsApi.myList(["COMPLETED"]).catch(() => []),
+      portfolioApi.myAdded().catch(() => []),
+    ]).then(([on, cm, added]) => {
+      if (cancelled) return;
+      setOngoingProjs((on || []).map(projectToCard).filter(Boolean));
+      setCompletedProjs((cm || []).map(projectToCard).filter(Boolean));
+      setAddedKeys(new Set((added || []).map(a => a.sourceKey)));
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const ongoingAdded = Object.fromEntries(ongoingProjs.map(p => [p.id, addedKeys.has(p.sourceKey)]));
+  const selectedAdded = Object.fromEntries(completedProjs.map(p => [p.id, addedKeys.has(p.sourceKey)]));
+
+  const setAdded = (sourceKey, on) => {
+    setAddedKeys(prev => {
+      const next = new Set(prev);
+      if (on) next.add(sourceKey); else next.delete(sourceKey);
+      return next;
+    });
+    portfolioApi.setAdded(sourceKey, on).catch(() => {
+      // 실패 시 롤백
+      setAddedKeys(prev => {
+        const next = new Set(prev);
+        if (on) next.delete(sourceKey); else next.add(sourceKey);
+        return next;
+      });
+    });
+  };
+
+  const buildAddedProjects = () => [
+    ...ongoingProjs.filter(p => ongoingAdded[p.id]).map(p => ({
+      id: `ongoing-${p.id}`, group: "진행 중",
+      badge: p.badge,
+      badgeBg: p.badge === "유료" ? "#EFF6FF" : "#F0FFF4",
+      badgeColor: p.badge === "유료" ? "#3B82F6" : "#16A34A",
+      title: p.title, desc: p.desc, tags: p.tags,
+    })),
+    ...completedProjs.filter(p => selectedAdded[p.id]).map(p => ({
+      id: `selected-${p.id}`, group: "완료",
+      badge: "완료",
+      badgeBg: "#F0FDFA", badgeColor: "#0F766E",
+      title: p.title, desc: p.desc, tags: p.tags,
+    })),
+  ];
 
   return (
     <div>
@@ -2436,8 +2294,14 @@ function PortfolioAddTab() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 0, border: "1.5px solid #F1F5F9", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-          {MOCK_ONGOING_FOR_PORTFOLIO.map((proj, idx) => {
-            const isLast = idx === MOCK_ONGOING_FOR_PORTFOLIO.length - 1;
+          {loading && (
+            <div style={{ padding: "20px 22px", color: "#94A3B8", fontSize: 13, fontFamily: F }}>불러오는 중…</div>
+          )}
+          {!loading && ongoingProjs.length === 0 && (
+            <div style={{ padding: "20px 22px", color: "#94A3B8", fontSize: 13, fontFamily: F }}>진행 중인 프로젝트가 없습니다.</div>
+          )}
+          {ongoingProjs.map((proj, idx) => {
+            const isLast = idx === ongoingProjs.length - 1;
             return (
               <div key={proj.id} style={{ padding: "20px 22px", background: "white", borderBottom: isLast ? "none" : "1.5px solid #F1F5F9" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
@@ -2450,11 +2314,11 @@ function PortfolioAddTab() {
                     <button style={{ padding: "10px 26px", borderRadius: 10, border: "none", background: "#DBEAFE", color: "#1E3A5F", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap", transition: "background 0.15s" }}
                       onMouseEnter={e => e.currentTarget.style.background = "#BFDBFE"}
                       onMouseLeave={e => e.currentTarget.style.background = "#DBEAFE"}
-                    onClick={() => navigate("/portfolio_detail_editor", { state: { projectTitle: proj.title, projectId: proj.id } })}
+                    onClick={() => navigate("/portfolio_detail_editor", { state: { projectTitle: proj.title, projectId: `ongoing-${proj.id}`, addedProjects: buildAddedProjects() } })}
                     >상세 작성 하기</button>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 12, color: "#64748B", fontFamily: F }}>포트폴리오에 추가</span>
-                      <ToggleSwitch on={ongoingAdded[proj.id]} onChange={v => setOngoingAdded(p => ({ ...p, [proj.id]: v }))} />
+                      <ToggleSwitch on={ongoingAdded[proj.id]} onChange={v => setAdded(proj.sourceKey, v)} />
                     </div>
                   </div>
                 </div>
@@ -2488,13 +2352,16 @@ function PortfolioAddTab() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 0, border: "1.5px solid #F1F5F9", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-          {MOCK_SELECTED_FOR_PORTFOLIO.map((proj, idx) => {
-            const isLast = idx === MOCK_SELECTED_FOR_PORTFOLIO.length - 1;
+          {!loading && completedProjs.length === 0 && (
+            <div style={{ padding: "20px 22px", color: "#94A3B8", fontSize: 13, fontFamily: F }}>완료된 프로젝트가 아직 없습니다.</div>
+          )}
+          {completedProjs.map((proj, idx) => {
+            const isLast = idx === completedProjs.length - 1;
             return (
               <div key={proj.id} style={{ padding: "20px 22px", background: "white", borderBottom: isLast ? "none" : "1.5px solid #F1F5F9" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                    <span style={{ padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: proj.satisfBg, border: `1px solid ${proj.satisfBorder}`, color: proj.satisfColor, fontFamily: F, flexShrink: 0, whiteSpace: "nowrap" }}>{proj.satisfaction}</span>
+                    <span style={{ padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "#F0FDFA", border: "1px solid #99F6E4", color: "#0F766E", fontFamily: F, flexShrink: 0, whiteSpace: "nowrap" }}>완료</span>
                     <span style={{ fontSize: 17, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{proj.title}</span>
                   </div>
                   {/* 버튼 + 토글 */}
@@ -2502,11 +2369,11 @@ function PortfolioAddTab() {
                     <button style={{ padding: "10px 26px", borderRadius: 10, border: "none", background: "#DBEAFE", color: "#1E3A5F", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap", transition: "background 0.15s" }}
                       onMouseEnter={e => e.currentTarget.style.background = "#BFDBFE"}
                       onMouseLeave={e => e.currentTarget.style.background = "#DBEAFE"}
-                    onClick={() => navigate("/portfolio_detail_editor", { state: { projectTitle: proj.title, projectId: proj.id } })}
+                    onClick={() => navigate("/portfolio_detail_editor", { state: { projectTitle: proj.title, projectId: `selected-${proj.id}`, addedProjects: buildAddedProjects() } })}
                     >상세 작성하기</button>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 12, color: "#64748B", fontFamily: F }}>포트폴리오에 추가</span>
-                      <ToggleSwitch on={selectedAdded[proj.id]} onChange={v => setSelectedAdded(p => ({ ...p, [proj.id]: v }))} />
+                      <ToggleSwitch on={selectedAdded[proj.id]} onChange={v => setAdded(proj.sourceKey, v)} />
                     </div>
                   </div>
                 </div>
@@ -2514,11 +2381,8 @@ function PortfolioAddTab() {
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                   {proj.tags.map(t => <span key={t} style={{ padding: "3px 10px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>
-                    완료일: {proj.endDate}&nbsp;&nbsp;작성일: {proj.writeDate}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: proj.commentColor, fontFamily: F }}>{proj.commentText}</span>
+                <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>
+                  완료일: {proj.endDate || "—"}
                 </div>
               </div>
             );
@@ -2530,113 +2394,6 @@ function PortfolioAddTab() {
 }
 
 /* ── EvaluationTab (평가 대기 프로젝트) ────────────────────── */
-// [MOCK DATA DISABLED] — replaced by live API in Step 10 of REVIEW_IMPLEMENTATION_GUIDE.md
-// Original placeholder data is preserved below in comments for reference.
-const MOCK_EVAL_PENDING = [];
-/* ORIGINAL MOCK_EVAL_PENDING:
-[
-  {
-    id: 1,
-    badge: "유료",
-    title: "AI 기반 이상 거래 탐지 시스템 고도화",
-    desc: "금융 데이터 분석을 통한 실시간 이상 거래 탐지 모델 최적화 및 API 개발",
-    tags: ["#AI/ML", "#Python", "#Fintech"],
-    endDate: "2024.11.20",
-    duration: "3개월",
-    deadlineD: "D-5",
-    revieweeName: "김지훈",
-    revieweeInitial: "김",
-    revieweeAvatarColor: "#6366F1",
-    budget: "₩12,000,000",
-  },
-  {
-    id: 2,
-    badge: "무료",
-    title: "이커머스 플랫폼 모바일 앱 리뉴얼",
-    desc: "사용자 경험 중심의 UI/UX 개편 및 Flutter 기반 크로스 플랫폼 앱 개발",
-    tags: ["#Mobile", "#Web", "#Flutter"],
-    endDate: "2024.11.18",
-    duration: "4개월",
-    deadlineD: "D-3",
-    revieweeName: "이소연",
-    revieweeInitial: "이",
-    revieweeAvatarColor: "#0EA5E9",
-    budget: "₩8,000,000",
-  },
-]
-*/
-
-const MOCK_RECEIVED_REVIEWS = [];
-/* ORIGINAL MOCK_RECEIVED_REVIEWS:
-[
-  {
-    id: 1,
-    badge: "유료",
-    satisfactionLabel: "조금 불만족 했어요",
-    satisfactionBg: "#FFF7ED",
-    satisfactionBorder: "#FED7AA",
-    satisfactionColor: "#C2410C",
-    title: "블록체인 기반 공급망 관리 시스템 구축",
-    desc: "물류 프로세스 투명성 확보를 위한 이더리움 기반 스마트 컨트랙트 개발",
-    tags: ["#Blockchain", "#Solidity", "#Node.js"],
-    endDate: "2024.11.01",
-    reviewDate: "2024.11.05",
-    commentText: "더 발전할 수 있게 코멘트를 남겨주셨어요",
-    commentColor: "#F97316",
-    reviewerName: "박성민",
-    reviewerInitial: "박",
-    reviewerAvatarColor: "#10B981",
-    rating: 3.5,
-    expertise: 3.5,
-    schedule: 4.0,
-    communication: 3.0,
-    proactivity: 3.5,
-    budget: "₩15,000,000",
-    duration: "3개월",
-    reviewText: "기술적 역량은 충분하지만, 일부 커뮤니케이션에서 개선이 필요합니다. 더 발전할 수 있을 것 같아 기대됩니다.",
-  },
-  {
-    id: 2,
-    badge: "유료",
-    satisfactionLabel: "너무 만족했어요",
-    satisfactionBg: "#F0FDF4",
-    satisfactionBorder: "#BBF7D0",
-    satisfactionColor: "#16A34A",
-    title: "메타버스 협업 툴 시각화 모듈 개발",
-    desc: "Three.js를 활용한 웹 기반 3D 데이터 시각화 엔진 고도화 및 최적화",
-    tags: ["#Unity", "#3D", "#Optimization"],
-    endDate: "2024.10.15",
-    reviewDate: "2024.10.20",
-    commentText: "별점만 있고 남겨진 코멘트가 없어요",
-    commentColor: "#94A3B8",
-    reviewerName: "최유나",
-    reviewerInitial: "최",
-    reviewerAvatarColor: "#F59E0B",
-    rating: 5.0,
-    expertise: 5.0,
-    schedule: 5.0,
-    communication: 5.0,
-    proactivity: 5.0,
-    budget: "₩25,000,000",
-    duration: "4개월",
-    reviewText: "어려운 기술적 요구사항도 척척 해결해주셨습니다. 3D 렌더링 최적화 부분에서 보여주신 실력이 정말 대단하십니다. 강력 추천합니다!",
-  },
-]
-*/
-
-const MOCK_EXPIRED_REVIEWS = [];
-/* ORIGINAL MOCK_EXPIRED_REVIEWS:
-[
-  {
-    id: 1,
-    title: "실시간 스트리밍 앱 최적화 및 안정화",
-    desc: "대규모 동시 접속자 처리를 위한 백엔드 구조 개편 및 트래픽 제어 알고리즘 적용",
-    tags: ["#Streaming", "#Go", "#Redis"],
-    endDate: "2024.11.10",
-  },
-]
-*/
-
 function EvalPendingCard({ proj, onWrite }) {
   const [hov, setHov] = useState(false);
   return (
@@ -3249,79 +3006,6 @@ function EvaluationTab() {
 }
 
 /* ── FreeMeetingTab ─────────────────────────────────────────── */
-const MOCK_CONTACTS = [
-  {
-    id: 1,
-    name: "Alex Miller",
-    project: "E-Commerce Platform Modernization",
-    avatar: null,
-    initials: "AM",
-    time: "10:10 AM",
-    lastMsg: "Absolutely. I've prepared a draft...",
-    unread: 0,
-    active: true,
-    messages: [
-      { id: 1,  from: "them", text: "Hello! Thanks for joining the 'Free Meeting' session. I've reviewed your proposal for the API layer refactoring.", time: "10:02 AM" },
-      { id: 2,  from: "me",   text: "Hi Alex, glad to be here. Did you have any specific concerns about the migration timeline? I've factored in the legacy system dependencies.", time: "10:05 AM" },
-      { id: 3,  from: "them", text: "The timeline looks solid. I'm actually more interested in the GraphQL implementation. Can we discuss the schema definition approach?", time: "10:07 AM", file: { name: "api_specs_v2.pdf", type: "pdf", size: "1.2 MB" } },
-      { id: 4,  from: "me",   text: "Absolutely. I've prepared a draft schema using a domain-driven design pattern. I'll share the repo link in a moment.", time: "10:10 AM" },
-      { id: 5,  from: "them", text: "That sounds great. One concern I have is about authentication — we're planning to support both OAuth2 and API key flows. Is that something you've handled before?", time: "10:13 AM" },
-      { id: 6,  from: "me",   text: "Yes, I've implemented dual-auth strategies before. We can use a middleware layer to abstract the auth flow so it doesn't bleed into your business logic.", time: "10:15 AM" },
-      { id: 7,  from: "them", text: "Perfect. Also, what's your thinking on error handling? Our current system has a lot of inconsistency there.", time: "10:18 AM" },
-      { id: 8,  from: "me",   text: "I'd recommend standardizing around RFC 7807 — problem+json format. It makes error responses predictable across the whole API surface.", time: "10:20 AM" },
-      { id: 9,  from: "them", text: "I like that. Let me pull up the current error logs so you can see what we're dealing with.", time: "10:22 AM" },
-      { id: 10, from: "me",   text: "Take your time. While you do that — are there any performance SLAs we need to design around? Specific p99 latency targets?", time: "10:23 AM" },
-      { id: 11, from: "them", text: "We're aiming for sub-200ms on the critical checkout path. Everything else can be a bit more lenient.", time: "10:26 AM" },
-      { id: 12, from: "me",   text: "Got it. That's very achievable with proper indexing and a Redis caching layer on the product catalog. I can include that in the architecture doc.", time: "10:28 AM" },
-      { id: 13, from: "them", text: "Sounds like a plan. One last thing — what does your availability look like for the next two months?", time: "10:30 AM" },
-      { id: 14, from: "me",   text: "I can commit to around 30hrs/week starting mid-May. If the scope is well-defined early on, I could potentially start a week earlier.", time: "10:32 AM" },
-      { id: 15, from: "them", text: "That works for us. I think we're aligned on the key points. Let's move into a more formal contract discussion.", time: "10:35 AM" },
-    ],
-    sharedFiles: [
-      { type: "pdf", name: "api_specs_v2.pdf", size: "1.2 MB", date: "2026-04" },
-      { type: "doc", name: "project_proposal.docx", size: "890 KB", date: "2026-04" },
-    ],
-    sharedImages: [],
-    sharedLinks: ["https://github.com/alex/ecomm-schema", "https://notion.so/project-brief"],
-  },
-  {
-    id: 2,
-    name: "Sarah Chen",
-    project: "Mobile Banking App",
-    avatar: null,
-    initials: "SC",
-    time: "Yesterday",
-    lastMsg: "The prototype looks great! Let's talk.",
-    unread: 2,
-    active: false,
-    messages: [
-      { id: 1, from: "them", text: "Hi! I just reviewed your portfolio. The mobile projects look really impressive.", time: "Yesterday 2:30 PM" },
-      { id: 2, from: "me",   text: "Thanks Sarah! I'd love to discuss the Banking App requirements in more detail.", time: "Yesterday 2:45 PM" },
-      { id: 3, from: "them", text: "The prototype looks great! Let's talk.", time: "Yesterday 3:00 PM" },
-    ],
-    sharedFiles: [],
-    sharedImages: [],
-    sharedLinks: [],
-  },
-  {
-    id: 3,
-    name: "Michael Kim",
-    project: "Cloud Migration Strategy",
-    avatar: null,
-    initials: "MK",
-    time: "Oct 20",
-    lastMsg: "Sent you the latest architecture diagrams.",
-    unread: 0,
-    active: false,
-    messages: [
-      { id: 1, from: "me",   text: "Michael, here are my thoughts on the cloud migration plan.", time: "Oct 20 9:00 AM" },
-      { id: 2, from: "them", text: "Sent you the latest architecture diagrams.", time: "Oct 20 9:30 AM", file: { name: "arch_diagram_v3.png", type: "img", size: "2.4 MB" } },
-    ],
-    sharedFiles: [{ type: "img", name: "arch_diagram_v3.png", size: "2.4 MB", date: "2026-03" }],
-    sharedImages: [{ name: "arch_diagram_v3.png" }],
-    sharedLinks: [],
-  },
-];
 
 const FILE_ICON_COLORS = { pdf: "#E53935", doc: "#1565C0", img: "#2E7D32", default: "#5C6BC0" };
 
@@ -3361,21 +3045,6 @@ function AvatarCircle({ initials, size = 40, avatar = null }) {
 }
 
 const MEETING_COLLAB_ROLES = ["기획", "디자인/퍼블리싱", "FE 개발", "BE 개발"];
-
-const CLIENT_MEETING_PROJECT_OPTIONS = [
-  ...MOCK_INTEREST_PROJECTS,
-  {
-    id: 4,
-    badge: "유료",
-    title: "DevBridge 협업 매칭 플랫폼 2차 고도화",
-    desc: "계약 협의, 실시간 미팅, 대시보드 경험을 고도화하는 후속 프로젝트입니다.",
-    tags: ["#React", "#Spring", "#AI"],
-    period: "5개월",
-    budget: "3,200만원",
-    deadline: "마감 D-7",
-    deadlineColor: "#F59E0B",
-  },
-];
 
 const CLIENT_MEETING_PROFILE_MAP = {
   "Alex Miller": {
@@ -3677,74 +3346,6 @@ function getMeetingPartnerPreview(contact) {
   };
 }
 
-const MOCK_PROJECT_MEETING_CONTACTS = [
-  {
-    id: 1,
-    name: "Alpha FinTech",
-    project: "AI 기반 지능형 큐레이터 플랫폼 고도화",
-    time: "10:24 AM",
-    lastMsg: "모델 파인튜닝 진행 상황 공유 부탁드립니다.",
-    unread: 0,
-    progress: 68,
-    agreementItems: [
-      { label: "작업 범위", status: "협의완료" },
-      { label: "최종 전달물 정의서", status: "협의완료" },
-      { label: "마감 일정 및 마일 스톤", status: "협의완료" },
-      { label: "총 금액", status: "협의완료" },
-      { label: "수정 가능 범위", status: "협의완료" },
-      { label: "완료 기준", status: "협의완료" },
-      { label: "추가 특약 (선택)", status: "논의 중" },
-    ],
-    messages: [
-      { id: 1, from: "them", text: "모델 파인튜닝 진행 상황 공유 부탁드립니다.", time: "10:24 AM" },
-      { id: 2, from: "me", text: "현재 정확도 89%이고 금주 내 92% 목표로 개선 중입니다.", time: "10:29 AM" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Blue Retail Co.",
-    project: "E-commerce Platform UX/UI Redesign",
-    time: "Yesterday",
-    lastMsg: "모바일 프로토타입 리뷰 일정 잡고 싶어요.",
-    unread: 1,
-    progress: 32,
-    agreementItems: [
-      { label: "작업 범위", status: "협의완료" },
-      { label: "최종 전달물 정의서", status: "협의완료" },
-      { label: "마감 일정 및 마일 스톤", status: "협의완료" },
-      { label: "총 금액", status: "협의완료" },
-      { label: "수정 가능 범위", status: "협의완료" },
-      { label: "완료 기준", status: "협의완료" },
-      { label: "추가 특약 (선택)", status: "논의 중" },
-    ],
-    messages: [
-      { id: 1, from: "them", text: "모바일 프로토타입 리뷰 일정 잡고 싶어요.", time: "Yesterday 4:10 PM" },
-      { id: 2, from: "me", text: "내일 오후 2시 제안드립니다. 캘린더 초대 드릴게요.", time: "Yesterday 4:14 PM" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Crypto Systems",
-    project: "Bitcoin Auto-Trading System Development",
-    time: "2 days ago",
-    lastMsg: "코어 로직 설계 문서 전달드렸습니다.",
-    unread: 0,
-    progress: 0,
-    agreementItems: [
-      { label: "작업 범위", status: "협의완료" },
-      { label: "최종 전달물 정의서", status: "협의완료" },
-      { label: "마감 일정 및 마일 스톤", status: "협의완료" },
-      { label: "총 금액", status: "협의완료" },
-      { label: "수정 가능 범위", status: "협의완료" },
-      { label: "완료 기준", status: "협의완료" },
-      { label: "추가 특약 (선택)", status: "논의 중" },
-    ],
-    messages: [
-      { id: 1, from: "them", text: "코어 로직 설계 문서 전달드렸습니다.", time: "2 days ago 9:18 AM" },
-      { id: 2, from: "me", text: "확인했습니다. 리스크 관리 규칙도 함께 반영해보겠습니다.", time: "2 days ago 9:26 AM" },
-    ],
-  },
-];
 
 function ProjectMeetingTab({ initialActiveId, chatClient, returnProjectId = null, onDashboardMove = null, targetContactId = null, targetProjectId = null }) {
   // 실제 DM 방 + IN_PROGRESS 프로젝트 파트너만 contact list에 표시.
@@ -5006,57 +4607,8 @@ function FreeMeetingTab({ proposalPartner, onProposalHandled, chatClient, onSwit
 }
 
 /* ── ContractMeetingTab ──────────────────────────────────────── */
-const MOCK_CONTRACT_CONTACTS = [
-  {
-    id: 1,
-    name: "Alex Miller",
-    project: "E-Commerce Platform Modernization",
-    initials: "AM",
-    time: "10:24 AM",
-    lastMsg: "Let's finalize the scope first.",
-    unread: 0,
-    agreementItems: [
-      { label: "작업 범위",            status: "논의 중" },
-      { label: "최종 전달물 정의서",    status: "미확정" },
-      { label: "마감 일정 및 마일 스톤", status: "논의 중" },
-      { label: "총 금액",              status: "미확정" },
-      { label: "수정 가능 범위",        status: "미확정" },
-      { label: "완료 기준",            status: "논의 중" },
-      { label: "추가 특약 (선택)",      status: "미확정" },
-    ],
-    messages: [
-      { id: 1, from: "them", text: "Let's finalize the scope first. I'd like to start with the API layer scope.", time: "10:24 AM" },
-      { id: 2, from: "me",   text: "Agreed. The API layer will cover user auth, product catalog, and order management.", time: "10:26 AM" },
-      { id: 3, from: "them", text: "Good. What about the payment integration — is that included or a separate module?", time: "10:28 AM" },
-    ],
-    sharedFiles: [],
-    sharedLinks: [],
-  },
-  {
-    id: 2,
-    name: "Sarah Chen",
-    project: "Mobile Banking App",
-    initials: "SC",
-    time: "Yesterday",
-    lastMsg: "Can we revisit the milestone schedule?",
-    unread: 1,
-    agreementItems: [
-      { label: "작업 범위",            status: "완료" },
-      { label: "최종 전달물 정의서",    status: "완료" },
-      { label: "마감 일정 및 마일 스톤", status: "논의 중" },
-      { label: "총 금액",              status: "완료" },
-      { label: "수정 가능 범위",        status: "미확정" },
-      { label: "완료 기준",            status: "미확정" },
-      { label: "추가 특약 (선택)",      status: "미확정" },
-    ],
-    messages: [
-      { id: 1, from: "them", text: "Can we revisit the milestone schedule?", time: "Yesterday 3:10 PM" },
-      { id: 2, from: "me",   text: "Sure, let's adjust phase 2 to end two weeks later.", time: "Yesterday 3:15 PM" },
-    ],
-    sharedFiles: [],
-    sharedLinks: [],
-  },
-];
+// Empty sentinel — 기본 contacts 가 비어있을 때 BE 채팅방 fetch 트리거 (identity 비교용).
+const DEFAULT_CONTRACT_CONTACTS = [];
 
 const STATUS_STYLES = {
   "논의 중": { bg: "#EFF6FF", color: "#2563EB", border: "#BFDBFE" },
@@ -5066,7 +4618,7 @@ const STATUS_STYLES = {
   "협의완료": { bg: "#D1FAE5", color: "#059669", border: "#6EE7B7" },
 };
 
-function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialContactId = 1, initialStatuses = null, showDashboardMoveButton = false, chatClient, projectId = null, onDashboardMove = null, initialProjectId = null, filterInProgress = false, meetingMode = "contract" }) {
+function ContractMeetingTab({ initialContacts = DEFAULT_CONTRACT_CONTACTS, initialContactId = 1, initialStatuses = null, showDashboardMoveButton = false, chatClient, projectId = null, onDashboardMove = null, initialProjectId = null, filterInProgress = false, meetingMode = "contract" }) {
   const user = useStore(s => s.user);
   const { dbId } = useStore();
   const clientProfileDetail = useStore(s => s.clientProfileDetail);
@@ -5084,7 +4636,7 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
   const [, setSearchParams] = useSearchParams();
   // 기본 (대시보드 직접 진입) 모드에서는 BE 채팅방을 fetch해서 contacts 사용.
   // ProjectMeetingTab 등이 명시적으로 initialContacts 를 넘겨주면 그 mock 을 그대로 사용.
-  const isDefaultContacts = initialContacts === MOCK_CONTRACT_CONTACTS;
+  const isDefaultContacts = initialContacts === DEFAULT_CONTRACT_CONTACTS;
   const [contacts, setContacts] = useState(isDefaultContacts ? [] : initialContacts);
   const [activeId, setActiveId] = useState(isDefaultContacts ? null : initialContactId);
   // BE chat rooms fetch (자유미팅과 동일한 DIRECT_MESSAGE 방을 contacts 로 사용)
@@ -5213,6 +4765,41 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [proposalAccepted, setProposalAccepted] = useState({});
+
+  // ── 미팅 프로젝트 모달: 라이브 fetch ────────────────────────
+  const [modalProjects, setModalProjects] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  useEffect(() => {
+    if (!projectActionMode) return;
+    let cancelled = false;
+    setModalLoading(true);
+    setModalProjects([]);
+    projectsApi.myList()
+      .then((data) => {
+        if (cancelled) return;
+        const cards = (data || []).map((p) => ({
+          id: p.id,
+          title: p.title || "(제목 없음)",
+          desc: p.desc || p.slogan || "",
+          tags: (p.tags || []).map(t => (typeof t === "string" && t.startsWith("#")) ? t : `#${t}`),
+          period: p.period || (p.durationDays ? `${Math.max(1, Math.round(p.durationDays / 30))}개월` : "기간 협의"),
+          budget: p.price || ((p.budgetMin != null && p.budgetMax != null) ? `${p.budgetMin}~${p.budgetMax}만원` : "예산 협의"),
+          badge: p.priceType || "유료",
+          deadline: p.deadline ? `마감 ${p.deadline}` : (p.status || "모집중"),
+          deadlineColor: "#F59E0B",
+        }));
+        setModalProjects(cards);
+      })
+      .catch((err) => {
+        console.error("[ContractMeetingTab] 프로젝트 목록 불러오기 실패:", err);
+        if (!cancelled) setModalProjects([]);
+      })
+      .finally(() => {
+        if (!cancelled) setModalLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [projectActionMode]);
+
   // ── 7모듈 BE 연동 (project_modules) ────────────────────────
   // projectId prop 이 없으면 본인 진행중 프로젝트 첫 번째를 자동 매칭 (시연 편의)
   const [autoProjectId, setAutoProjectId] = useState(null);
@@ -6246,8 +5833,12 @@ function ContractMeetingTab({ initialContacts = MOCK_CONTRACT_CONTACTS, initialC
           {projectActionMode && (
             <MeetingProjectSelectModal
               title={projectActionMode === "share" ? "프로젝트 보여주기" : "프로젝트 제안하기"}
-              subtitle={projectActionMode === "share" ? "채팅창에 프로젝트 카드를 바로 공유합니다." : "프로젝트를 고르고 함께할 직무를 선택해 제안 메시지를 보냅니다."}
-              projects={CLIENT_MEETING_PROJECT_OPTIONS}
+              subtitle={
+                modalLoading ? "프로젝트 목록을 불러오는 중…" :
+                ((projectActionMode === "share" ? "채팅창에 프로젝트 카드를 바로 공유합니다." : "프로젝트를 고르고 함께할 직무를 선택해 제안 메시지를 보냅니다.") +
+                 (modalProjects.length === 0 ? " (등록된 프로젝트가 없습니다)" : ""))
+              }
+              projects={modalProjects}
               requireRole={projectActionMode === "proposal"}
               roleOptions={MEETING_COLLAB_ROLES}
               confirmLabel={projectActionMode === "share" ? "채팅에 공유하기" : "제안 보내기"}

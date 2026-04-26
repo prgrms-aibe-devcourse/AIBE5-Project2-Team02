@@ -13,9 +13,7 @@ import {
   ScopeModal, DeliverablesModal, ScheduleModal, PaymentModal,
   RevisionModal, CompletionModal, SpecialTermsModal,
 } from "../components/ContractModals";
-import MOCK_INTEREST_PROJECTS from "../data/mockInterestProjects.json";
-import MOCK_INTEREST_PARTNERS from "../data/mockInterestPartners.json";
-import { projectsApi, partnersApi, profileApi, projectModulesApi, applicationsApi, evaluationApi, reviewsApi } from "../api";
+import { projectsApi, partnersApi, profileApi, projectModulesApi, applicationsApi, evaluationApi, reviewsApi, portfolioApi } from "../api";
 
 /* ── 찜 목록 상세 API 응답을 카드 표시용으로 매핑 ───────────── */
 function toCardProject(p) {
@@ -126,92 +124,6 @@ const SECTIONS = [
 ];
 
 /* ── 지원 내역 모의 데이터 ─────────────────────────────────── */
-const MOCK_ACTIVE_PROJS = [
-  {
-    id: 1, badge: "유료",
-    title: "AI 기반 이상 거래 탐지 시스템 고도화",
-    desc: "금융 데이터 분석을 통한 실시간 이상 거래 탐지 모델 최적화 및 API 개발",
-    tags: ["#AI/ML", "#Python", "#Fintech"],
-    period: "3개월", budget: "1,500만원",
-    deadline: "마감 임박 (D-3)", deadlineColor: "#EF4444",
-    match: 93,
-    workPref: "외주",
-    level: "시니어",
-    clientId: "client_02293",
-    avatarColor: "#4BAA7B",
-    verifications: ["본인인증 완료", "사업자등록 완료", "평가 우수"],
-    meetingContactId: 1,
-  },
-  {
-    id: 2, badge: "무료",
-    title: "이커머스 플랫폼 모바일 앱 리뉴얼",
-    desc: "사용자 경험 중심의 UI/UX 개편 및 Flutter 기반 크로스 플랫폼 앱 개발",
-    tags: ["#Mobile", "#Web", "#Flutter"],
-    period: "4개월", budget: "2,800만원",
-    deadline: "마감 D-15", deadlineColor: "#64748B",
-    match: 86,
-    workPref: "원격",
-    level: "미들",
-    clientId: "client_01842",
-    avatarColor: "#5B7CFA",
-    verifications: ["본인인증 완료", "사업자등록 완료"],
-    meetingContactId: 2,
-  },
-];
-const MOCK_ACCEPTED_PROJS = [
-  {
-    id: 1,
-    statusBadge: "지원 합격", statusBadgeBg: "#FFF7ED", statusBadgeColor: "#C2410C",
-    title: "블록체인 기반 공급망 관리 시스템 구축",
-    desc: "물류 프로세스 투명성 확보를 위한 이더리움 기반 스마트 컨트랙트 개발",
-    tags: ["#Blockchain", "#Solidity", "#Node.js"],
-    period: "6개월", budget: "4,200만원",
-    statusText: "계약 대기중", statusTextColor: "#F97316",
-    btnLabel: "계약하기",
-    btnBg: "#FEF3C7", btnBgHover: "#FDE68A", btnColor: "#92400E",
-    match: 89,
-    workPref: "외주",
-    level: "시니어",
-    clientId: "client_01127",
-    avatarColor: "#4BAA7B",
-    verifications: ["본인인증 완료", "사업자등록 완료", "평가 우수"],
-    meetingContactId: 1,
-  },
-  {
-    id: 2,
-    statusBadge: "논의 중", statusBadgeBg: "#EFF6FF", statusBadgeColor: "#1D4ED8",
-    title: "메타버스 협업 툴 시각화 모듈 개발",
-    desc: "Three.js를 활용한 웹 기반 3D 데이터 시각화 엔진 고도화 및 최적화",
-    tags: ["#Three.js", "#WebGL", "#React"],
-    period: "2개월", budget: "1,200만원",
-    statusText: "시작 예정 (12/01)", statusTextColor: "#64748B",
-    btnLabel: "상세 계약 미팅 이동",
-    btnBg: "#DBEAFE", btnBgHover: "#BFDBFE", btnColor: "#1E3A5F",
-    match: 91,
-    workPref: "원격",
-    level: "미들",
-    clientId: "client_02003",
-    avatarColor: "#5B7CFA",
-    verifications: ["본인인증 완료", "사업자등록 완료"],
-    meetingContactId: 2,
-  },
-];
-const MOCK_CLOSED_PROJS = [
-  {
-    id: 1,
-    title: "실시간 스트리밍 앱 최적화 및 안정화",
-    desc: "대규모 동시 접속자 처리를 위한 백엔드 구조 개편 및 트래픽 제어 알고리즘 적용",
-    tags: ["#Streaming", "#Go", "#Redis"],
-    endDate: "종료일: 2024.11.15", statusText: "모집 완료",
-  },
-  {
-    id: 2,
-    title: "개인 맞춤형 식단 관리 웹 서비스",
-    desc: "사용자 건강 데이터를 기반으로 한 영양소 분석 및 AI 레시피 추천 시스템",
-    tags: ["#HealthCare", "#Vue.js", "#Django"],
-    endDate: "마감일: 2024.11.10", statusText: "지원 철회됨",
-  },
-];
 
 /* ── 지원중 상세 모달 구성 ─────────── */
 function ApplicationSectionTitle({ children }) {
@@ -1456,45 +1368,6 @@ function InterestsTab({ onProposePartner }) {
 }
 
 /* ── ProjectManageTab (진행 프로젝트 관리) ──────────────────── */
-const MOCK_MANAGE_PROJECTS = [
-  {
-    id: 1, badge: "유료",
-    title: "AI 기반 지능형 큐레이터 플랫폼 고도화",
-    tags: [("AI/ML"), ("Python"), ("Fintech")],
-    progress: 68, progressColor: "#3B82F6",
-    overallStatus: null,
-    milestones: [
-      { num: 1, title: "아키텍처 설계",     desc: "데이터 파이프라인 구조 및 API 명세서 확정",                           status: "COMPLETED"   },
-      { num: 2, title: "모델 파인튜닝",     desc: "LLM 기반 추천 엔진 성능 최적화 진행 중 (Target Accuracy 92%)",   status: "IN_PROGRESS" },
-      { num: 3, title: "UI 통합 및 테스트", desc: "프론트엔드 연동 및 최종 QA 배포",                                  status: "PENDING"     },
-    ],
-    client: { name: "Alpha FinTech",  rating: 4.8, reviews: 24 },
-  },
-  {
-    id: 2, badge: "무료",
-    title: "E-commerce Platform UX/UI Redesign",
-    tags: [("UX/UI"), ("Flutter")],
-    progress: 32, progressColor: "#22C55E",
-    overallStatus: null,
-    milestones: [
-      { num: 1, title: "Wireframe Design",      desc: "사용자 흐름 분석 및 고수준 와이어프레임 설계",      status: "COMPLETED"   },
-      { num: 2, title: "Mobile UI Prototypes",  desc: "인터랙티브 프로토타입 제작 및 사용자 테스트",     status: "IN_PROGRESS" },
-      { num: 3, title: "Admin Panel Dev",        desc: "백엔드 대시보드 연동 및 관리 도구 개발",           status: "PENDING"     },
-    ],
-    client: { name: "Blue Retail Co.", rating: 4.9, reviews: 12 },
-  },
-  {
-    id: 3, badge: "유료",
-    title: "Bitcoin Auto-Trading System Development",
-    tags: [("Blockchain"), ("Fintech"), ("Python")],
-    progress: 0, progressColor: "#94A3B8",
-    overallStatus: "PLANNED",
-    milestones: [
-      { num: 1, title: "Core Logic Design", desc: "거래 알고리즘 및 API 연동 아키텍처 설계 중", status: "IN_PROGRESS" },
-    ],
-    client: { name: "Crypto Systems", rating: 5.0, reviews: 8 },
-  },
-];
 
 function MilestoneRow({ ms }) {
   const isCompleted  = ms.status === "COMPLETED";
@@ -2462,74 +2335,24 @@ function GuaranteeTab() {
   );
 }
 
-/* ── PortfolioAddTab ─────────────────────────────────────────── */
-const MOCK_ONGOING_FOR_PORTFOLIO = [
-  {
-    id: 1, badge: "유료",
-    title: "AI 기반 이상 거래 탐지 시스템 고도화",
-    desc: "금융 데이터 분석을 통한 실시간 이상 거래 탐지 모델 최적화 및 API 개발",
-    tags: ["#AI/ML", "#Python", "#Fintech"],
-    endDate: "2024.11.20", period: "3개월",
-  },
-  {
-    id: 2, badge: "무료",
-    title: "이커머스 플랫폼 모바일 앱 리뉴얼",
-    desc: "사용자 경험 중심의 UI/UX 개편 및 Flutter 기반 크로스 플랫폼 앱 개발",
-    tags: ["#Mobile", "#Web", "#Flutter"],
-    endDate: "2024.11.18", period: "4개월",
-  },
-];
-
-const MOCK_SELECTED_FOR_PORTFOLIO = [
-  {
-    id: 1,
-    satisfaction: "조금 불만족했어요",
-    satisfBg: "#FFF7ED", satisfBorder: "#FED7AA", satisfColor: "#C2410C",
-    title: "블록체인 기반 공급망 관리 시스템 구축",
-    desc: "물류 프로세스 투명성 확보를 위한 이더리움 기반 스마트 컨트랙트 개발",
-    tags: ["#Blockchain", "#Solidity"],
-    endDate: "2024.11.01", writeDate: "2024.11.05",
-    commentText: "더 발전할 수 있게 코멘트를 남겨주셨어요",
-    commentColor: "#F97316",
-    added: false,
-  },
-  {
-    id: 2,
-    satisfaction: "너무 만족했어요",
-    satisfBg: "#ECFDF5", satisfBorder: "#A7F3D0", satisfColor: "#065F46",
-    title: "메타버스 협업 툴 시각화 모듈 개발",
-    desc: "Three.js를 활용한 웹 기반 3D 데이터 시각화 엔진 고도화 및 최적화",
-    tags: ["#Three.js", "#WebGL"],
-    endDate: "2024.10.15", writeDate: "2024.10.20",
-    commentText: "별점만 있고 남겨진 코멘트가 없어요",
-    commentColor: "#94A3B8",
-    added: true,
-  },
-  {
-    id: 3,
-    satisfaction: "매우 훌륭했어요",
-    satisfBg: "#F0FDFA", satisfBorder: "#99F6E4", satisfColor: "#0F766E",
-    title: "Global Finance App",
-    desc: "다양한 통화 지원 및 실시간 자산 관리 기능을 갖춘 글로벌 핀테크 모바일 애플리케이션",
-    tags: ["#React-Native", "#Fintech"],
-    endDate: "2024.09.28", writeDate: "2024.10.05",
-    commentText: "최고의 파트너라는 극찬을 받았습니다",
-    commentColor: "#0F766E",
-    added: true,
-  },
-  {
-    id: 4,
-    satisfaction: "협업이 즐거웠어요",
-    satisfBg: "#F5F3FF", satisfBorder: "#C4B5FD", satisfColor: "#5B21B6",
-    title: "AI Logistics Dashboard",
-    desc: "물류 공급망 최적화를 위한 AI 기반 예측 분석 및 대화형 데이터 시각화 대시보드",
-    tags: ["#Python", "#Data-Viz"],
-    endDate: "2024.08.12", writeDate: "2024.08.20",
-    commentText: "깔끔한 인터페이스에 만족하셨습니다",
-    commentColor: "#94A3B8",
-    added: false,
-  },
-];
+/* ── PortfolioAddTab — 라이브 데이터 (applicationsApi.myList — 파트너가 참여한 프로젝트) ── */
+function applicationToCard(app) {
+  if (!app || !app.projectId) return null;
+  const tags = (app.projectSkills || []).map(t => (typeof t === "string" && t.startsWith("#")) ? t : `#${t}`);
+  let period = "";
+  if (app.projectDurationMonths) period = `${app.projectDurationMonths}개월`;
+  return {
+    id: app.projectId,
+    sourceKey: String(app.projectId),
+    badge: "프로젝트",
+    title: app.projectTitle || "(제목 없음)",
+    desc: app.projectDesc || app.projectSlogan || "",
+    tags,
+    endDate: app.projectDeadline || "",
+    period,
+    appStatus: app.status,
+  };
+}
 
 /* ── 포트폴리오 토글 스위치 ── */
 function ToggleSwitch({ on, onChange }) {
@@ -2557,12 +2380,61 @@ function ToggleSwitch({ on, onChange }) {
 
 function PortfolioAddTab() {
   const navigate = useNavigate();
-  const [ongoingAdded, setOngoingAdded] = useState(
-    Object.fromEntries(MOCK_ONGOING_FOR_PORTFOLIO.map(p => [p.id, true]))
-  );
-  const [selectedAdded, setSelectedAdded] = useState(
-    Object.fromEntries(MOCK_SELECTED_FOR_PORTFOLIO.map(p => [p.id, p.added]))
-  );
+  const [ongoingProjs, setOngoingProjs] = useState([]);
+  const [completedProjs, setCompletedProjs] = useState([]);
+  const [addedKeys, setAddedKeys] = useState(() => new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      applicationsApi.myList().catch(() => []),
+      portfolioApi.myAdded().catch(() => []),
+    ]).then(([apps, added]) => {
+      if (cancelled) return;
+      const cards = (apps || []).map(applicationToCard).filter(Boolean);
+      setOngoingProjs(cards.filter(c => c.appStatus === "IN_PROGRESS" || c.appStatus === "CONTRACTED" || c.appStatus === "ACCEPTED"));
+      setCompletedProjs(cards.filter(c => c.appStatus === "COMPLETED"));
+      setAddedKeys(new Set((added || []).map(a => a.sourceKey)));
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const ongoingAdded = Object.fromEntries(ongoingProjs.map(p => [p.id, addedKeys.has(p.sourceKey)]));
+  const selectedAdded = Object.fromEntries(completedProjs.map(p => [p.id, addedKeys.has(p.sourceKey)]));
+
+  const setAdded = (sourceKey, on) => {
+    setAddedKeys(prev => {
+      const next = new Set(prev);
+      if (on) next.add(sourceKey); else next.delete(sourceKey);
+      return next;
+    });
+    portfolioApi.setAdded(sourceKey, on).catch(() => {
+      setAddedKeys(prev => {
+        const next = new Set(prev);
+        if (on) next.delete(sourceKey); else next.add(sourceKey);
+        return next;
+      });
+    });
+  };
+
+  const buildAddedProjects = () => [
+    ...ongoingProjs.filter(p => ongoingAdded[p.id]).map(p => ({
+      id: `ongoing-${p.id}`, group: "진행 중",
+      badge: p.badge,
+      badgeBg: p.badge === "유료" ? "#EFF6FF" : "#F0FFF4",
+      badgeColor: p.badge === "유료" ? "#3B82F6" : "#16A34A",
+      title: p.title, desc: p.desc, tags: p.tags,
+    })),
+    ...completedProjs.filter(p => selectedAdded[p.id]).map(p => ({
+      id: `selected-${p.id}`, group: "완료",
+      badge: "완료",
+      badgeBg: "#F0FDFA", badgeColor: "#0F766E",
+      title: p.title, desc: p.desc, tags: p.tags,
+    })),
+  ];
 
   return (
     <div>
@@ -2583,8 +2455,14 @@ function PortfolioAddTab() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 0, border: "1.5px solid #F1F5F9", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-          {MOCK_ONGOING_FOR_PORTFOLIO.map((proj, idx) => {
-            const isLast = idx === MOCK_ONGOING_FOR_PORTFOLIO.length - 1;
+          {loading && (
+            <div style={{ padding: "20px 22px", color: "#94A3B8", fontSize: 13, fontFamily: F }}>불러오는 중…</div>
+          )}
+          {!loading && ongoingProjs.length === 0 && (
+            <div style={{ padding: "20px 22px", color: "#94A3B8", fontSize: 13, fontFamily: F }}>진행 중인 프로젝트가 없습니다.</div>
+          )}
+          {ongoingProjs.map((proj, idx) => {
+            const isLast = idx === ongoingProjs.length - 1;
             return (
               <div key={proj.id} style={{ padding: "20px 22px", background: "white", borderBottom: isLast ? "none" : "1.5px solid #F1F5F9" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
@@ -2597,37 +2475,11 @@ function PortfolioAddTab() {
                     <button style={{ padding: "10px 26px", borderRadius: 10, border: "none", background: "#DBEAFE", color: "#1E3A5F", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap", transition: "background 0.15s" }}
                       onMouseEnter={e => e.currentTarget.style.background = "#BFDBFE"}
                       onMouseLeave={e => e.currentTarget.style.background = "#DBEAFE"}
-                    onClick={() => {
-                      const addedProjects = [
-                        ...MOCK_ONGOING_FOR_PORTFOLIO
-                          .filter(p => ongoingAdded[p.id])
-                          .map(p => ({
-                            id: `ongoing-${p.id}`,
-                            group: "진행 중",
-                            badge: p.badge,
-                            badgeBg: p.badge === "유료" ? "#EFF6FF" : "#F0FFF4",
-                            badgeColor: p.badge === "유료" ? "#3B82F6" : "#16A34A",
-                            title: p.title, desc: p.desc, tags: p.tags,
-                          })),
-                        ...MOCK_SELECTED_FOR_PORTFOLIO
-                          .filter(p => selectedAdded[p.id])
-                          .map(p => ({
-                            id: `selected-${p.id}`,
-                            group: "완료",
-                            badge: p.satisfaction,
-                            badgeBg: p.satisfBg,
-                            badgeColor: p.satisfColor,
-                            title: p.title, desc: p.desc, tags: p.tags,
-                          })),
-                      ];
-                      navigate("/portfolio_detail_editor", {
-                        state: { projectTitle: proj.title, projectId: `ongoing-${proj.id}`, addedProjects },
-                      });
-                    }}
+                    onClick={() => navigate("/portfolio_detail_editor", { state: { projectTitle: proj.title, projectId: `ongoing-${proj.id}`, addedProjects: buildAddedProjects() } })}
                     >상세 작성 하기</button>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 12, color: "#64748B", fontFamily: F }}>포트폴리오에 추가</span>
-                      <ToggleSwitch on={ongoingAdded[proj.id]} onChange={v => setOngoingAdded(p => ({ ...p, [proj.id]: v }))} />
+                      <ToggleSwitch on={ongoingAdded[proj.id]} onChange={v => setAdded(proj.sourceKey, v)} />
                     </div>
                   </div>
                 </div>
@@ -2661,13 +2513,16 @@ function PortfolioAddTab() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 0, border: "1.5px solid #F1F5F9", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-          {MOCK_SELECTED_FOR_PORTFOLIO.map((proj, idx) => {
-            const isLast = idx === MOCK_SELECTED_FOR_PORTFOLIO.length - 1;
+          {!loading && completedProjs.length === 0 && (
+            <div style={{ padding: "20px 22px", color: "#94A3B8", fontSize: 13, fontFamily: F }}>완료된 프로젝트가 아직 없습니다.</div>
+          )}
+          {completedProjs.map((proj, idx) => {
+            const isLast = idx === completedProjs.length - 1;
             return (
               <div key={proj.id} style={{ padding: "20px 22px", background: "white", borderBottom: isLast ? "none" : "1.5px solid #F1F5F9" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                    <span style={{ padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: proj.satisfBg, border: `1px solid ${proj.satisfBorder}`, color: proj.satisfColor, fontFamily: F, flexShrink: 0, whiteSpace: "nowrap" }}>{proj.satisfaction}</span>
+                    <span style={{ padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "#F0FDFA", border: "1px solid #99F6E4", color: "#0F766E", fontFamily: F, flexShrink: 0, whiteSpace: "nowrap" }}>완료</span>
                     <span style={{ fontSize: 17, fontWeight: 800, color: "#1E293B", fontFamily: F }}>{proj.title}</span>
                   </div>
                   {/* 버튼 + 토글 */}
@@ -2675,37 +2530,11 @@ function PortfolioAddTab() {
                     <button style={{ padding: "10px 26px", borderRadius: 10, border: "none", background: "#DBEAFE", color: "#1E3A5F", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap", transition: "background 0.15s" }}
                       onMouseEnter={e => e.currentTarget.style.background = "#BFDBFE"}
                       onMouseLeave={e => e.currentTarget.style.background = "#DBEAFE"}
-                    onClick={() => {
-                      const addedProjects = [
-                        ...MOCK_ONGOING_FOR_PORTFOLIO
-                          .filter(p => ongoingAdded[p.id])
-                          .map(p => ({
-                            id: `ongoing-${p.id}`,
-                            group: "진행 중",
-                            badge: p.badge,
-                            badgeBg: p.badge === "유료" ? "#EFF6FF" : "#F0FFF4",
-                            badgeColor: p.badge === "유료" ? "#3B82F6" : "#16A34A",
-                            title: p.title, desc: p.desc, tags: p.tags,
-                          })),
-                        ...MOCK_SELECTED_FOR_PORTFOLIO
-                          .filter(p => selectedAdded[p.id])
-                          .map(p => ({
-                            id: `selected-${p.id}`,
-                            group: "완료",
-                            badge: p.satisfaction,
-                            badgeBg: p.satisfBg,
-                            badgeColor: p.satisfColor,
-                            title: p.title, desc: p.desc, tags: p.tags,
-                          })),
-                      ];
-                      navigate("/portfolio_detail_editor", {
-                        state: { projectTitle: proj.title, projectId: `selected-${proj.id}`, addedProjects },
-                      });
-                    }}
+                    onClick={() => navigate("/portfolio_detail_editor", { state: { projectTitle: proj.title, projectId: `selected-${proj.id}`, addedProjects: buildAddedProjects() } })}
                     >상세 작성하기</button>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 12, color: "#64748B", fontFamily: F }}>포트폴리오에 추가</span>
-                      <ToggleSwitch on={selectedAdded[proj.id]} onChange={v => setSelectedAdded(p => ({ ...p, [proj.id]: v }))} />
+                      <ToggleSwitch on={selectedAdded[proj.id]} onChange={v => setAdded(proj.sourceKey, v)} />
                     </div>
                   </div>
                 </div>
@@ -2713,11 +2542,8 @@ function PortfolioAddTab() {
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                   {proj.tags.map(t => <span key={t} style={{ padding: "3px 10px", borderRadius: 99, background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: 12, color: "#475569", fontFamily: F }}>{t}</span>)}
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>
-                    완료일: {proj.endDate}&nbsp;&nbsp;작성일: {proj.writeDate}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: proj.commentColor, fontFamily: F }}>{proj.commentText}</span>
+                <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F }}>
+                  완료일: {proj.endDate || "—"}
                 </div>
               </div>
             );
@@ -2731,110 +2557,8 @@ function PortfolioAddTab() {
 /* ── EvaluationTab (평가 대기 프로젝트) ────────────────────── */
 // [MOCK DATA DISABLED] — replaced by live API in Step 11 of REVIEW_IMPLEMENTATION_GUIDE.md
 // Original placeholder data is preserved below in comments for reference.
-const MOCK_EVAL_PENDING = [];
-/* ORIGINAL MOCK_EVAL_PENDING:
-[
-  {
-    id: 1,
-    badge: "유료",
-    title: "AI 기반 이상 거래 탐지 시스템 고도화",
-    desc: "금융 데이터 분석을 통한 실시간 이상 거래 탐지 모델 최적화 및 API 개발",
-    tags: ["#AI/ML", "#Python", "#Fintech"],
-    endDate: "2024.11.20",
-    duration: "3개월",
-    deadlineD: "D-5",
-    revieweeName: "Alpha FinTech",
-    revieweeInitial: "A",
-    revieweeAvatarColor: "#6366F1",
-    budget: "₩12,000,000",
-  },
-  {
-    id: 2,
-    badge: "무료",
-    title: "이커머스 플랫폼 모바일 앱 리뉴얼",
-    desc: "사용자 경험 중심의 UI/UX 개편 및 Flutter 기반 크로스 플랫폼 앱 개발",
-    tags: ["#Mobile", "#Web", "#Flutter"],
-    endDate: "2024.11.18",
-    duration: "4개월",
-    deadlineD: "D-3",
-    revieweeName: "Shop & Go",
-    revieweeInitial: "S",
-    revieweeAvatarColor: "#1E293B",
-    budget: "₩8,000,000",
-  },
-]
-*/
 
-const MOCK_RECEIVED_REVIEWS = [];
-/* ORIGINAL MOCK_RECEIVED_REVIEWS:
-[
-  {
-    id: 1,
-    badge: "유료",
-    satisfactionLabel: "조금 불만족 했어요",
-    satisfactionBg: "#FFF7ED",
-    satisfactionBorder: "#FED7AA",
-    satisfactionColor: "#C2410C",
-    title: "블록체인 기반 공급망 관리 시스템 구축",
-    desc: "물류 프로세스 투명성 확보를 위한 이더리움 기반 스마트 컨트랙트 개발",
-    tags: ["#Blockchain", "#Solidity", "#Node.js"],
-    endDate: "2024.11.01",
-    reviewDate: "2024.11.05",
-    commentText: "더 발전할 수 있게 코멘트를 남겨주셨어요",
-    commentColor: "#F97316",
-    reviewerName: "Crypto Systems",
-    reviewerInitial: "C",
-    reviewerAvatarColor: "#8B5CF6",
-    rating: 3.5,
-    expertise: 3.5,
-    schedule: 4.0,
-    communication: 3.0,
-    proactivity: 3.5,
-    budget: "₩15,000,000",
-    duration: "3개월",
-    reviewText: "기술적 역량은 충분하지만, 일부 커뮤니케이션에서 개선이 필요합니다. 더 발전할 수 있을 것 같아 기대됩니다.",
-  },
-  {
-    id: 2,
-    badge: "유료",
-    satisfactionLabel: "너무 만족했어요",
-    satisfactionBg: "#F0FDF4",
-    satisfactionBorder: "#BBF7D0",
-    satisfactionColor: "#16A34A",
-    title: "메타버스 협업 툴 시각화 모듈 개발",
-    desc: "Three.js를 활용한 웹 기반 3D 데이터 시각화 엔진 고도화 및 최적화",
-    tags: ["#Unity", "#3D", "#Optimization"],
-    endDate: "2024.10.15",
-    reviewDate: "2024.10.20",
-    commentText: "별점만 있고 남겨진 코멘트가 없어요",
-    commentColor: "#94A3B8",
-    reviewerName: "Meta-Connect",
-    reviewerInitial: "M",
-    reviewerAvatarColor: "#1E293B",
-    rating: 5.0,
-    expertise: 5.0,
-    schedule: 5.0,
-    communication: 5.0,
-    proactivity: 5.0,
-    budget: "₩25,000,000",
-    duration: "4개월",
-    reviewText: "어려운 기술적 요구사항도 척척 해결해주셨습니다. 3D 렌더링 최적화 부분에서 보여주신 실력이 정말 대단하십니다. 강력 추천합니다!",
-  },
-]
-*/
 
-const MOCK_EXPIRED_REVIEWS = [];
-/* ORIGINAL MOCK_EXPIRED_REVIEWS:
-[
-  {
-    id: 1,
-    title: "실시간 스트리밍 앱 최적화 및 안정화",
-    desc: "대규모 동시 접속자 처리를 위한 백엔드 구조 개편 및 트래픽 제어 알고리즘 적용",
-    tags: ["#Streaming", "#Go", "#Redis"],
-    endDate: "2024.11.10",
-  },
-]
-*/
 
 function EvalPendingCard({ proj, onWrite }) {
   const [hov, setHov] = useState(false);
@@ -3477,70 +3201,6 @@ function EvaluationTab() {
 /* ── FreeMeetingTab ─────────────────────────────────────────── */
 const CHAT_CONTACT_HEROES = { 1: heroTeacher, 2: heroCheck, 3: heroStudent };
 const CHAT_CONTRACT_HEROES = { 1: heroTeacher, 2: heroCheck };
-const MOCK_CONTACTS = [
-  {
-    id: 1,
-    name: "Alex Miller",
-    project: "E-Commerce Platform Modernization",
-    avatar: null,
-    initials: "AM",
-    time: "10:10 AM",
-    lastMsg: "Absolutely. I've prepared a draft...",
-    unread: 0,
-    active: true,
-    messages: [
-      { id: 1, from: "them", text: "Hello! Thanks for joining the 'Free Meeting' session. I've reviewed your proposal for the API layer refactoring.", time: "10:02 AM" },
-      { id: 2, from: "me",   text: "Hi Alex, glad to be here. Did you have any specific concerns about the migration timeline? I've factored in the legacy system dependencies.", time: "10:05 AM" },
-      { id: 3, from: "them", text: "The timeline looks solid. I'm actually more interested in the GraphQL implementation. Can we discuss the schema definition approach?", time: "10:07 AM", file: { name: "api_specs_v2.pdf", type: "pdf", size: "1.2 MB" } },
-      { id: 4, from: "me",   text: "Absolutely. I've prepared a draft schema using a domain-driven design pattern. I'll share the repo link in a moment.", time: "10:10 AM" },
-      { id: 5, type: "system_request", text: "Alex Miller 님께서 Eden (본인)님께 [외주] 팀 프로젝트에서 백엔드/AI직무 함께하기 요청하주셨습니다.\n요청을 수락하겠습니까?  요청 수락시 이후 대화는 계약 상세 협의 미팅으로 넘어갑니다. 🤝" },
-      { id: 6, type: "system_notice", text: "계약 상세 협의 미팅으로 이동하여 프로젝트 협의를 이어 진행해주세요 😊" },
-    ],
-    sharedFiles: [
-      { type: "pdf", name: "api_specs_v2.pdf", size: "1.2 MB", date: "2026-04" },
-      { type: "doc", name: "project_proposal.docx", size: "890 KB", date: "2026-04" },
-    ],
-    sharedImages: [],
-    sharedLinks: ["https://github.com/alex/ecomm-schema", "https://notion.so/project-brief"],
-  },
-  {
-    id: 2,
-    name: "Sarah Chen",
-    project: "Mobile Banking App",
-    avatar: null,
-    initials: "SC",
-    time: "Yesterday",
-    lastMsg: "The prototype looks great! Let's talk.",
-    unread: 2,
-    active: false,
-    messages: [
-      { id: 1, from: "them", text: "Hi! I just reviewed your portfolio. The mobile projects look really impressive.", time: "Yesterday 2:30 PM" },
-      { id: 2, from: "me",   text: "Thanks Sarah! I'd love to discuss the Banking App requirements in more detail.", time: "Yesterday 2:45 PM" },
-      { id: 3, from: "them", text: "The prototype looks great! Let's talk.", time: "Yesterday 3:00 PM" },
-    ],
-    sharedFiles: [],
-    sharedImages: [],
-    sharedLinks: [],
-  },
-  {
-    id: 3,
-    name: "Michael Kim",
-    project: "Cloud Migration Strategy",
-    avatar: null,
-    initials: "MK",
-    time: "Oct 20",
-    lastMsg: "Sent you the latest architecture diagrams.",
-    unread: 0,
-    active: false,
-    messages: [
-      { id: 1, from: "me",   text: "Michael, here are my thoughts on the cloud migration plan.", time: "Oct 20 9:00 AM" },
-      { id: 2, from: "them", text: "Sent you the latest architecture diagrams.", time: "Oct 20 9:30 AM", file: { name: "arch_diagram_v3.png", type: "img", size: "2.4 MB" } },
-    ],
-    sharedFiles: [{ type: "img", name: "arch_diagram_v3.png", size: "2.4 MB", date: "2026-03" }],
-    sharedImages: [{ name: "arch_diagram_v3.png" }],
-    sharedLinks: [],
-  },
-];
 
 const FILE_ICON_COLORS = { pdf: "#E53935", doc: "#1565C0", img: "#2E7D32", default: "#5C6BC0" };
 
@@ -4982,107 +4642,8 @@ const PARTNER_OWN_PROJECTS = [
 ];
 
 /* ── ContractMeetingTab ─────────────────────────────────────────── */
-const CONTRACT_MOCK_CONTACTS = [
-  {
-    id: 1,
-    name: "Alex Miller",
-    project: "E-Commerce Platform Modernization",
-    avatar: null,
-    initials: "AM",
-    time: "10:10 AM",
-    lastMsg: "I've reviewed your proposal for the API layer...",
-    unread: 0,
-    active: true,
-    messages: [
-      { id: 1, type: "system_intro" },
-      { id: 2, type: "contract_items" },
-      { id: 3, type: "date_divider", label: "TODAY, OCT 24" },
-      { id: 4, from: "them", text: "Hello! Thanks for joining the 'Free Meeting' session. I've reviewed your proposal for the API layer refactoring.", time: "10:02 AM" },
-      { id: 5, from: "me",   text: "Hi Alex, glad to be here. Did you have any specific concerns about the migration timeline? I've factored in the legacy system dependencies.", time: "10:05 AM" },
-    ],
-    sharedFiles: [
-      { type: "pdf", name: "api_specs_v2.pdf", size: "1.2 MB", date: "2026-04" },
-      { type: "doc", name: "project_proposal.docx", size: "890 KB", date: "2026-04" },
-    ],
-    sharedImages: [],
-    sharedLinks: ["https://github.com/alex/ecomm-schema"],
-  },
-  {
-    id: 2,
-    name: "Sarah Chen",
-    project: "Mobile Banking App",
-    avatar: null,
-    initials: "SC",
-    time: "Yesterday",
-    lastMsg: "Let's discuss the contract details.",
-    unread: 1,
-    active: false,
-    messages: [
-      { id: 1, type: "system_intro" },
-      { id: 2, type: "contract_items" },
-      { id: 3, type: "date_divider", label: "YESTERDAY" },
-      { id: 4, from: "them", text: "Hi, let's discuss the contract details for the banking app.", time: "Yesterday 2:30 PM" },
-    ],
-    sharedFiles: [],
-    sharedImages: [],
-    sharedLinks: [],
-  },
-];
-
-const PROJECT_MEETING_MOCK_CONTACTS = [
-  {
-    id: 1,
-    name: "Alpha FinTech",
-    project: "AI 기반 지능형 큐레이터 플랫폼 고도화",
-    initials: "AF",
-    time: "10:24 AM",
-    lastMsg: "모델 파인튜닝 결과 공유 감사합니다.",
-    unread: 0,
-    messages: [
-      { id: 1, type: "system_intro" },
-      { id: 2, type: "contract_items" },
-      { id: 3, type: "date_divider", label: "TODAY" },
-      { id: 4, from: "them", text: "모델 파인튜닝 결과 공유 감사합니다.", time: "10:24 AM" },
-      { id: 5, from: "me", text: "다음 배포 일정에 맞춰 API 응답 스키마도 정리해서 전달드리겠습니다.", time: "10:28 AM" },
-    ],
-    sharedFiles: [],
-    sharedLinks: [],
-  },
-  {
-    id: 2,
-    name: "Blue Retail Co.",
-    project: "E-commerce Platform UX/UI Redesign",
-    initials: "BR",
-    time: "Yesterday",
-    lastMsg: "모바일 프로토타입 2차 피드백 전달했습니다.",
-    unread: 1,
-    messages: [
-      { id: 1, type: "system_intro" },
-      { id: 2, type: "contract_items" },
-      { id: 3, type: "date_divider", label: "YESTERDAY" },
-      { id: 4, from: "them", text: "모바일 프로토타입 2차 피드백 전달했습니다.", time: "Yesterday 3:10 PM" },
-    ],
-    sharedFiles: [],
-    sharedLinks: [],
-  },
-  {
-    id: 3,
-    name: "Crypto Systems",
-    project: "Bitcoin Auto-Trading System Development",
-    initials: "CS",
-    time: "2 days ago",
-    lastMsg: "코어 로직 설계안 검토 후 회신 부탁드립니다.",
-    unread: 0,
-    messages: [
-      { id: 1, type: "system_intro" },
-      { id: 2, type: "contract_items" },
-      { id: 3, type: "date_divider", label: "2 DAYS AGO" },
-      { id: 4, from: "them", text: "코어 로직 설계안 검토 후 회신 부탁드립니다.", time: "2 days ago 11:20 AM" },
-    ],
-    sharedFiles: [],
-    sharedLinks: [],
-  },
-];
+// Empty sentinel — 기본 contacts 가 비어있을 때 BE 채팅방 fetch 트리거 (identity 비교용).
+const DEFAULT_CONTRACT_CONTACTS = [];
 
 const CONTRACT_MODAL_DEFS = [
   { key: "scope",       label: "작업 범위",             Component: ScopeModal },
@@ -5121,9 +4682,9 @@ function statusStyle(s) {
   return { bg: "#F1F5F9", text: "#64748B" };
 }
 
-function ContractMeetingTab({ initialContactId = 1, initialContacts = CONTRACT_MOCK_CONTACTS, initialStatuses = INITIAL_STATUSES, showModalHeaderStatusBadge = true, showDashboardMoveButton = false, chatClient, projectId = null, onDashboardMove = null, initialProjectId = null, filterInProgress = false, meetingMode = "contract" }) {
+function ContractMeetingTab({ initialContactId = 1, initialContacts = DEFAULT_CONTRACT_CONTACTS, initialStatuses = INITIAL_STATUSES, showModalHeaderStatusBadge = true, showDashboardMoveButton = false, chatClient, projectId = null, onDashboardMove = null, initialProjectId = null, filterInProgress = false, meetingMode = "contract" }) {
   // 기본 (대시보드 직접 진입) 모드에서는 BE 채팅방을 fetch해서 contacts 로 사용
-  const isDefaultContacts = initialContacts === CONTRACT_MOCK_CONTACTS;
+  const isDefaultContacts = initialContacts === DEFAULT_CONTRACT_CONTACTS;
   const user = useStore(s => s.user);
   const { dbId } = useStore();
   const clientProfileDetail = useStore(s => s.clientProfileDetail);

@@ -47,29 +47,14 @@ const SKILL_COLOR_MAP = {
   "AI/ML": "#A855F7", "GraphQL": "#E535AB", "TensorFlow": "#FF6F00",
 };
 
-const MOCK_CAREERS_FALLBACK = [
-  { companyName: "테크브릿지 (주)", jobTitle: "프론트엔드 개발팀장", period: "2021.03 ~ 현재", employmentType: "정규직", desc: "React 기반 SaaS 플랫폼 개발 및 팀 리딩, 성능 최적화 20% 달성" },
-  { companyName: "스타트업 코리아", jobTitle: "풀스택 개발자", period: "2018.07 ~ 2021.02", employmentType: "정규직", desc: "Node.js + React 스택으로 B2B 서비스 0→1 프로덕트 개발" },
-];
-
-const MOCK_EDU_FALLBACK = [
-  { school: "한국대학교", schoolType: "4년제 대학교", major: "컴퓨터공학과", degree: "학사", status: "졸업" },
-];
+// 빈 fallback — 라이브 데이터가 없으면 섹션이 비어있게 두고, 가짜 정보 노출 금지.
+const EMPTY_FALLBACK = [];
 
 const PORTFOLIO_IMGS = [heroCheck, heroStudent, heroMoney];
 const PORTFOLIO_BG = [
   "linear-gradient(135deg,#F97316,#EF4444)",
   "linear-gradient(135deg,#3B82F6,#6366F1)",
   "linear-gradient(135deg,#10B981,#0EA5E9)",
-];
-const MOCK_PORTFOLIO_FALLBACK = [
-  { title: "AI 기반 챗봇 플랫폼", category: "개발·AI", tags: ["React", "FastAPI"], desc: "LLM 기반 콘텐츠 추천 플랫폼 풀스택 개발", rep: true },
-  { title: "SaaS 관리자 대시보드", category: "개발·웹", tags: ["Vue.js", "TypeScript"], desc: "B2B SaaS 관리자 대시보드 UI 리뉴얼", rep: false },
-  { title: "크로스플랫폼 모바일 앱", category: "개발·앱", tags: ["React Native", "Firebase"], desc: "쇼핑몰 앱 리뉴얼 및 성능 최적화", rep: false },
-];
-const MOCK_REVIEWS_FALLBACK = [
-  { reviewer: "Alpha FinTech", rating: 5.0, date: "2024.11", comment: "요구사항을 정확히 파악하고 기간 내 완벽하게 납품해주셨습니다. 커뮤니케이션도 뛰어납니다." },
-  { reviewer: "Beta Corp", rating: 4.8, date: "2024.08", comment: "기술적인 이해도가 높아서 요구사항을 빠르게 반영해주셨어요. 매우 만족스럽습니다." },
 ];
 
 const TABS = [
@@ -171,10 +156,10 @@ export default function ClientProfileModal({ client, partner, onClose, onPropose
 
   const grade = merged.grade ? GRADE_BADGE[merged.grade] : null;
   // 실제 데이터(merged.careers 등)가 있으면 그걸 사용, 없으면 mock fallback
-  const careers = (merged.careers || []).length > 0 ? merged.careers : MOCK_CAREERS_FALLBACK;
-  const educations = (merged.educations || []).length > 0 ? merged.educations : MOCK_EDU_FALLBACK;
-  const portfolioItems = (merged.portfolioItems || []).length > 0 ? merged.portfolioItems : MOCK_PORTFOLIO_FALLBACK;
-  const reviews = (merged.reviews || []).length > 0 ? merged.reviews : MOCK_REVIEWS_FALLBACK;
+  const careers = merged.careers || EMPTY_FALLBACK;
+  const educations = merged.educations || EMPTY_FALLBACK;
+  const portfolioItems = merged.portfolioItems || EMPTY_FALLBACK;
+  const reviews = merged.reviews || EMPTY_FALLBACK;
   const rating = merged.rating ?? 4.9;
 
   return (
