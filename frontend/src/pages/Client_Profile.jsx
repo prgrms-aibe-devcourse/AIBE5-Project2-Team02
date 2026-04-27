@@ -641,7 +641,7 @@ function SavedSkillCard({ skill, onEdit, onDelete }) {
 }
 
 function SkillsTab() {
-  const { clientProfileDetail, updateClientProfileDetail } = useStore();
+  const { clientProfileDetail, updateClientProfileDetail, syncProfileDetailToServer } = useStore();
   // hydration 시 id 누락/중복 방지
   const initSkills = (clientProfileDetail?.skills || []).length > 0
     ? (() => {
@@ -674,9 +674,10 @@ function SkillsTab() {
     setSkills(prev => prev.map(s => s.id === id ? { ...s, mode: "edit" } : s));
   };
 
-  const handleGlobalSave = () => {
+  const handleGlobalSave = async () => {
     const toSave = skills.filter(s => s.mode === "saved").map(({ mode: _mode, ...rest }) => rest);
     updateClientProfileDetail({ skills: toSave });
+    await syncProfileDetailToServer('client');
     setGlobalSaved(true);
     setTimeout(() => setGlobalSaved(false), 2000);
   };
@@ -1127,7 +1128,7 @@ function CareerSavedCard({ career, onEdit, onDelete }) {
 }
 
 function CareerTab() {
-  const { clientProfileDetail, updateClientProfileDetail } = useStore();
+  const { clientProfileDetail, updateClientProfileDetail, syncProfileDetailToServer } = useStore();
   // hydration 시 id 누락/중복 방지
   const initCareers = (clientProfileDetail?.careers || []).length > 0
     ? (() => {
@@ -1158,13 +1159,14 @@ function CareerTab() {
   const updateCareer = (id, updated) => setCareers(prev => prev.map(c => c.id === id ? updated : c));
   const startEditCareer = (id) => setCareers(prev => prev.map(c => c.id === id ? { ...c, mode: "editing" } : c));
 
-  const handleGlobalSave = () => {
+  const handleGlobalSave = async () => {
     const next = careers.map(c => c.company.trim() ? { ...c, mode: "saved" } : c);
     setCareers(next);
     const toSave = next
       .filter(c => c.mode === "saved")
       .map(c => ({ ...c, companyName: c.company, jobTitle: c.mainTech }));
     updateClientProfileDetail({ careers: toSave });
+    await syncProfileDetailToServer('client');
     setGlobalSaved(true);
     setTimeout(() => setGlobalSaved(false), 2000);
   };
@@ -1534,7 +1536,7 @@ function EducationItem({ item, onEdit, onDelete }) {
 
 /* ── 학력 탭 ─────────────────────────────────────────────── */
 function EducationTab() {
-  const { clientProfileDetail, updateClientProfileDetail } = useStore();
+  const { clientProfileDetail, updateClientProfileDetail, syncProfileDetailToServer } = useStore();
   // 인증 이메일 retroactive 매칭 (한/영 학교명 alias)
   const verifiedEmailObj = clientProfileDetail?.verifiedEmail;
   const verifiedEmailStr = typeof verifiedEmailObj === "string"
@@ -1598,8 +1600,9 @@ function EducationTab() {
   };
 
   const [saved, setSaved] = useState(false);
-  const handleGlobalSave = () => {
+  const handleGlobalSave = async () => {
     updateClientProfileDetail({ educations: savedEntries });
+    await syncProfileDetailToServer('client');
     setSaved(true); setTimeout(()=>setSaved(false), 2000);
   };
 
@@ -1986,7 +1989,7 @@ function CertEditCard({ cert, onSave, onCancel }) {
 
 /* ── 자격증 탭 ───────────────────────────────────────────── */
 function CertificatesTab() {
-  const { clientProfileDetail, updateClientProfileDetail } = useStore();
+  const { clientProfileDetail, updateClientProfileDetail, syncProfileDetailToServer } = useStore();
   // hydration 시 id 누락/중복 방지
   const initCerts = (clientProfileDetail?.certifications || []).length > 0
     ? (() => {
@@ -1998,7 +2001,7 @@ function CertificatesTab() {
           return { id, mode: "saved", name: c.certName || c.name, org: c.issuer || c.org, date: c.acquiredDate || c.date };
         });
       })()
-    : [{ id: 1, mode: "saved", name: "정보처리기사", org: "한국산업인력공단", date: "2023-05-22" }];
+    : [];
   const [certs, setCerts] = useState(initCerts);
   const [forms, setForms] = useState([]);
   const idCounter = useRef(initCerts.length + 1);
@@ -2015,9 +2018,10 @@ function CertificatesTab() {
   const removeForm = (fid) => setForms(prev => prev.filter(f => f.id !== fid));
   const addForm = () => setForms(prev => [...prev, { id: formCounter.current++ }]);
   const deleteCert = (id) => setCerts(prev => prev.filter(c => c.id !== id));
-  const handleGlobalSave = () => {
+  const handleGlobalSave = async () => {
     const toSave = certs.filter(c => c.mode === "saved").map(c => ({ id: c.id, certName: c.name, issuer: c.org, acquiredDate: c.date }));
     updateClientProfileDetail({ certifications: toSave });
+    await syncProfileDetailToServer('client');
     setGlobalSaved(true); setTimeout(() => setGlobalSaved(false), 2000);
   };
 
@@ -2521,7 +2525,7 @@ function AwardEditCard({ award, onSave, onCancel }) {
 
 /* ── 수상이력 탭 ──────────────────────────────────────────── */
 function AwardsTab() {
-  const { clientProfileDetail, updateClientProfileDetail } = useStore();
+  const { clientProfileDetail, updateClientProfileDetail, syncProfileDetailToServer } = useStore();
   // hydration 시 id 누락/중복 방지
   const initAwards = (clientProfileDetail?.awards || []).length > 0
     ? (() => {
@@ -2533,7 +2537,7 @@ function AwardsTab() {
           return { id, mode: "saved", name: a.awardName || a.name, org: a.awarding || a.org, date: a.awardDate || a.date, desc: a.description || a.desc || "" };
         });
       })()
-    : [{ id: 1, mode: "saved", name: "2023 하이테크 스타트업 경진대회", org: "우수상", date: "2023-10-15", desc: "" }];
+    : [];
   const [awards, setAwards] = useState(initAwards);
   const [forms, setForms] = useState([{ id: 1 }]);
   const idCounter = useRef(initAwards.length + 1);
@@ -2550,9 +2554,10 @@ function AwardsTab() {
   const removeForm = (fid) => setForms(prev => prev.filter(f => f.id !== fid));
   const addForm = () => setForms(prev => [...prev, { id: formCounter.current++ }]);
   const deleteAward = (id) => setAwards(prev => prev.filter(a => a.id !== id));
-  const handleGlobalSave = () => {
+  const handleGlobalSave = async () => {
     const toSave = awards.filter(a => a.mode === "saved").map(a => ({ id: a.id, awardName: a.name, awarding: a.org, awardDate: a.date, description: a.desc }));
     updateClientProfileDetail({ awards: toSave });
+    await syncProfileDetailToServer('client');
     setGlobalSaved(true); setTimeout(() => setGlobalSaved(false), 2000);
   };
 
