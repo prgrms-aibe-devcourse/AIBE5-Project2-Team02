@@ -632,12 +632,24 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
 
   /* ─── 적용하기: store에 병합 + 서버 DB 저장 ─── */
   const handleApply = async () => {
-    // patch 는 빈 객체로 시작. AI 챗이 새로 생성한 필드만 store 에 머지되어
-    // 이전 PDF / GitHub 결과가 새 결과 위에 끼어들지 않음 (재시작 시 덮어쓰기 의도).
-    const patch = {};
+    // patch 는 기존 profileDetail 위에 시작 — 이전에 저장된 careers/educations
+    // /skills 등이 이번 AI chat 결과에 없다고 사라지면 안 됨 (사용자 데이터 보호).
+    // PDF/AI 가 새로 추출한 항목들은 아래에서 union(dedup) 으로 합침.
+    const patch = { ...profileDetail };
     const baseId = Date.now();
 
     // ── PDF 프로필 병합 (PartnerProfile 폼 스키마와 정확히 일치) ──
+    // dedup-union helper: 기존 배열 + 새 배열에서 같은 키의 항목은 새 값으로 덮되,
+    // 기존에만 있는 항목은 그대로 보존. PDF/AI 가 일부만 추출했을 때 사용자가
+    // 가지고 있던 다른 entries 가 사라지지 않도록 보호.
+    const mergeDedup = (existing = [], incoming = [], keyFn) => {
+      const map = new Map();
+      (existing || []).forEach(item => { const k = keyFn(item); if (k) map.set(k, item); });
+      (incoming || []).forEach(item => { const k = keyFn(item); if (k) map.set(k, item); });
+      return Array.from(map.values());
+    };
+    const normKey = (s) => (s || "").toString().toLowerCase().replace(/\s+/g, "");
+
     let educations = [];
     let careers = [];
 
@@ -646,7 +658,7 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
       if (pdfProfile.strengthDesc) patch.strengthDesc = pdfProfile.strengthDesc;
 
       if (pdfProfile.skills?.length) {
-        patch.skills = pdfProfile.skills.map((s, i) => ({
+        const newSkills = pdfProfile.skills.map((s, i) => ({
           id: baseId + i,
           techName: s.techName || "",
           customTech: "",
@@ -654,6 +666,8 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
           experience: s.experience || "1~3년",
           mode: "saved",
         }));
+        // 기존 skills + PDF skills, techName 으로 dedup (PDF 값이 우선)
+        patch.skills = mergeDedup(patch.skills || [], newSkills, (s) => normKey(s.techName));
       }
 
       if (pdfProfile.careers?.length) {
@@ -732,22 +746,24 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
       }
 
       if (pdfProfile.awards?.length) {
-        patch.awards = pdfProfile.awards.map((a, i) => ({
+        const newAwards = pdfProfile.awards.map((a, i) => ({
           id: baseId + 3000 + i,
           awardName: a.awardName || "",
           awarding: a.awarding || "",
           awardDate: a.awardDate || "",
           description: a.description || "",
         }));
+        patch.awards = mergeDedup(patch.awards || [], newAwards, (a) => normKey(a.awardName) + "|" + normKey(a.awardDate));
       }
 
       if (pdfProfile.certifications?.length) {
-        patch.certifications = pdfProfile.certifications.map((c, i) => ({
+        const newCerts = pdfProfile.certifications.map((c, i) => ({
           id: baseId + 4000 + i,
           certName: c.certName || "",
           issuer: c.issuer || "",
           acquiredDate: c.acquiredDate || "",
         }));
+        patch.certifications = mergeDedup(patch.certifications || [], newCerts, (c) => normKey(c.certName) + "|" + normKey(c.acquiredDate));
       }
     }
 
@@ -822,8 +838,14 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
       }
     }
 
-    if (educations.length) patch.educations = educations;
-    if (careers.length) patch.careers = careers;
+    // educations: 학교 + 학위 조합으로 dedup (학사·석사·박사 별도 유지)
+    if (educations.length) {
+      patch.educations = mergeDedup(patch.educations || [], educations, (e) => normKey(e.schoolName) + "|" + normKey(e.degreeType || e.degree));
+    }
+    // careers: 회사명 기준 dedup (같은 회사 여러 기간은 PDF 측에서 이미 그룹핑됨)
+    if (careers.length) {
+      patch.careers = mergeDedup(patch.careers || [], careers, (c) => normKey(c.companyName || c.company));
+    }
 
     // ── GitHub 스킬 병합 + URL 저장 ──
     if (githubData) {
