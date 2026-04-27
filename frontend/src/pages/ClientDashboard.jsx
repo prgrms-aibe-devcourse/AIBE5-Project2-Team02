@@ -51,6 +51,7 @@ function toCardPartner(p) {
 }
 import PartnerProfileModal from "../components/PartnerProfileModal";
 import PortfolioAddManagementTab from "../components/dashboard/PortfolioAddManagementTab";
+import { renderProjectOverview } from "../lib/projectMarkdown.jsx";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -702,7 +703,7 @@ function ProjectDetailPopup({ proj, onClose }) {
             <div style={{ width: 4, height: 18, borderRadius: 2, background: "#3B82F6" }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", fontFamily: F }}>프로젝트 개요</span>
           </div>
-          <p style={{ fontSize: 14, color: "#475569", margin: "0 0 20px", fontFamily: F, lineHeight: 1.8 }}>{view.desc || "—"}</p>
+          <div style={{ marginBottom: 20 }}>{view.desc ? renderProjectOverview(view.desc) : <p style={{ color: "#94A3B8", margin: 0 }}>—</p>}</div>
 
           {view.tags.length > 0 && (
             <>

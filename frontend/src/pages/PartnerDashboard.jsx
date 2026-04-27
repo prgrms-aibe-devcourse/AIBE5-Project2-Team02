@@ -49,6 +49,7 @@ function toCardPartner(p) {
 }
 import PartnerProfileModal from "../components/PartnerProfileModal";
 import ClientProfileModal from "../components/ClientProfileModal";
+import { renderProjectOverview } from "../lib/projectMarkdown.jsx";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -723,11 +724,11 @@ function ProjectDetailPopup({ proj, onClose }) {
             </div>
           </div>
 
-          {/* 프로젝트 개요 */}
+          {/* 프로젝트 개요 — markdown 렌더 + contractTerms 잔여 컷 */}
           <SectionHeader title="프로젝트 개요" />
-          <p style={{ fontSize: 14, color: "#475569", margin: "0 0 20px", fontFamily: F, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-            {view.detail_content || view.desc}
-          </p>
+          <div style={{ marginBottom: 20 }}>
+            {renderProjectOverview(view.detail_content || view.desc)}
+          </div>
 
           {/* 업무 범위 / 카테고리 / 분야 */}
           {(view.work_scopes.length > 0 || view.categories.length > 0 || view.fields.length > 0 || view.service_field) && (

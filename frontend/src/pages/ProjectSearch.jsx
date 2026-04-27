@@ -6,6 +6,7 @@ import { CONTRACT_MODAL_BY_KEY } from "../components/ContractModals";
 import { projectsApi, applicationsApi } from "../api";
 import useStore from "../store/useStore";
 import { matchApi } from "../api/match.api";
+import { renderProjectOverview } from "../lib/projectMarkdown.jsx";
 
 const F = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const PRIMARY = "#3B82F6";
@@ -20,6 +21,7 @@ const HIGHLIGHT_KEYWORDS = [["AI 챗봇", "자동화"], ["중개 플랫폼", "�
 
 const SERVICE_FIELDS = ["AI", "커머스", "웹사이트", "디자인/기획", "유지보수", "핀테크", "SaaS", "모바일", "클라우드"];
 const PRIMARY_GRAD = "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%)";
+
 
 const GRADE_BADGE = {
   diamond: { label: "💎 다이아몬드", color: "#1E3A8A", bg: "#DBEAFE", border: "#93C5FD" },
@@ -838,7 +840,7 @@ function ProjectDetail({ project: p, onBack }) {
 
         {/* ④ 프로젝트 개요 */}
         <SectionTitle>프로젝트 개요</SectionTitle>
-        <p style={{ fontSize: 14, color: "#475569", lineHeight: 1.8, margin: 0, fontFamily: F }}>{p.desc}</p>
+        {renderProjectOverview(p.desc)}
 
         {divider}
 
