@@ -34,8 +34,12 @@ export function normalizeSourceKey(rawKey, fallbackProjectId) {
 }
 
 export function toPortfolioEditorSeed(project, overrides = {}) {
-  const sourceProjectId = project?.sourceProjectId ?? project?.projectId ?? project?.id ?? null;
-  const sourceKey = normalizeSourceKey(project?.sourceKey, sourceProjectId);
+  // sourceProjectId 는 'projects' 테이블의 FK 만 받음.
+  // project.id 는 호출자에 따라 portfolios 테이블의 PK 일 수도 있어 fallback 에서 제외.
+  // (portfolioApi.myList() 결과를 넘길 때 portfolio_id 를 sourceProjectId 로 쓰는
+  //  회귀가 있어서, 백엔드에서 'project id=N 못 찾음' 에러를 일으킨 이력 있음.)
+  const sourceProjectId = project?.sourceProjectId ?? project?.projectId ?? null;
+  const sourceKey = normalizeSourceKey(project?.sourceKey, project?.sourceProjectId ?? project?.projectId ?? project?.id);
 
   return {
     id: sourceKey,
