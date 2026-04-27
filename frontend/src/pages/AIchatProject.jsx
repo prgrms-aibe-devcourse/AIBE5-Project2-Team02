@@ -358,22 +358,68 @@ export default function AIchatProject() {
       );
 
       // AI 응답에서 JSON 코드블록 추출 (자동 입력용). 여러 번 호출 시 기존 데이터에 도도록 머지.
+      // contractTerms 7가지 세부 협약 JSON 도 같이 처리.
       let cleanReply = reply;
       if (!contractMode) {
-        const jsonMatch = reply.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
+        // contractTerms 가 들어오면 ProjectRegister 의 derived 섹션(예산/일정)도 일관되게
+        // 채워지도록 top-level 필드(budgetAmount/startDate/durationMonths)에 sync.
+        const syncTopLevelFromContractTerms = (parsed) => {
+          if (!parsed?.contractTerms) return parsed;
+          const ct = parsed.contractTerms;
+          const out = { ...parsed };
+          // payment.total ("5,000,000" or "₩5,000,000") → budgetAmount (만 원 단위 문자열)
+          if (!out.budgetAmount && ct.payment?.total) {
+            const totalNum = Number(String(ct.payment.total).replace(/[^0-9]/g, ""));
+            if (totalNum > 0) out.budgetAmount = String(Math.round(totalNum / 10000));
+          }
+          // schedule.startDate ("2026.05.01" or "2026-05-01" or "협의") → startDate (YYYY-MM-DD)
+          if (!out.startDate && ct.schedule?.startDate && /\d{4}/.test(ct.schedule.startDate)) {
+            out.startDate = String(ct.schedule.startDate).replace(/\./g, "-").slice(0, 10);
+          }
+          // schedule.phases[].weeks → durationMonths 보강
+          if (!out.durationMonths && Array.isArray(ct.schedule?.phases) && ct.schedule.phases.length) {
+            const totalWeeks = ct.schedule.phases.reduce((sum, p) => {
+              const w = Number(String(p?.weeks || "").replace(/[^0-9]/g, "")) || 0;
+              return sum + w;
+            }, 0);
+            if (totalWeeks > 0) out.durationMonths = String(Math.max(1, Math.round(totalWeeks / 4)));
+          }
+          return out;
+        };
+
+        // 1) 정상적으로 ```json ... ``` 로 닫힌 블록
+        const closedMatch = reply.match(/```json\s*([\s\S]*?)\s*```/);
+        if (closedMatch) {
           try {
-            const parsed = JSON.parse(jsonMatch[1]);
-            setExtractedData((prev) => {
-              const merged = { ...(prev || {}), ...parsed };
-              console.log("[AIchatProject] 주출된 등록 초안:", merged);
-              return merged;
-            });
-            // 채팅에는 JSON 블록 빼고 보여주기 (가독성)
-            cleanReply = reply.replace(/```json[\s\S]*?```/, "").trim();
+            const parsed = syncTopLevelFromContractTerms(JSON.parse(closedMatch[1]));
+            setExtractedData((prev) => ({ ...(prev || {}), ...parsed }));
           } catch (e) {
             console.warn("[AIchatProject] JSON 파싱 실패:", e);
           }
+          cleanReply = reply.replace(/```json[\s\S]*?```/, "").trim();
+        } else if (reply.includes("```json")) {
+          // 2) ```json 으로 시작했지만 닫는 fence 가 없는 경우 — truncated 응답.
+          //    파싱은 시도해보고 실패해도 채팅 말풍선에서는 잘라냄 (raw JSON 노출 차단).
+          const startIdx = reply.indexOf("```json");
+          const tail = reply.slice(startIdx + "```json".length).trim();
+          try {
+            // 가장 바깥 `{` 부터 마지막 `}` 까지만 추출 시도
+            const firstBrace = tail.indexOf("{");
+            if (firstBrace !== -1) {
+              let depth = 0; let endIdx = -1;
+              for (let i = firstBrace; i < tail.length; i++) {
+                if (tail[i] === "{") depth++;
+                else if (tail[i] === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
+              }
+              if (endIdx !== -1) {
+                const parsed = syncTopLevelFromContractTerms(JSON.parse(tail.slice(firstBrace, endIdx + 1)));
+                setExtractedData((prev) => ({ ...(prev || {}), ...parsed }));
+              }
+            }
+          } catch (e) {
+            console.warn("[AIchatProject] truncated JSON 파싱 실패 (말풍선에서는 숨김):", e?.message);
+          }
+          cleanReply = reply.slice(0, startIdx).trim();
         }
       }
 

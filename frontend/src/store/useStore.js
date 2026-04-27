@@ -117,8 +117,10 @@ const useStore = create(
       // 프로필 세부 정보 백엔드 동기화 ─ "전체 설정 저장하기" 버튼에서 호출
       // role: 'partner' | 'client' (생략 시 userRole 사용)
       syncProfileDetailToServer: async (role) => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        if (!token) return { ok: false, reason: 'unauthenticated' };
+        // 로그인 여부는 비민감 식별자 dbId 로 판단 (JWT 는 HttpOnly 쿠키라 JS 접근 불가).
+        // 실제 인증은 axios withCredentials + 쿠키로 자동 처리, 401 시 응답에서 catch.
+        const dbId = typeof window !== 'undefined' ? localStorage.getItem('dbId') : null;
+        if (!dbId) return { ok: false, reason: 'unauthenticated' };
 
         const state = get();
         const r = role || state.userRole;
@@ -208,8 +210,9 @@ const useStore = create(
        * 디바운스 sync 트리거를 피하기 위해 set 으로 직접 주입.
        */
       loadProfileDetailFromServer: async (role) => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        if (!token) return { ok: false, reason: 'unauthenticated' };
+        // dbId 기반 로그인 체크 (JWT 는 쿠키, JS 접근 불가)
+        const dbId = typeof window !== 'undefined' ? localStorage.getItem('dbId') : null;
+        if (!dbId) return { ok: false, reason: 'unauthenticated' };
 
         const state = get();
         const r = role || state.userRole;
@@ -271,8 +274,9 @@ const useStore = create(
 
       // 서버에서 찜 목록 로드 (로그인 상태일 때만 호출; 실패 시 로컬 값 유지)
       loadInterests: async () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        if (!token) return;  // 비로그인 → 로컬 persist 값만 사용
+        // 로그인 여부는 dbId(비민감 식별자)로 판단 — 실제 인증은 쿠키 기반.
+        const dbId = typeof window !== 'undefined' ? localStorage.getItem('dbId') : null;
+        if (!dbId) return;  // 비로그인 → 로컬 persist 값만 사용
         try {
           const [projIds, partnerIds] = await Promise.all([
             interestsApi.myProjects(),
@@ -297,8 +301,8 @@ const useStore = create(
         const next = isLiked ? prev.filter(id => id !== projectId) : [...prev, projectId];
         set({ interestedProjectIds: next });
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        if (!token) return;  // 비로그인 — 로컬 저장만
+        const dbId = typeof window !== 'undefined' ? localStorage.getItem('dbId') : null;
+        if (!dbId) return;  // 비로그인 — 로컬 저장만
 
         try {
           if (isLiked) await interestsApi.removeProject(projectId);
@@ -315,8 +319,8 @@ const useStore = create(
         const next = isLiked ? prev.filter(id => id !== partnerId) : [...prev, partnerId];
         set({ interestedPartnerIds: next });
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        if (!token) return;
+        const dbId = typeof window !== 'undefined' ? localStorage.getItem('dbId') : null;
+        if (!dbId) return;
 
         try {
           if (isLiked) await interestsApi.removePartner(partnerId);
