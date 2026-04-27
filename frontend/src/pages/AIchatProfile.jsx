@@ -49,19 +49,21 @@ const Q3_INTRO = `훌륭해요! 마지막 질문입니다 🚀
 /* ─────────────────────────────────────────
    이메일 도메인 → 학교/회사 이름 매핑 (시연용)
    ──────────────────────────────────────── */
+// aliases: 한/영 학교명 변형. PDF 파싱·AI chat 결과가 영문일 수도 있으므로
+// 이메일 인증 시 같은 학교의 모든 entry 에 verified 마크가 자동 전파되도록 검사용.
 const SCHOOL_DOMAIN_MAP = {
-  "korea.ac.kr": { name: "고려대학교", type: "대학교(4년)" },
-  "snu.ac.kr":   { name: "서울대학교", type: "대학교(4년)" },
-  "yonsei.ac.kr":{ name: "연세대학교", type: "대학교(4년)" },
-  "kaist.ac.kr": { name: "KAIST", type: "대학교(4년)" },
-  "postech.ac.kr":{name: "POSTECH", type: "대학교(4년)" },
-  "hanyang.ac.kr":{name: "한양대학교", type: "대학교(4년)" },
-  "skku.edu":    { name: "성균관대학교", type: "대학교(4년)" },
-  "sogang.ac.kr":{ name: "서강대학교", type: "대학교(4년)" },
-  "cau.ac.kr":   { name: "중앙대학교", type: "대학교(4년)" },
-  "khu.ac.kr":   { name: "경희대학교", type: "대학교(4년)" },
-  "unist.ac.kr": { name: "UNIST", type: "대학교(4년)" },
-  "ewha.ac.kr":  { name: "이화여자대학교", type: "대학교(4년)" },
+  "korea.ac.kr":  { name: "고려대학교",     type: "대학교(4년)", aliases: ["고려대학교", "고려대", "korea university", "ku"] },
+  "snu.ac.kr":    { name: "서울대학교",     type: "대학교(4년)", aliases: ["서울대학교", "서울대", "seoul national university", "snu"] },
+  "yonsei.ac.kr": { name: "연세대학교",     type: "대학교(4년)", aliases: ["연세대학교", "연세대", "yonsei university"] },
+  "kaist.ac.kr":  { name: "KAIST",          type: "대학교(4년)", aliases: ["kaist", "한국과학기술원"] },
+  "postech.ac.kr":{ name: "POSTECH",        type: "대학교(4년)", aliases: ["postech", "포항공과대학교", "포스텍"] },
+  "hanyang.ac.kr":{ name: "한양대학교",     type: "대학교(4년)", aliases: ["한양대학교", "한양대", "hanyang university"] },
+  "skku.edu":     { name: "성균관대학교",   type: "대학교(4년)", aliases: ["성균관대학교", "성균관대", "sungkyunkwan university", "skku"] },
+  "sogang.ac.kr": { name: "서강대학교",     type: "대학교(4년)", aliases: ["서강대학교", "서강대", "sogang university"] },
+  "cau.ac.kr":    { name: "중앙대학교",     type: "대학교(4년)", aliases: ["중앙대학교", "중앙대", "chung-ang university", "chungang university"] },
+  "khu.ac.kr":    { name: "경희대학교",     type: "대학교(4년)", aliases: ["경희대학교", "경희대", "kyung hee university", "kyunghee university"] },
+  "unist.ac.kr":  { name: "UNIST",          type: "대학교(4년)", aliases: ["unist", "울산과학기술원"] },
+  "ewha.ac.kr":   { name: "이화여자대학교", type: "대학교(4년)", aliases: ["이화여자대학교", "이화여대", "ewha womans university", "ewha university"] },
 };
 const COMPANY_DOMAIN_MAP = {
   "samsung.com": "삼성전자",
@@ -752,14 +754,18 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
     // ── 이메일 인증 → 학교/회사 항목 자동 추가 + 인증마크 ──
     if (verifiedEmail?.type === "school") {
       const sch = lookupSchoolByEmail(verifiedEmail.email);
-      // PDF에서 가져온 학력 중 같은 학교(학사/석사/박사 모두)에 인증마크 부여
-      const baseSchool = sch.name.replace(/대학교|대학원/g, "");
+      // alias 배열 기반 매칭 — 한/영 학교명 모두 허용. 정규화 후 부분 일치.
+      const aliases = (sch.aliases && sch.aliases.length ? sch.aliases : [sch.name])
+        .map(a => a.toLowerCase().replace(/\s+/g, "").replace(/대학교|대학원|university/g, ""));
+      const matchesSchool = (raw) => {
+        if (!raw) return false;
+        const norm = String(raw).toLowerCase().replace(/\s+/g, "").replace(/대학교|대학원|university/g, "");
+        if (!norm) return false;
+        return aliases.some(a => a && (norm.includes(a) || a.includes(norm)));
+      };
       const matched = educations
         .map((e, i) => ({ e, i }))
-        .filter(({ e }) => e.schoolName && (
-          sch.name.includes(e.schoolName.replace(/대학교|대학원/g, "")) ||
-          e.schoolName.includes(baseSchool)
-        ));
+        .filter(({ e }) => matchesSchool(e.schoolName));
       if (matched.length > 0) {
         matched.forEach(({ i }) => {
           educations[i].verifiedSchool = true;
