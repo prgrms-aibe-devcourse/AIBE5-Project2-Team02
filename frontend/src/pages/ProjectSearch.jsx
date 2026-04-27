@@ -616,7 +616,7 @@ function ProjectCard({ data, onSelect }) {
             {data.match}% AI Match
           </div>
         )}
-        <div style={{ fontSize: 22, fontWeight: 900, color: "#3B82F6", fontFamily: F, marginBottom: 4, paddingRight: 42 }}>
+        <div style={{ fontSize: 22, fontWeight: 900, color: "#3B82F6", fontFamily: F, marginBottom: 4, paddingRight: 42, whiteSpace: "nowrap" }}>
           {data.price}
         </div>
         <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: F, paddingRight: 42 }}>

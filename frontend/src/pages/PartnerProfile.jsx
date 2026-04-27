@@ -545,8 +545,17 @@ function SavedSkillCard({ skill, onEdit, onDelete }) {
 
 function SkillsTab() {
   const { partnerProfileDetail, updatePartnerProfileDetail } = useStore();
+  // hydration 시 id 누락/중복 방지 — undefined·null 또는 중복이면 인덱스 기반 보강.
   const initSkills = (partnerProfileDetail?.skills || []).length > 0
-    ? partnerProfileDetail.skills.map(s => ({ ...s, mode: "saved" }))
+    ? (() => {
+        const seen = new Set();
+        return partnerProfileDetail.skills.map((s, i) => {
+          let id = s.id;
+          if (id == null || seen.has(id)) id = `skill-${Date.now()}-${i}`;
+          seen.add(id);
+          return { ...s, id, mode: "saved" };
+        });
+      })()
     : [{ id: 1, mode: "edit", techName: "", customTech: "", proficiency: "", experience: "" }];
   const [skills, setSkills] = useState(initSkills);
   const [globalSaved, setGlobalSaved] = useState(false);
@@ -1037,8 +1046,17 @@ function CareerSavedCard({ career, onEdit, onDelete }) {
 
 function CareerTab() {
   const { partnerProfileDetail, updatePartnerProfileDetail } = useStore();
+  // hydration 시 id 누락/중복 방지
   const initCareers = (partnerProfileDetail?.careers || []).length > 0
-    ? partnerProfileDetail.careers.map(c => ({ ...c, mode: "saved", company: c.companyName || c.company || "", mainTech: c.jobTitle || c.mainTech || "" }))
+    ? (() => {
+        const seen = new Set();
+        return partnerProfileDetail.careers.map((c, i) => {
+          let id = c.id;
+          if (id == null || seen.has(id)) id = `career-${Date.now()}-${i}`;
+          seen.add(id);
+          return { ...c, id, mode: "saved", company: c.companyName || c.company || "", mainTech: c.jobTitle || c.mainTech || "" };
+        });
+      })()
     : [{ id: 1, mode: "editing", company: "", mainTech: "", startDate: "", endDate: "", current: false, type: "", role: "", level: "", description: "", projects: [] }];
   const [careers, setCareers] = useState(initCareers);
   const [globalSaved, setGlobalSaved] = useState(false);
@@ -1450,7 +1468,11 @@ function EducationItem({ item, onEdit, onDelete }) {
 /* ── 학력 탭 ─────────────────────────────────────────────── */
 function EducationTab() {
   const { partnerProfileDetail, updatePartnerProfileDetail } = useStore();
-  const [savedEntries, setSavedEntries] = useState(partnerProfileDetail?.educations || []);
+  // hydration 시 id 누락/중복 방지
+  const initEducations = (partnerProfileDetail?.educations || []).map((e, i) => (
+    e.id != null ? e : { ...e, id: `edu-${Date.now()}-${i}` }
+  ));
+  const [savedEntries, setSavedEntries] = useState(initEducations);
   const [activeForms,  setActiveForms]  = useState([{ tempId:0, originalId:null, data: INIT_EDU() }]);
   const idCounter   = useRef((partnerProfileDetail?.educations?.length || 0) + 1);
   const tempCounter = useRef(1);
@@ -1885,8 +1907,17 @@ function CertEditCard({ cert, onSave, onCancel }) {
 /* ── 자격증 탭 ───────────────────────────────────────────── */
 function CertificatesTab() {
   const { partnerProfileDetail, updatePartnerProfileDetail } = useStore();
+  // hydration 시 id 누락/중복 방지
   const initCerts = (partnerProfileDetail?.certifications || []).length > 0
-    ? partnerProfileDetail.certifications.map(c => ({ id: c.id, mode: "saved", name: c.certName || c.name, org: c.issuer || c.org, date: c.acquiredDate || c.date }))
+    ? (() => {
+        const seen = new Set();
+        return partnerProfileDetail.certifications.map((c, i) => {
+          let id = c.id;
+          if (id == null || seen.has(id)) id = `cert-${Date.now()}-${i}`;
+          seen.add(id);
+          return { id, mode: "saved", name: c.certName || c.name, org: c.issuer || c.org, date: c.acquiredDate || c.date };
+        });
+      })()
     : [{ id: 1, mode: "saved", name: "정보처리기사", org: "한국산업인력공단", date: "2023-05-22" }];
   const [certs, setCerts] = useState(initCerts);
   const [forms, setForms] = useState([]);
@@ -2411,8 +2442,17 @@ function AwardEditCard({ award, onSave, onCancel }) {
 /* ── 수상이력 탭 ──────────────────────────────────────────── */
 function AwardsTab() {
   const { partnerProfileDetail, updatePartnerProfileDetail } = useStore();
+  // hydration 시 id 누락/중복 방지
   const initAwards = (partnerProfileDetail?.awards || []).length > 0
-    ? partnerProfileDetail.awards.map(a => ({ id: a.id, mode: "saved", name: a.awardName || a.name, org: a.awarding || a.org, date: a.awardDate || a.date, desc: a.description || a.desc || "" }))
+    ? (() => {
+        const seen = new Set();
+        return partnerProfileDetail.awards.map((a, i) => {
+          let id = a.id;
+          if (id == null || seen.has(id)) id = `award-${Date.now()}-${i}`;
+          seen.add(id);
+          return { id, mode: "saved", name: a.awardName || a.name, org: a.awarding || a.org, date: a.awardDate || a.date, desc: a.description || a.desc || "" };
+        });
+      })()
     : [{ id: 1, mode: "saved", name: "2023 하이테크 스타트업 경진대회", org: "우수상", date: "2023-10-15", desc: "" }];
   const [awards, setAwards] = useState(initAwards);
   const [forms, setForms] = useState([{ id: 1 }]);

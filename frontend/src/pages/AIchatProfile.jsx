@@ -630,7 +630,9 @@ ${data.skills.map((s) => `• **${s.techName}** — ${s.commits.toLocaleString()
 
   /* ─── 적용하기: store에 병합 + 서버 DB 저장 ─── */
   const handleApply = async () => {
-    const patch = { ...profileDetail };
+    // patch 는 빈 객체로 시작. AI 챗이 새로 생성한 필드만 store 에 머지되어
+    // 이전 PDF / GitHub 결과가 새 결과 위에 끼어들지 않음 (재시작 시 덮어쓰기 의도).
+    const patch = {};
     const baseId = Date.now();
 
     // ── PDF 프로필 병합 (PartnerProfile 폼 스키마와 정확히 일치) ──
